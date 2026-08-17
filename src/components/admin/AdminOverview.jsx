@@ -375,100 +375,381 @@ export default function AdminOverview({
       {view === 'overview' && (
         <>
           {/* Top 4 Key Metric Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-normal">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
             {/* Card 1: Total Valuation */}
-            <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl transition-all hover:border-orange-500/30">
+            <div className="relative overflow-hidden rounded-3xl border border-slate-800/90 bg-gradient-to-b from-[#0d1424] to-[#080d19] p-5 shadow-xl transition-all duration-300 hover:border-orange-500/40 hover:-translate-y-1 group">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Valuation</span>
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Valuation</span>
+                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-orange-500/10 text-orange-400 border border-orange-500/20 group-hover:scale-110 transition-transform">
                   <i className="ri-wallet-3-line text-lg"></i>
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-bold text-white tracking-tight">
+              <p className="mt-3 text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                 ₹ {(metrics.totalValuationSum / 10000000).toFixed(2)} Cr
               </p>
-              <div className="mt-2 flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
-                <i className="ri-arrow-up-line text-xs"></i>
-                <span>Active Capital Pool</span>
+              <div className="mt-2.5 flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300 text-[10px]">
+                  <i className="ri-arrow-up-line"></i>
+                </span>
+                <span>+14.2% Active Capital Pool</span>
               </div>
             </div>
 
             {/* Card 2: Active Projects */}
-            <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl transition-all hover:border-amber-500/30">
+            <div className="relative overflow-hidden rounded-3xl border border-slate-800/90 bg-gradient-to-b from-[#0d1424] to-[#080d19] p-5 shadow-xl transition-all duration-300 hover:border-amber-500/40 hover:-translate-y-1 group">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Active Deals</span>
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Deals</span>
+                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:scale-110 transition-transform">
                   <i className="ri-building-line text-lg"></i>
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-bold text-white tracking-tight">{metrics.totalCount}</p>
-              <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
-                <span className="text-orange-400 font-medium">{metrics.runningCount} Running</span> ·
-                <span className="text-blue-400 font-medium">{metrics.upcomingCount} Launching</span>
+              <p className="mt-3 text-2xl sm:text-3xl font-extrabold text-white tracking-tight">{metrics.totalCount}</p>
+              <div className="mt-2.5 flex items-center gap-2 text-xs text-slate-400 font-medium">
+                <span className="text-orange-400 font-bold">{metrics.runningCount} Running</span> ·
+                <span className="text-sky-400 font-bold">{metrics.upcomingCount} Launching</span>
               </div>
             </div>
 
             {/* Card 3: Direct Website Hot Deals */}
-            <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl transition-all hover:border-yellow-500/30">
+            <div className="relative overflow-hidden rounded-3xl border border-slate-800/90 bg-gradient-to-b from-[#0d1424] to-[#080d19] p-5 shadow-xl transition-all duration-300 hover:border-yellow-500/40 hover:-translate-y-1 group">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Direct Hot Deals</span>
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
-                  <i className="ri-star-line text-lg"></i>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hot Sale Deals</span>
+                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 group-hover:scale-110 transition-transform">
+                  <i className="ri-fire-line text-lg"></i>
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-bold text-white tracking-tight">{metrics.featuredCount}</p>
-              <div className="mt-2 flex items-center gap-1 text-[11px] text-yellow-400 font-medium">
-                <i className="ri-fire-line text-xs"></i>
-                <span>Direct Purchase Products</span>
+              <p className="mt-3 text-2xl sm:text-3xl font-extrabold text-white tracking-tight">{metrics.featuredCount}</p>
+              <div className="mt-2.5 flex items-center gap-1.5 text-xs text-yellow-400 font-semibold">
+                <i className="ri-star-fill text-xs"></i>
+                <span>Direct Purchase Live</span>
               </div>
             </div>
 
             {/* Card 4: WhatsApp Shares */}
-            <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl transition-all hover:border-emerald-500/30">
+            <div className="relative overflow-hidden rounded-3xl border border-slate-800/90 bg-gradient-to-b from-[#0d1424] to-[#080d19] p-5 shadow-xl transition-all duration-300 hover:border-emerald-500/40 hover:-translate-y-1 group">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">WhatsApp Sent</span>
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">CRM Dispatches</span>
+                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:scale-110 transition-transform">
                   <i className="ri-whatsapp-line text-lg"></i>
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-bold text-white tracking-tight">{metrics.totalSharesCount}</p>
-              <div className="mt-2 flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
-                <i className="ri-send-plane-line text-xs"></i>
-                <span>Proposals Shared Live</span>
+              <p className="mt-3 text-2xl sm:text-3xl font-extrabold text-white tracking-tight">{metrics.totalSharesCount}</p>
+              <div className="mt-2.5 flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
+                <i className="ri-send-plane-fill text-xs"></i>
+                <span>Live WhatsApp Proposals</span>
               </div>
             </div>
           </div>
 
-          {/* Graphical Analytics Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 font-normal">
+          {/* MAIN HERO ANALYTICS CHART SECTION (Inspired by concept layout) */}
+          <div className="rounded-3xl border border-slate-800/90 bg-gradient-to-b from-[#0d1424] via-[#0b101d] to-[#080d19] p-6 sm:p-7 shadow-2xl space-y-6 font-sans">
+            {/* Chart Header Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  My Bookings & Inflow Analytics
+                </h2>
+                <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                  <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                    <i className="ri-calendar-line text-orange-400"></i>
+                    Period: <span className="text-white font-bold">1 March – 14 March</span>
+                  </span>
+                  <i className="ri-arrow-down-s-line text-slate-500"></i>
+                </div>
+              </div>
+
+              {/* Chart Legend Dots */}
+              <div className="flex items-center gap-5 text-xs font-bold">
+                <span className="flex items-center gap-2 text-slate-300">
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-amber-400/30"></span>
+                  Today
+                </span>
+                <span className="flex items-center gap-2 text-slate-300">
+                  <span className="h-2.5 w-2.5 rounded-full bg-teal-400 ring-2 ring-teal-400/30"></span>
+                  Capital Inflow
+                </span>
+              </div>
+            </div>
+
+            {/* Interactive Bar Chart Visualization */}
+            <div className="relative pt-8 pb-2">
+              {/* Grid Background Lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 text-[10px] text-slate-400 font-mono">
+                <div className="border-b border-dashed border-slate-700 w-full flex justify-between"><span>₹30L / $3,000</span></div>
+                <div className="border-b border-dashed border-slate-700 w-full flex justify-between"><span>₹20L / $2,000</span></div>
+                <div className="border-b border-dashed border-slate-700 w-full flex justify-between"><span>₹10L / $1,000</span></div>
+                <div className="border-b border-slate-800 w-full flex justify-between"><span>₹0</span></div>
+              </div>
+
+              {/* Bar Columns Container */}
+              <div className="relative z-10 grid grid-cols-14 items-end gap-2 sm:gap-4 h-48 sm:h-56 pt-6">
+                {[
+                  { day: 1, val: 55, amount: '₹14.5L' },
+                  { day: 2, val: 75, amount: '₹21.0L' },
+                  { day: 3, val: 92, amount: '₹28.5L' },
+                  { day: 4, val: 40, amount: '₹12.0L' },
+                  { day: 5, val: 82, amount: '₹24.5L' },
+                  { day: 6, val: 50, amount: '₹13.5L' },
+                  { day: 7, val: 35, amount: '₹9.5L' },
+                  { day: 8, val: 60, amount: '₹15.0L' },
+                  { day: 9, val: 88, amount: '₹18.95L', isToday: true, displayValue: '$1894.83 / ₹18.95L' },
+                  { day: 10, val: 48, amount: '₹14.0L' },
+                  { day: 11, val: 38, amount: '₹10.5L' },
+                  { day: 12, val: 90, amount: '₹27.0L' },
+                  { day: 13, val: 58, amount: '₹15.5L' },
+                  { day: 14, val: 45, amount: '₹12.0L' },
+                ].map((bar) => (
+                  <div key={bar.day} className="group relative flex flex-col items-center justify-end h-full">
+                    {/* Floating Tooltip for Highlight Day (Today) */}
+                    {bar.isToday && (
+                      <div className="absolute -top-12 z-30 flex flex-col items-center animate-bounce duration-1000">
+                        <div className="rounded-xl bg-slate-900 border border-amber-400/80 px-3 py-1.5 shadow-2xl shadow-amber-500/20 text-center whitespace-nowrap">
+                          <span className="text-xs font-black text-amber-300 block">{bar.displayValue}</span>
+                          <span className="text-[9px] text-slate-400 font-semibold block">Total per day</span>
+                        </div>
+                        <div className="h-2 w-2 rotate-45 bg-amber-400 -mt-1 shadow-sm"></div>
+                      </div>
+                    )}
+
+                    {/* Bar Pill */}
+                    <div
+                      style={{ height: `${bar.val}%` }}
+                      className={`w-full max-w-[28px] rounded-t-xl transition-all duration-300 group-hover:opacity-90 group-hover:scale-105 ${
+                        bar.isToday
+                          ? 'bg-gradient-to-t from-amber-500 via-amber-400 to-yellow-300 shadow-lg shadow-amber-500/30 ring-2 ring-amber-300/60'
+                          : 'bg-gradient-to-t from-teal-600/70 via-teal-400/80 to-teal-200/90 opacity-70 group-hover:opacity-100'
+                      }`}
+                    ></div>
+
+                    {/* Day Number Label */}
+                    <span
+                      className={`mt-2 text-[11px] font-bold ${
+                        bar.isToday ? 'text-amber-300 font-black' : 'text-slate-400 group-hover:text-white'
+                      }`}
+                    >
+                      {bar.day}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* TWO-COLUMN SECTION: ARRIVING TODAY LIST & PROMO BANNER (Direct from Concept) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
+            {/* Left Column (2/3 width): Arriving Today / Recent Bookings */}
+            <div className="lg:col-span-2 rounded-3xl border border-slate-800/90 bg-gradient-to-b from-[#0d1424] to-[#080d19] p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="grid h-8 w-8 place-items-center rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                    <i className="ri-time-line text-base"></i>
+                  </span>
+                  <h3 className="text-base font-bold text-white tracking-tight">Arriving today & Recent Inflows</h3>
+                </div>
+                <Link to="/admin/projects" className="text-xs font-bold text-teal-400 hover:text-teal-300 flex items-center gap-1 transition-colors">
+                  Show all <i className="ri-arrow-right-s-line text-sm"></i>
+                </Link>
+              </div>
+
+              {/* Deals List */}
+              <div className="space-y-3 pt-1">
+                {[
+                  {
+                    id: '1',
+                    title: 'Valencia Luxury Apartment',
+                    subtitle: '3 nights · Sector 62 Pool',
+                    iconBg: 'from-blue-500 to-indigo-600',
+                    icon: 'ri-building-2-fill',
+                    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80',
+                    investorName: 'Sarah Jenkins',
+                    status: 'Approved',
+                    statusColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+                    amount: '₹58.0 L',
+                    date: 'March 6, at 12:00',
+                  },
+                  {
+                    id: '2',
+                    title: 'Night Swimming Pool Penthouse',
+                    subtitle: '1 night · Direct Flip',
+                    iconBg: 'from-amber-500 to-orange-600',
+                    icon: 'ri-hotel-bed-fill',
+                    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80',
+                    investorName: 'Amit Verma',
+                    status: 'Pending',
+                    statusColor: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+                    amount: '₹1.00 Cr',
+                    date: 'March 6, at 22:00',
+                  },
+                  {
+                    id: '3',
+                    title: 'Unique & Cozy Studio Suite',
+                    subtitle: '10 nights · Commercial Hub',
+                    iconBg: 'from-purple-500 to-pink-600',
+                    icon: 'ri-store-2-fill',
+                    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80',
+                    investorName: 'Priya Mehta',
+                    status: 'Approved',
+                    statusColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+                    amount: '₹38.6 L',
+                    date: 'March 6, at 14:00',
+                  },
+                  {
+                    id: '4',
+                    title: 'Skyline Heights Co-Investment',
+                    subtitle: 'Fractional Token Pool',
+                    iconBg: 'from-teal-500 to-emerald-600',
+                    icon: 'ri-pie-chart-2-fill',
+                    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80',
+                    investorName: 'Rahul Sharma',
+                    status: 'Approved',
+                    statusColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+                    amount: '₹85.0 L',
+                    date: 'March 5, at 09:30',
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#090f1d] border border-slate-800/80 hover:border-orange-500/30 transition-all hover:bg-slate-900/60 group"
+                  >
+                    {/* Left: Property Graphic & Name */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`h-11 w-11 rounded-2xl bg-gradient-to-tr ${item.iconBg} flex items-center justify-center text-white text-lg shadow-md shrink-0 group-hover:scale-105 transition-transform`}>
+                        <i className={item.icon}></i>
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-xs sm:text-sm font-bold text-white tracking-tight truncate group-hover:text-orange-300 transition-colors">
+                          {item.title}
+                        </h4>
+                        <p className="text-[11px] text-slate-400 font-medium truncate">{item.subtitle}</p>
+                      </div>
+                    </div>
+
+                    {/* Right: Investor Avatar, Status Pill, Amount & Date */}
+                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 shrink-0 border-t sm:border-t-0 border-slate-800/60 pt-2 sm:pt-0">
+                      {/* Investor Profile Chip */}
+                      <div className="flex items-center gap-1.5" title={item.investorName}>
+                        <img
+                          src={item.avatar}
+                          alt={item.investorName}
+                          className="h-6 w-6 rounded-full object-cover border border-slate-700 shadow-sm"
+                        />
+                      </div>
+
+                      {/* Status Badge */}
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${item.statusColor}`}>
+                        {item.status}
+                      </span>
+
+                      {/* Amount */}
+                      <span className="text-xs sm:text-sm font-black text-white">{item.amount}</span>
+
+                      {/* Date */}
+                      <span className="text-[10px] text-slate-400 font-medium hidden md:inline">{item.date}</span>
+
+                      {/* Action Menu */}
+                      <button
+                        type="button"
+                        onClick={() => openWhatsAppShare && openWhatsAppShare({ title: item.title, price: item.amount, location: item.subtitle })}
+                        className="text-slate-500 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                        title="Quick WhatsApp Share"
+                      >
+                        <i className="ri-more-2-fill text-sm"></i>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Column (1/3 width): Eye-Catching Promo / Booster Banner (Inspired by "Low Occupancy!" concept) */}
+            <div className="relative overflow-hidden rounded-3xl border border-teal-500/30 bg-gradient-to-br from-[#0c313a] via-[#09222a] to-[#06141b] p-6 shadow-2xl flex flex-col justify-between space-y-5">
+              {/* Decorative Geometric / Botanical Elements */}
+              <div className="pointer-events-none absolute -top-10 -right-10 h-36 w-36 rounded-full bg-teal-400/20 blur-2xl"></div>
+              <div className="pointer-events-none absolute -bottom-10 -left-10 h-36 w-36 rounded-full bg-amber-400/15 blur-2xl"></div>
+
+              <div className="space-y-3 relative z-10">
+                <div className="flex items-center justify-between">
+                  <span className="rounded-full bg-teal-400/15 border border-teal-400/30 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-teal-300">
+                    Portfolio Boost
+                  </span>
+                  <i className="ri-pulse-line text-lg text-teal-300 animate-pulse"></i>
+                </div>
+
+                <h3 className="text-xl font-black text-white tracking-tight leading-snug">
+                  High Demand Zone!
+                </h3>
+
+                <p className="text-xs text-teal-100/70 font-medium leading-relaxed">
+                  Builder floor demand in Sector 62 is up +38%. Create a new fractional pool or launch a last-minute promotion to maximize returns.
+                </p>
+              </div>
+
+              {/* Botanical/Art Illustration Box */}
+              <div className="relative z-10 rounded-2xl bg-slate-950/40 border border-teal-500/20 p-3.5 flex items-center justify-center gap-3 backdrop-blur-sm">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-400 flex items-center justify-center text-slate-950 text-xl font-black shadow-lg shadow-amber-500/20">
+                  <i className="ri-rocket-2-fill"></i>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-bold text-white block">Zero Brokerage Hub</span>
+                  <span className="text-[10px] text-teal-200/80 block">Direct investor connection</span>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <div className="relative z-10 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof openCreateProjectModal === 'function') {
+                      openCreateProjectModal();
+                    } else if (typeof setShowProjectModal === 'function') {
+                      if (typeof setEditingId === 'function') setEditingId(null);
+                      if (typeof setPropertyForm === 'function') setPropertyForm(emptyProperty(false));
+                      if (typeof setActiveFormTab === 'function') setActiveFormTab('financial');
+                      setShowProjectModal(true);
+                    }
+                  }}
+                  className="w-full rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 py-3 text-xs font-black text-slate-950 uppercase tracking-wider shadow-lg shadow-amber-500/25 transition-all duration-200 hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <i className="ri-add-line text-base font-bold"></i>
+                  <span>Create Campaign / Deal</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* SECONDARY ROW: Asset Class Breakdown & Lifecycle Status Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 font-sans">
             {/* Graph Card 1: Asset Type Capital Allocation */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <i className="ri-bar-chart-box-line text-lg text-orange-400"></i>
+            <div className="rounded-3xl border border-slate-800/90 bg-gradient-to-b from-[#0d1424] to-[#080d19] p-6 shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="grid h-8 w-8 place-items-center rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                    <i className="ri-bar-chart-box-line text-base"></i>
+                  </span>
                   <div>
-                    <h3 className="text-sm font-semibold text-white">Category Valuation Share</h3>
+                    <h3 className="text-sm font-bold text-white tracking-tight">Category Valuation Share</h3>
                     <p className="text-[11px] text-slate-400 font-normal">Portfolio allocation by asset type</p>
                   </div>
                 </div>
-                <span className="text-[11px] font-bold text-slate-300">
+                <span className="text-xs font-black text-amber-400">
                   Total: ₹{(metrics.totalValuationSum / 100000).toFixed(1)}L
                 </span>
               </div>
 
               {/* Graphical Progress Bars */}
-              <div className="space-y-3 pt-1">
+              <div className="space-y-3.5 pt-1">
                 {/* 1. Residential */}
                 <div>
-                  <div className="flex justify-between text-xs mb-1 font-medium">
+                  <div className="flex justify-between text-xs mb-1 font-semibold">
                     <span className="text-slate-300 flex items-center gap-1.5">
-                      <i className="ri-building-line text-orange-400"></i> Residential
+                      <i className="ri-building-line text-orange-400"></i> Residential Properties
                     </span>
-                    <span className="text-white font-bold">
+                    <span className="text-white font-extrabold">
                       ₹{(metrics.residentialValuation / 100000).toFixed(1)}L
                     </span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
+                  <div className="h-2.5 w-full rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full transition-all duration-500"
                       style={{
@@ -480,17 +761,17 @@ export default function AdminOverview({
 
                 {/* 2. Commercial */}
                 <div>
-                  <div className="flex justify-between text-xs mb-1 font-medium">
+                  <div className="flex justify-between text-xs mb-1 font-semibold">
                     <span className="text-slate-300 flex items-center gap-1.5">
-                      <i className="ri-store-2-line text-emerald-400"></i> Commercial
+                      <i className="ri-store-2-line text-teal-400"></i> Commercial & Retail
                     </span>
-                    <span className="text-white font-bold">
+                    <span className="text-white font-extrabold">
                       ₹{(metrics.commercialValuation / 100000).toFixed(1)}L
                     </span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
+                  <div className="h-2.5 w-full rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                      className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full transition-all duration-500"
                       style={{
                         width: `${Math.min(100, Math.round((metrics.commercialValuation / (metrics.maxValuation || 1)) * 100))}%`,
                       }}
@@ -500,15 +781,15 @@ export default function AdminOverview({
 
                 {/* 3. Plots & Land */}
                 <div>
-                  <div className="flex justify-between text-xs mb-1 font-medium">
+                  <div className="flex justify-between text-xs mb-1 font-semibold">
                     <span className="text-slate-300 flex items-center gap-1.5">
-                      <i className="ri-landscape-line text-amber-400"></i> Plot / Land
+                      <i className="ri-landscape-line text-amber-400"></i> Plots & Land
                     </span>
-                    <span className="text-white font-bold">
+                    <span className="text-white font-extrabold">
                       ₹{(metrics.plotValuation / 100000).toFixed(1)}L
                     </span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
+                  <div className="h-2.5 w-full rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-500"
                       style={{
@@ -520,65 +801,73 @@ export default function AdminOverview({
               </div>
 
               {/* Sub Metrics Summary Grid */}
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-center">
-                <div className="rounded-xl bg-slate-950 p-2.5 border border-slate-800">
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/80 text-center">
+                <div className="rounded-2xl bg-slate-950/80 p-2.5 border border-slate-800">
                   <span className="text-[10px] text-slate-400 block font-normal">Fractional Pool</span>
-                  <span className="font-semibold text-orange-400">{metrics.coInvestmentCount} Projects</span>
+                  <span className="font-extrabold text-orange-400 text-xs">{metrics.coInvestmentCount} Projects</span>
                 </div>
-                <div className="rounded-xl bg-slate-950 p-2.5 border border-slate-800">
+                <div className="rounded-2xl bg-slate-950/80 p-2.5 border border-slate-800">
                   <span className="text-[10px] text-slate-400 block font-normal">Renovate & Flip</span>
-                  <span className="font-semibold text-amber-400">{metrics.renovateFlipCount} Projects</span>
+                  <span className="font-extrabold text-amber-400 text-xs">{metrics.renovateFlipCount} Projects</span>
                 </div>
-                <div className="rounded-xl bg-slate-950 p-2.5 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block font-normal">Delivered Record</span>
-                  <span className="font-semibold text-emerald-400">{metrics.deliveredCount} Projects</span>
+                <div className="rounded-2xl bg-slate-950/80 p-2.5 border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block font-normal">Delivered</span>
+                  <span className="font-extrabold text-emerald-400 text-xs">{metrics.deliveredCount} Projects</span>
                 </div>
               </div>
             </div>
 
             {/* Graph Card 2: Status Lifecycle Breakdown */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl space-y-4 flex flex-col justify-between">
+            <div className="rounded-3xl border border-slate-800/90 bg-gradient-to-b from-[#0d1424] to-[#080d19] p-6 shadow-xl space-y-4 flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-                  <i className="ri-pie-chart-2-line text-lg text-emerald-400"></i>
+                <div className="flex items-center gap-2.5 border-b border-slate-800/80 pb-3">
+                  <span className="grid h-8 w-8 place-items-center rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                    <i className="ri-pie-chart-2-line text-base"></i>
+                  </span>
                   <div>
-                    <h3 className="text-sm font-semibold text-white">Status Breakdown</h3>
-                    <p className="text-[11px] text-slate-400 font-normal">Project Lifecycle Ratio</p>
+                    <h3 className="text-sm font-bold text-white tracking-tight">Status Lifecycle Breakdown</h3>
+                    <p className="text-[11px] text-slate-400 font-normal">Active vs pipeline distribution</p>
                   </div>
                 </div>
 
                 <div className="space-y-3 pt-3">
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
-                    <div className="flex items-center gap-2.5">
-                      <i className="ri-play-circle-fill text-orange-400 text-lg"></i>
+                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-xl bg-orange-500/15 text-orange-400 flex items-center justify-center">
+                        <i className="ri-play-circle-fill text-base"></i>
+                      </div>
                       <div>
-                        <span className="font-medium text-white text-xs block">Running Projects</span>
+                        <span className="font-bold text-white text-xs block">Running Projects</span>
                         <span className="text-[10px] text-slate-400">Active investor pools</span>
                       </div>
                     </div>
-                    <span className="text-sm font-bold text-orange-400">{metrics.runningCount}</span>
+                    <span className="text-sm font-black text-orange-400">{metrics.runningCount}</span>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
-                    <div className="flex items-center gap-2.5">
-                      <i className="ri-time-fill text-blue-400 text-lg"></i>
+                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center">
+                        <i className="ri-time-fill text-base"></i>
+                      </div>
                       <div>
-                        <span className="font-medium text-white text-xs block">Upcoming Projects</span>
-                        <span className="text-[10px] text-slate-400">Launch pipeline</span>
+                        <span className="font-bold text-white text-xs block">Upcoming Projects</span>
+                        <span className="text-[10px] text-slate-400">Launch pipeline deals</span>
                       </div>
                     </div>
-                    <span className="text-sm font-bold text-blue-400">{metrics.upcomingCount}</span>
+                    <span className="text-sm font-black text-sky-400">{metrics.upcomingCount}</span>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
-                    <div className="flex items-center gap-2.5">
-                      <i className="ri-checkbox-circle-fill text-emerald-400 text-lg"></i>
+                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                        <i className="ri-checkbox-circle-fill text-base"></i>
+                      </div>
                       <div>
-                        <span className="font-medium text-white text-xs block">Delivered Projects</span>
-                        <span className="text-[10px] text-slate-400">Successfully completed</span>
+                        <span className="font-bold text-white text-xs block">Delivered Projects</span>
+                        <span className="text-[10px] text-slate-400">Successfully closed</span>
                       </div>
                     </div>
-                    <span className="text-sm font-bold text-emerald-400">{metrics.deliveredCount}</span>
+                    <span className="text-sm font-black text-emerald-400">{metrics.deliveredCount}</span>
                   </div>
                 </div>
               </div>

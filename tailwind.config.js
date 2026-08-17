@@ -18,7 +18,8 @@ export default {
         'dark-3': 'var(--color-dark-3)',
       },
       fontFamily: {
-        sans: ['"Open Sans"', 'sans-serif'],
+        inter: ['Inter', 'sans-serif'],
+        sans: ['Inter', '"Open Sans"', 'sans-serif'],
       },
     },
   },
