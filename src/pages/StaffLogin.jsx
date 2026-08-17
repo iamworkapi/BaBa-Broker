@@ -2,57 +2,48 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { setAuth } from "../lib/auth";
 
-const ROLE_INFO = {
-  salesman: {
-    label: "Salesman",
-    title: "Salesman Portal",
-    subtitle: "Sign in to manage flat listings & investment leads",
-    placeholder: "salesman@bababroker.com",
-    dashboard: "/salesman/dashboard",
-    icon: "fa-user-tie",
-    badgeColor: "bg-orange-500/10 text-orange-400 border-orange-500/30",
-  },
+const ROLES = {
   admin: {
     label: "Admin",
-    title: "Admin Console",
-    subtitle: "Sign in for executive access & platform control",
-    placeholder: "admin@bababroker.com",
+    title: "Admin",
+    icon: "ri-building-line",
+    defaultContact: "9891140379",
+    defaultEmail: "admin@bababroker.com",
     dashboard: "/admin/dashboard",
-    icon: "fa-shield-halved",
-    badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+  },
+  salesman: {
+    label: "Salesman",
+    title: "Salesman",
+    icon: "ri-user-smile-line",
+    defaultContact: "9891140379",
+    defaultEmail: "salesman@bababroker.com",
+    dashboard: "/salesman/dashboard",
   },
   employee: {
     label: "Employee",
-    title: "Employee Desk",
-    subtitle: "Sign in to browse inventory & share with clients",
-    placeholder: "employee@bababroker.com",
+    title: "Employee",
+    icon: "ri-id-card-line",
+    defaultContact: "9891140379",
+    defaultEmail: "employee@bababroker.com",
     dashboard: "/employee/dashboard",
-    icon: "fa-id-card",
-    badgeColor: "bg-blue-500/10 text-blue-400 border-blue-500/30",
   },
 };
 
-export default function StaffLogin({ role = "salesman" }) {
+export default function StaffLogin({ role = "admin" }) {
   const navigate = useNavigate();
-  const [error, setError] = useState("");
+  const [selectedRole, setSelectedRole] = useState(ROLES[role] ? role : "admin");
+  const [phoneOrEmail, setPhoneOrEmail] = useState(ROLES[selectedRole]?.defaultContact || "9891140379");
+  const [password, setPassword] = useState("Baba@123");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "" });
 
-  const currentRole = ROLE_INFO[role] ? role : "salesman";
-  const info = ROLE_INFO[currentRole];
+  const activeRoleInfo = ROLES[selectedRole] || ROLES.admin;
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    if (error) setError("");
-  };
-
-  const handleQuickFill = () => {
-    setForm({
-      email: info.placeholder,
-      password: "Baba@123",
-    });
+  const handleRoleChange = (newRole) => {
+    setSelectedRole(newRole);
+    setPhoneOrEmail(ROLES[newRole].defaultContact);
     setError("");
   };
 
@@ -62,14 +53,17 @@ export default function StaffLogin({ role = "salesman" }) {
     setIsSubmitting(true);
 
     try {
+      const isEmail = phoneOrEmail.includes("@");
+      const emailValue = isEmail ? phoneOrEmail : `${selectedRole}@bababroker.com`;
+
       let response = null;
       try {
         response = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            email: form.email,
-            password: form.password,
+            email: emailValue,
+            password: password,
           }),
         });
       } catch {
@@ -80,37 +74,31 @@ export default function StaffLogin({ role = "salesman" }) {
         const rawBody = await response.text();
         const data = rawBody ? JSON.parse(rawBody) : {};
 
-        if (data.user?.role && data.user.role !== currentRole) {
-          throw new Error(
-            `This account belongs to ${data.user.role.toUpperCase()}. Please switch to the ${data.user.role.toUpperCase()} tab.`
-          );
-        }
-
         setAuth({
-          token: data.token || "jwt-session-" + Date.now(),
-          role: data.user?.role || currentRole,
-          name: data.user?.name || `${currentRole.charAt(0).toUpperCase() + currentRole.slice(1)} User`,
-          email: data.user?.email || form.email,
+          token: data.token || "jwt-" + Date.now(),
+          role: data.user?.role || selectedRole,
+          name: data.user?.name || `${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} User`,
+          email: data.user?.email || emailValue,
         });
 
-        navigate(info.dashboard);
+        navigate(activeRoleInfo.dashboard);
         return;
       }
 
-      // If on Netlify / static preview where Node backend is not hosted:
+      // Demo/Static hosting fallback
       if (!response || response.status === 404 || !response.ok) {
-        if (form.password === "Baba@123" || form.password.length >= 4) {
+        if (password === "Baba@123" || password.length >= 4) {
           setAuth({
             token: "demo-token-" + Date.now(),
-            role: currentRole,
-            name: `${currentRole.charAt(0).toUpperCase() + currentRole.slice(1)} User`,
-            email: form.email || info.placeholder,
+            role: selectedRole,
+            name: `${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} User`,
+            email: emailValue,
           });
 
-          navigate(info.dashboard);
+          navigate(activeRoleInfo.dashboard);
           return;
         } else {
-          throw new Error("Invalid password. Use Baba@123 for demo access.");
+          throw new Error("Invalid password. Use Baba@123 for instant access.");
         }
       }
     } catch (err) {
@@ -121,195 +109,164 @@ export default function StaffLogin({ role = "salesman" }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#060911] text-slate-100 flex flex-col justify-between items-center px-4 py-8 relative overflow-hidden font-sans">
-      
-      {/* Ambient Radial Background Mesh & Subtle Dot Pattern */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-40" />
-      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-gradient-to-b from-orange-500/15 via-amber-500/5 to-transparent blur-[140px]" />
-      
-      {/* Top Header Logo */}
-      <header className="relative z-10 w-full max-w-7xl mx-auto pt-2 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5 group">
-          <img
-            src="/assets/img/logo.svg"
-            alt="Baba Broker Logo"
-            className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
-          />
-          <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-300 hidden sm:inline-block border-l border-slate-800 pl-3">
-            Baba Broker
-          </span>
-        </Link>
+    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col justify-center items-center px-4 py-10 relative overflow-hidden font-['Inter',sans-serif]">
+      {/* Background Dot Grid Mesh (Direct from screenshot) */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#1e293b_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-40" />
 
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-800/90 bg-slate-900/80 px-3.5 py-1.5 text-xs font-semibold text-slate-400 hover:text-white hover:border-slate-700 transition backdrop-blur-md cursor-pointer"
-        >
-          <i className="fa-solid fa-house text-orange-400 text-[11px]" />
-          <span>Home</span>
-        </Link>
-      </header>
+      {/* Subtle Ambient Radial Lighting */}
+      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-gradient-to-tr from-blue-900/15 via-orange-500/10 to-transparent blur-[140px]" />
 
-      {/* Main Single Login Card */}
-      <main className="relative z-10 w-full max-w-md my-auto py-6">
+      {/* Central Login Card (Matching Screenshot Form Factor) */}
+      <div className="relative z-10 w-full max-w-[440px] bg-[#f8fafc] rounded-[36px] sm:rounded-[42px] p-7 sm:p-9 shadow-2xl shadow-slate-950/60 border border-slate-200/80 text-slate-800 animate-in fade-in zoom-in-95 duration-200">
         
-        <div className="relative rounded-3xl border border-slate-800/90 bg-slate-900/90 p-7 sm:p-8 shadow-[0_25px_70px_rgba(0,0,0,0.85)] backdrop-blur-2xl overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-orange-500/40 before:to-transparent">
-          
-          {/* Header Inside Card */}
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-extrabold uppercase tracking-widest mb-3 border-orange-500/30 bg-orange-500/10 text-orange-400">
-              <i className={`fa-solid ${info.icon} text-[10px]`} />
-              <span>{info.title}</span>
-            </div>
-            <h2 className="text-2xl font-black text-white tracking-tight">
-              Sign In
-            </h2>
-            <p className="mt-1 text-xs text-slate-400 font-medium">
-              {info.subtitle}
-            </p>
+        {/* Title Header */}
+        <div className="text-center space-y-1 mb-7">
+          <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-[#ff5722] via-[#ff6f00] to-[#ff9800] bg-clip-text text-transparent tracking-tight">
+            Sign In
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-normal">
+            Select portal mode and enter your credentials
+          </p>
+        </div>
+
+        {/* Error Notification */}
+        {error && (
+          <div className="mb-5 rounded-2xl bg-red-50 border border-red-200 p-3 text-xs text-red-700 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="text-red-400 hover:text-red-700">
+              <i className="ri-close-line text-sm"></i>
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Segmented Mode Switcher (Admin / Salesman) */}
+          <div className="bg-[#e9eff6] p-1.5 rounded-2xl flex items-center gap-1 shadow-inner">
+            <button
+              type="button"
+              onClick={() => handleRoleChange("admin")}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+                selectedRole === "admin"
+                  ? "bg-white text-[#ff5722] shadow-md shadow-slate-300/40"
+                  : "text-slate-500 hover:text-slate-700 font-medium"
+              }`}
+            >
+              <i className="ri-building-line text-base"></i>
+              <span>Admin</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleRoleChange("salesman")}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+                selectedRole === "salesman"
+                  ? "bg-white text-[#ff5722] shadow-md shadow-slate-300/40"
+                  : "text-slate-500 hover:text-slate-700 font-medium"
+              }`}
+            >
+              <i className="ri-user-smile-line text-base"></i>
+              <span>Salesman</span>
+            </button>
           </div>
 
-          {/* Segmented Role Switcher Tabs */}
-          <div className="mb-6 p-1 rounded-2xl border border-slate-800/90 bg-slate-950 grid grid-cols-3 gap-1 shadow-inner">
-            {[
-              { key: "salesman", label: "Salesman", path: "/salesman/login", icon: "fa-user-tie" },
-              { key: "admin", label: "Admin", path: "/admin/login", icon: "fa-shield-halved" },
-              { key: "employee", label: "Employee", path: "/employee/login", icon: "fa-id-card" },
-            ].map((tab) => {
-              const isActive = currentRole === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => {
-                    if (!isActive) {
-                      setError("");
-                      setForm({ email: "", password: "" });
-                      navigate(tab.path);
-                    }
-                  }}
-                  className={`py-2 px-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer ${
-                    isActive
-                      ? "bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-slate-950 font-black shadow-md scale-[1.02]"
-                      : "text-slate-400 hover:text-white hover:bg-slate-900/60"
-                  }`}
-                >
-                  <i className={`fa-solid ${tab.icon} text-[11px]`} />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
+          {/* Contact / Phone Input with Country Code Chip (Direct from screenshot) */}
+          <div className="bg-[#e9eff6] rounded-2xl p-2 flex items-center gap-2.5 shadow-inner">
+            <div className="bg-white rounded-xl px-3 py-2 shadow-sm text-xs font-bold text-slate-700 flex items-center gap-1.5 shrink-0 select-none">
+              <i className="ri-phone-fill text-[#ff5722] text-xs"></i>
+              <span>+91</span>
+            </div>
+
+            <input
+              type="text"
+              value={phoneOrEmail}
+              onChange={(e) => setPhoneOrEmail(e.target.value)}
+              placeholder="9891140379"
+              required
+              className="w-full bg-transparent text-sm font-medium text-slate-800 placeholder-slate-400 outline-none pr-3"
+            />
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Email Field */}
-            <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <i className="fa-solid fa-envelope text-xs" />
-                </div>
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleInputChange}
-                  autoComplete="email"
-                  required
-                  placeholder={info.placeholder}
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 pl-10 pr-4 py-3 text-xs text-white placeholder:text-slate-600 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                />
-              </div>
-            </div>
+          {/* Password Input Capsule with Lock & Eye Toggle */}
+          <div className="bg-[#e9eff6] rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-inner">
+            <i className="ri-lock-2-line text-slate-400 text-base shrink-0"></i>
 
-            {/* Password Field */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  Password
-                </label>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <i className="fa-solid fa-lock text-xs" />
-                </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={form.password}
-                  onChange={handleInputChange}
-                  autoComplete="current-password"
-                  required
-                  placeholder="Enter password"
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 pl-10 pr-24 py-3 text-xs text-white placeholder:text-slate-600 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-slate-400 hover:text-white transition flex items-center gap-1 cursor-pointer"
-                >
-                  <i className={`fa-solid ${showPassword ? "fa-eye-slash" : "fa-eye"} text-[10px]`} />
-                  <span>{showPassword ? "Hide" : "Show"}</span>
-                </button>
-              </div>
-            </div>
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              className="w-full bg-transparent text-sm font-medium text-slate-800 placeholder-slate-400 outline-none"
+            />
 
-            {/* Quick Fill Button */}
-            <div className="flex items-center justify-end pt-0.5">
-              <button
-                type="button"
-                onClick={handleQuickFill}
-                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 transition flex items-center gap-1 underline underline-offset-4 cursor-pointer"
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer shrink-0 transition-colors"
+              title={showPassword ? "Hide password" : "Show password"}
+            >
+              <i className={showPassword ? "ri-eye-off-line text-base" : "ri-eye-line text-base"}></i>
+            </button>
+          </div>
+
+          {/* Remember me & Forgot Password Row */}
+          <div className="flex items-center justify-between text-xs pt-1 px-1">
+            <label className="flex items-center gap-2 text-slate-600 font-normal cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="hidden"
+              />
+              <span
+                className={`h-4 w-4 rounded-full flex items-center justify-center text-white text-[10px] transition-colors ${
+                  rememberMe ? "bg-[#ff5722]" : "border border-slate-300 bg-white"
+                }`}
               >
-                <i className="fa-solid fa-bolt text-[10px] text-amber-400" /> Auto-fill {info.label} credentials
-              </button>
-            </div>
+                {rememberMe && <i className="ri-check-line font-bold"></i>}
+              </span>
+              <span>Remember me</span>
+            </label>
 
-            {/* Error Banner */}
-            {error && (
-              <div
-                role="alert"
-                className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300 flex items-center gap-2 shadow-sm"
-              >
-                <i className="fa-solid fa-circle-exclamation text-red-400 text-sm shrink-0" />
-                <span className="flex-1 leading-relaxed font-medium">{error}</span>
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => alert("Please contact Administrator at admin@bababroker.com for password reset.")}
+              className="text-xs font-semibold text-[#ff5722] hover:underline cursor-pointer"
+            >
+              Forgot Password ?
+            </button>
+          </div>
 
-            {/* Primary Submit Button */}
+          {/* Submit Action Button (Large glowing capsule from screenshot) */}
+          <div className="pt-2">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full mt-2 rounded-xl bg-gradient-to-r from-[#f68122] via-[#f89538] to-[#ea6e0a] py-3.5 text-xs font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-orange-500/20 transition-all duration-300 hover:brightness-110 active:scale-[0.99] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+              className="w-full rounded-2xl bg-gradient-to-r from-[#ff5722] via-[#ff6f00] to-[#f4511e] hover:from-[#f4511e] hover:to-[#e64a19] text-white font-semibold text-base py-3.5 px-6 shadow-xl shadow-orange-500/25 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
             >
               {isSubmitting ? (
-                <>
-                  <i className="fa-solid fa-circle-notch fa-spin text-sm" />
-                  <span>Signing in...</span>
-                </>
+                <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
                 <>
-                  <span>Sign In</span>
-                  <i className="fa-solid fa-arrow-right text-xs" />
+                  <span>Sign In to {activeRoleInfo.title}</span>
+                  <i className="ri-arrow-right-line text-lg"></i>
                 </>
               )}
             </button>
-          </form>
+          </div>
+        </form>
 
+        {/* Footer Register Link */}
+        <div className="text-center mt-6 pt-2 text-xs text-slate-500 font-normal">
+          <span>Don't have an account? </span>
+          <Link
+            to="/signup"
+            className="font-semibold text-[#ff5722] hover:underline"
+          >
+            Register new user
+          </Link>
         </div>
-
-      </main>
-
-      {/* Security Footer */}
-      <footer className="relative z-10 w-full max-w-7xl mx-auto py-2 text-center text-[11px] text-slate-500 font-medium">
-        <p className="flex items-center justify-center gap-2">
-          <i className="fa-solid fa-shield-check text-emerald-400 text-xs" />
-          <span>256-Bit SSL Encrypted Session Security</span>
-        </p>
-      </footer>
+      </div>
     </div>
   );
 }

@@ -77,146 +77,144 @@ export default function AdminDashboard({ view: routeView }) {
   const isContacts = view === 'contacts' || view === 'add-investor';
 
   return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-100 font-['Roboto',sans-serif] font-normal selection:bg-orange-500 selection:text-white text-xs leading-relaxed overflow-x-hidden">
-      {/* Background Ambient Glow Accents */}
-      <div className="pointer-events-none fixed -top-40 -left-40 h-96 w-96 rounded-full bg-orange-500/10 blur-[120px] z-0"></div>
-      <div className="pointer-events-none fixed top-1/2 -right-40 h-96 w-96 rounded-full bg-amber-500/10 blur-[120px] z-0"></div>
-      {/* Floating Animated Toast Notification Toaster */}
+    <div className="h-screen w-screen bg-[#070e1c] p-2 sm:p-3.5 md:p-4 font-['Inter',sans-serif] text-slate-800 antialiased flex flex-col justify-center overflow-hidden">
+      {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed top-16 right-4 sm:right-6 z-50 flex items-center gap-3.5 rounded-2xl border ${
+          className={`fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl border ${
             toast.type === 'error'
-              ? 'border-red-500/50 bg-slate-950/95 shadow-2xl shadow-red-500/25'
+              ? 'border-red-200 bg-white text-red-700 shadow-xl shadow-red-500/10'
               : toast.type === 'warning'
-              ? 'border-amber-500/50 bg-slate-950/95 shadow-2xl shadow-amber-500/25'
-              : 'border-emerald-500/50 bg-slate-950/95 shadow-2xl shadow-emerald-500/25'
-          } p-4 backdrop-blur-xl animate-bounce max-w-md w-[calc(100vw-2rem)] sm:w-auto`}
+              ? 'border-amber-200 bg-white text-amber-800 shadow-xl shadow-amber-500/10'
+              : 'border-emerald-200 bg-white text-emerald-800 shadow-xl shadow-emerald-500/10'
+          } p-4 max-w-md w-[calc(100vw-2rem)] sm:w-auto transition-all`}
         >
-          <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl font-bold shadow-lg ${
-              toast.type === 'error'
-                ? 'bg-gradient-to-tr from-red-600 to-amber-500 text-white'
-                : toast.type === 'warning'
-                ? 'bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950'
-                : 'bg-gradient-to-tr from-amber-400 to-emerald-400 text-slate-950'
-            }`}
-          >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600 text-lg">
             {toast.type === 'error' ? '⚠️' : toast.type === 'warning' ? '🔔' : '✨'}
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
-              {toast.title || (toast.type === 'error' ? 'Validation Error' : toast.type === 'warning' ? 'Attention' : 'Success')}
+            <h4 className="text-sm font-medium">
+              {toast.title || (toast.type === 'error' ? 'Validation Notice' : toast.type === 'warning' ? 'Attention' : 'Success')}
             </h4>
-            <p className="text-xs text-slate-200 font-normal mt-0.5 leading-snug">
+            <p className="text-xs text-slate-500 mt-0.5 font-normal">
               {toast.message}
             </p>
           </div>
           <button
             onClick={() => setToast(null)}
-            className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors shrink-0 cursor-pointer"
+            className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
           >
             <i className="ri-close-line text-lg"></i>
           </button>
         </div>
       )}
 
-      {/* Top Navbar Header */}
-      <AdminHeader auth={auth} />
-
-      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-55px)]">
-        {/* Compact Admin Navigation Sidebar */}
+      {/* Master Curved Card Container (Fixed Viewport with Rounded Border Radius Frame) */}
+      <div className="w-full h-full rounded-[28px] sm:rounded-[36px] md:rounded-[40px] shadow-2xl shadow-slate-950/70 overflow-hidden bg-white flex flex-col lg:flex-row border border-slate-800/30">
+        {/* Left Solid Orange Sidebar with Signature Curved Active Tab */}
         <AdminSidebar view={view} />
 
-        {/* Main Content Area */}
-        <main className="flex-1 p-4 lg:p-6 space-y-5">
-          {view === 'staff' ? (
-            <StaffManagementView />
-          ) : view === 'flats' ? (
-            <FlatListingsAuditView />
-          ) : view === 'investment-requests' ? (
-            <InvestmentRequestsView />
-          ) : showProjectModal ? (
-            <ProjectWorkspaceModal
-              view={view}
-              editingId={editingId}
-              closeModal={closeModal}
-              saveProperty={saveProperty}
-              activeFormTab={activeFormTab}
-              setActiveFormTab={setActiveFormTab}
-              propertyForm={propertyForm}
-              setPropertyForm={setPropertyForm}
-              changeProperty={changeProperty}
-              handleCoverImageChange={handleCoverImageChange}
-              handleGalleryPhotosChange={handleGalleryPhotosChange}
-              handleVideoFileChange={handleVideoFileChange}
-              triggerToast={triggerToast}
-              newInvestorName={newInvestorName}
-              setNewInvestorName={setNewInvestorName}
-              newInvestorShare={newInvestorShare}
-              setNewInvestorShare={setNewInvestorShare}
-              newInvestorAmount={newInvestorAmount}
-              setNewInvestorAmount={setNewInvestorAmount}
-              newInvestorDate={newInvestorDate}
-              setNewInvestorDate={setNewInvestorDate}
-              addInvestor={addInvestor}
-              removeInvestor={removeInvestor}
-              formatINR={formatINR}
-              setShowProjectModal={setShowProjectModal}
-            />
-          ) : (
-            <AdminOverview
-              isContacts={isContacts}
-              view={view}
-              metrics={metrics}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              filterStatus={filterStatus}
-              setFilterStatus={setFilterStatus}
-              filterType={filterType}
-              setFilterType={setFilterType}
-              loading={loading}
-              filteredProperties={filteredProperties}
-              startEdit={startEdit}
-              deleteProperty={deleteProperty}
-              toggleFeaturedStatus={toggleFeaturedStatus}
-              openWhatsAppShare={openWhatsAppShare}
-              openCreateFeaturedModal={openCreateFeaturedModal}
-              openCreateProjectModal={openCreateProjectModal}
-              setShowProjectModal={setShowProjectModal}
-              setActiveFormTab={setActiveFormTab}
-              setEditingId={setEditingId}
-              setPropertyForm={setPropertyForm}
-              emptyProperty={emptyProperty}
-              formatINR={formatINR}
-            />
-          )}
-        </main>
+        {/* Right Canvas Column (Header, Scrollable Main, and Fixed Bottom Footer) */}
+        <div className="flex-1 h-full flex flex-col min-w-0 overflow-hidden bg-white">
+          {/* Top Sticky Navigation Bar Header */}
+          <AdminHeader auth={auth} />
+
+          {/* Scrollable Main Dashboard Workspace */}
+          <main className="flex-1 p-5 sm:p-7 lg:p-9 space-y-7 overflow-y-auto bg-white">
+            {view === 'staff' ? (
+              <StaffManagementView />
+            ) : view === 'flats' ? (
+              <FlatListingsAuditView />
+            ) : view === 'investment-requests' ? (
+              <InvestmentRequestsView />
+            ) : showProjectModal ? (
+              <ProjectWorkspaceModal
+                view={view}
+                editingId={editingId}
+                closeModal={closeModal}
+                saveProperty={saveProperty}
+                activeFormTab={activeFormTab}
+                setActiveFormTab={setActiveFormTab}
+                propertyForm={propertyForm}
+                setPropertyForm={setPropertyForm}
+                changeProperty={changeProperty}
+                handleCoverImageChange={handleCoverImageChange}
+                handleGalleryPhotosChange={handleGalleryPhotosChange}
+                handleVideoFileChange={handleVideoFileChange}
+                triggerToast={triggerToast}
+                newInvestorName={newInvestorName}
+                setNewInvestorName={setNewInvestorName}
+                newInvestorShare={newInvestorShare}
+                setNewInvestorShare={setNewInvestorShare}
+                newInvestorAmount={newInvestorAmount}
+                setNewInvestorAmount={setNewInvestorAmount}
+                newInvestorDate={newInvestorDate}
+                setNewInvestorDate={setNewInvestorDate}
+                addInvestor={addInvestor}
+                removeInvestor={removeInvestor}
+                formatINR={formatINR}
+                setShowProjectModal={setShowProjectModal}
+              />
+            ) : (
+              <AdminOverview
+                isContacts={isContacts}
+                view={view}
+                metrics={metrics}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                filterStatus={filterStatus}
+                setFilterStatus={setFilterStatus}
+                filterType={filterType}
+                setFilterType={setFilterType}
+                loading={loading}
+                filteredProperties={filteredProperties}
+                startEdit={startEdit}
+                deleteProperty={deleteProperty}
+                toggleFeaturedStatus={toggleFeaturedStatus}
+                openWhatsAppShare={openWhatsAppShare}
+                openCreateFeaturedModal={openCreateFeaturedModal}
+                openCreateProjectModal={openCreateProjectModal}
+                setShowProjectModal={setShowProjectModal}
+                setActiveFormTab={setActiveFormTab}
+                setEditingId={setEditingId}
+                setPropertyForm={setPropertyForm}
+                emptyProperty={emptyProperty}
+                formatINR={formatINR}
+              />
+            )}
+          </main>
+
+          {/* Fixed Bottom Footer Inside Master Card */}
+          <footer className="px-6 py-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 shrink-0 select-none">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+              <span>Baba Broker Executive Portal · v2.4</span>
+            </div>
+            <div className="flex items-center gap-4 text-slate-400">
+              <span className="hidden sm:inline">Direct Support: <a href="mailto:support@bababroker.com" className="text-[#ea580c] hover:underline font-medium">support@bababroker.com</a></span>
+              <span>© {new Date().getFullYear()} Baba Broker. All rights reserved.</span>
+            </div>
+          </footer>
+        </div>
       </div>
 
       {/* Saving Progress Modal Overlay */}
       {isSaving && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/85 backdrop-blur-md p-6 animate-fadeIn">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-4 text-center">
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/40 backdrop-blur-sm p-6 animate-fadeIn">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl space-y-4 text-center border border-slate-100">
             <div className="relative inline-flex items-center justify-center">
-              <div className="h-16 w-16 rounded-full border-4 border-slate-800 border-t-orange-500 animate-spin"></div>
-              <span className="absolute text-xs font-semibold text-white">{savingProgress}%</span>
+              <div className="h-16 w-16 rounded-full border-4 border-orange-100 border-t-[#ea580c] animate-spin"></div>
+              <span className="absolute text-sm font-medium text-slate-700">{savingProgress}%</span>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-white">Publishing Investment Project...</h3>
-              <p className="text-xs text-slate-400 mt-1">Uploading media assets & processing database parameters</p>
+              <h3 className="text-base font-medium text-slate-800">Publishing Project...</h3>
+              <p className="text-xs text-slate-500 mt-1 font-normal">Syncing parameters and media assets</p>
             </div>
-
-            <div className="space-y-1 pt-2">
-              <div className="flex justify-between text-[10px] text-slate-400 font-normal">
-                <span>Publishing Status</span>
-                <span className="text-orange-400 font-medium">{savingProgress}%</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-orange-500 to-amber-500 transition-all duration-300 rounded-full"
-                  style={{ width: `${savingProgress}%` }}
-                ></div>
-              </div>
+            <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className="h-full bg-[#ea580c] transition-all duration-300 rounded-full"
+                style={{ width: `${savingProgress}%` }}
+              ></div>
             </div>
           </div>
         </div>

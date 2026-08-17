@@ -4,201 +4,105 @@ import { Link } from 'react-router-dom';
 export default function AdminSidebar({ view }) {
   const navItems = [
     {
-      group: 'CORE OVERVIEW',
-      icon: 'ri-layout-grid-fill',
-      iconColor: 'text-teal-400',
-      items: [
-        {
-          id: 'overview',
-          path: '/admin/dashboard',
-          label: 'Dashboard',
-          icon: 'ri-dashboard-3-line',
-          activeIcon: 'ri-dashboard-3-fill',
-          badge: 'Live Stats',
-          badgeStyle: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
-        },
-        {
-          id: 'projects',
-          path: '/admin/projects',
-          label: 'All Projects',
-          icon: 'ri-building-4-line',
-          activeIcon: 'ri-building-4-fill',
-          badge: 'Portfolio',
-          badgeStyle: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-        },
-      ],
+      id: 'overview',
+      path: '/admin/dashboard',
+      label: 'Home',
+      icon: 'ri-home-5-line',
+      activeIcon: 'ri-home-5-fill',
     },
     {
-      group: 'DEALS & INVENTORY',
-      icon: 'ri-tools-fill',
-      iconColor: 'text-orange-400',
-      items: [
-        {
-          id: 'create-project',
-          path: '/admin/create-project',
-          label: 'Create Investment',
-          icon: 'ri-add-circle-line',
-          activeIcon: 'ri-add-circle-fill',
-          badge: 'New Deal',
-          badgeStyle: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
-        },
-        {
-          id: 'featured',
-          path: '/admin/featured',
-          label: 'Featured Hot Sale',
-          icon: 'ri-fire-line',
-          activeIcon: 'ri-fire-fill',
-          badge: 'Direct Sale',
-          badgeStyle: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
-        },
-        {
-          id: 'add-investor',
-          path: '/admin/add-investor',
-          label: 'Add Investor',
-          icon: 'ri-user-add-line',
-          activeIcon: 'ri-user-add-fill',
-          badge: 'Directory',
-          badgeStyle: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
-        },
-        {
-          id: 'investment-requests',
-          path: '/admin/investment-requests',
-          label: 'Investment Requests',
-          icon: 'ri-hand-coin-line',
-          activeIcon: 'ri-hand-coin-fill',
-          badge: 'Requests',
-          badgeStyle: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-        },
-      ],
+      id: 'projects',
+      path: '/admin/projects',
+      label: 'All Projects',
+      icon: 'ri-bar-chart-2-line',
+      activeIcon: 'ri-bar-chart-2-fill',
     },
     {
-      group: 'CRM & AUDIT',
-      icon: 'ri-shield-user-fill',
-      iconColor: 'text-indigo-400',
-      items: [
-        {
-          id: 'whatsapp',
-          path: '/admin/whatsapp',
-          label: 'WhatsApp Share',
-          icon: 'ri-whatsapp-line',
-          activeIcon: 'ri-whatsapp-fill',
-          badge: 'Direct CRM',
-          badgeStyle: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-        },
-        {
-          id: 'flats',
-          path: '/admin/flats',
-          label: 'Flat Listings Audit',
-          icon: 'ri-community-line',
-          activeIcon: 'ri-community-fill',
-          badge: 'Audit',
-          badgeStyle: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
-        },
-        {
-          id: 'staff',
-          path: '/admin/staff',
-          label: 'Manage Staff',
-          icon: 'ri-team-line',
-          activeIcon: 'ri-team-fill',
-          badge: 'Access',
-          badgeStyle: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
-        },
-      ],
+      id: 'featured',
+      path: '/admin/featured',
+      label: 'Bookings & Sales',
+      icon: 'ri-calendar-check-line',
+      activeIcon: 'ri-calendar-check-fill',
+    },
+    {
+      id: 'flats',
+      path: '/admin/flats',
+      label: 'Apartments',
+      icon: 'ri-community-line',
+      activeIcon: 'ri-community-fill',
+    },
+    {
+      id: 'investment-requests',
+      path: '/admin/investment-requests',
+      label: 'Pricing & Deals',
+      icon: 'ri-price-tag-3-line',
+      activeIcon: 'ri-price-tag-3-fill',
+    },
+    {
+      id: 'whatsapp',
+      path: '/admin/whatsapp',
+      label: 'Support & CRM',
+      icon: 'ri-message-3-line',
+      activeIcon: 'ri-message-3-fill',
+    },
+    {
+      id: 'staff',
+      path: '/admin/staff',
+      label: 'Staff Access',
+      icon: 'ri-user-settings-line',
+      activeIcon: 'ri-user-settings-fill',
     },
   ];
 
   return (
-    <aside className="w-full lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-800/80 bg-[#080d1a] p-4 flex flex-col justify-between shadow-2xl font-sans">
-      <div className="space-y-6">
-        {navItems.map((group, groupIdx) => (
-          <div key={groupIdx} className="space-y-2">
-            {/* Section Header */}
-            <div className="px-3 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <i className={`${group.icon} ${group.iconColor} text-xs`}></i>
-                {group.group}
-              </span>
-            </div>
+    <aside className="w-full lg:w-52 h-full lg:h-screen bg-[#ea580c] text-white flex flex-col justify-between p-3.5 select-none shrink-0 overflow-y-auto font-['Inter',sans-serif] z-20 shadow-md">
+      <div className="space-y-4">
+        {/* Original Clean Logo */}
+        <Link to="/" className="flex items-center px-1 py-1 group">
+          <img
+            src="/assets/img/logo.svg"
+            alt="Baba Broker"
+            className="h-8 sm:h-9 w-auto max-w-[170px] object-contain brightness-0 invert transition-transform duration-200 group-hover:scale-105"
+          />
+        </Link>
 
-            {/* Navigation Items */}
-            <div className="space-y-1">
-              {group.items.map((item) => {
-                const isActive = view === item.id;
+        {/* Navigation Items with Enhanced Hover Effects */}
+        <nav className="space-y-1 pt-0.5">
+          {navItems.map((item) => {
+            const isActive = view === item.id || (view === 'overview' && item.id === 'overview') || (view === 'create-project' && item.id === 'projects') || (view === 'add-investor' && item.id === 'investment-requests');
 
-                return (
-                  <Link
-                    key={item.id}
-                    to={item.path}
-                    className={`relative group flex items-center justify-between rounded-2xl px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 ${
-                      isActive
-                        ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-slate-950 font-bold shadow-lg shadow-orange-500/25 ring-1 ring-amber-300/40 translate-x-1'
-                        : 'text-slate-300 hover:bg-slate-900/90 hover:text-white border border-transparent hover:border-slate-800/70 hover:translate-x-0.5'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110 ${
-                          isActive
-                            ? 'bg-slate-950/20 text-slate-950 font-black'
-                            : 'bg-slate-900 border border-slate-800 text-orange-400 group-hover:text-amber-300'
-                        }`}
-                      >
-                        <i className={`${isActive ? item.activeIcon : item.icon} text-base`}></i>
-                      </div>
+            return (
+              <Link
+                key={item.id}
+                to={item.path}
+                className={`relative flex items-center gap-2.5 px-3 py-2 rounded-xl sm:rounded-r-none transition-all duration-200 text-xs ${
+                  isActive
+                    ? 'bg-white text-[#ea580c] font-semibold shadow-sm sm:shadow-none sm:-mr-3.5 sm:pr-5 z-10'
+                    : 'text-white/80 hover:text-white hover:bg-white/15 hover:translate-x-1 hover:shadow-xs font-normal'
+                }`}
+              >
+                {/* Active Indicator Notch Cutout */}
+                {isActive && (
+                  <>
+                    <span className="hidden sm:block absolute -top-3 right-0 w-3 h-3 bg-[#ea580c] pointer-events-none rounded-br-lg shadow-[3px_3px_0_3px_#ffffff]"></span>
+                    <span className="hidden sm:block absolute -bottom-3 right-0 w-3 h-3 bg-[#ea580c] pointer-events-none rounded-tr-lg shadow-[3px_-3px_0_3px_#ffffff]"></span>
+                  </>
+                )}
 
-                      <span className="truncate tracking-tight">
-                        {item.label}
-                      </span>
-                    </div>
-
-                    {/* Right Pill Badge */}
-                    <span
-                      className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 transition-all ${
-                        isActive
-                          ? 'bg-slate-950 text-amber-300 border-slate-950/40 font-black'
-                          : item.badgeStyle
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+                <i className={`${isActive ? item.activeIcon : item.icon} text-sm shrink-0 transition-transform duration-200 group-hover:scale-110`}></i>
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
       </div>
 
-      {/* Modern Sidebar Illustration Promo Card (Inspired by "Upgrade now!" design in concept) */}
-      <div className="pt-4 mt-6 border-t border-slate-800/80">
-        <div className="relative overflow-hidden rounded-2xl border border-teal-500/30 bg-gradient-to-br from-[#0c222e] via-[#091b26] to-[#061118] p-4 shadow-xl text-center space-y-3 group">
-          {/* Ambient Glow & Decorative Shapes */}
-          <div className="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full bg-teal-400/20 blur-xl"></div>
-          <div className="pointer-events-none absolute -bottom-6 -left-6 h-20 w-20 rounded-full bg-amber-400/15 blur-lg"></div>
-
-          {/* Icon / Illustration */}
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-teal-400 to-emerald-400 text-slate-950 shadow-lg shadow-teal-500/30 group-hover:scale-105 transition-transform">
-            <i className="ri-sparkling-fill text-xl"></i>
-          </div>
-
-          <div className="space-y-1">
-            <h4 className="text-xs font-bold text-white tracking-wide">
-              Baba Engine Pro
-            </h4>
-            <p className="text-[11px] text-teal-200/70 leading-relaxed font-medium">
-              Full investor CRM, automated PDF brochures & WhatsApp dispatch.
-            </p>
-          </div>
-
-          {/* Action CTA Button */}
-          <Link
-            to="/admin/create-project"
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 px-3 py-2 text-xs font-bold text-slate-950 shadow-md shadow-amber-500/20 hover:opacity-95 transition-all cursor-pointer hover:scale-[1.02]"
-          >
-            <span>+ Quick Deal Booster</span>
-            <i className="ri-arrow-right-line text-xs"></i>
-          </Link>
-        </div>
+      {/* Sidebar Bottom Footer: "Made with ❤️ by OrrishItSolutions" */}
+      <div className="pt-3 mt-auto border-t border-white/20 text-center select-none">
+        <p className="text-[10px] text-white/85 font-normal leading-tight">
+          Made with <span className="text-red-200">❤️</span> by{' '}
+          <span className="font-semibold text-white tracking-wide">OrrishItSolutions</span>
+        </p>
       </div>
     </aside>
   );
