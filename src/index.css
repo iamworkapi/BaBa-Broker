@@ -1,0 +1,102 @@
+@import "./assets/css/style.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #0b4e9d;
+  --color-primary-dark: #083a78;
+  --color-accent: #f68122;
+  --color-accent-dark: #d96a10;
+  --color-dark: #0a0a0a;
+  --color-dark-2: #111827;
+  --color-dark-3: #1f2937;
+  --color-white: #ffffff;
+  --color-whatsapp: #25d366;
+  --color-whatsapp-dark: #1fb957;
+}
+
+@keyframes security-marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-50% - 10px));
+  }
+}
+
+.security-marquee {
+  animation: security-marquee-scroll 38s linear infinite;
+}
+
+/* Admin workspace visual system */
+.min-h-screen.bg-dark-2.pt-16 {
+  background:
+    radial-gradient(circle at 90% 0%, rgba(11, 78, 157, 0.22), transparent 30%),
+    #111827;
+}
+.min-h-screen.bg-dark-2.pt-16 > .flex > aside {
+  background: linear-gradient(180deg, #081429 0%, #0a0a0a 100%);
+  box-shadow: 12px 0 35px rgba(0, 0, 0, 0.14);
+}
+.min-h-screen.bg-dark-2.pt-16 main {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+.min-h-screen.bg-dark-2.pt-16 main > .mb-8:first-child {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 1.5rem;
+}
+.min-h-screen.bg-dark-2.pt-16
+  main
+  .rounded-2xl.border.border-white\/10.bg-dark {
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.16);
+}
+.min-h-screen.bg-dark-2.pt-16
+  main
+  .rounded-2xl.border.border-white\/10.bg-dark:hover {
+  border-color: rgba(246, 129, 34, 0.35);
+}
+.min-h-screen.bg-dark-2.pt-16 main .grid.sm\:grid-cols-2.xl\:grid-cols-4 > div {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    145deg,
+    rgba(17, 24, 39, 0.96),
+    rgba(8, 20, 41, 0.92)
+  );
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+.min-h-screen.bg-dark-2.pt-16
+  main
+  .grid.sm\:grid-cols-2.xl\:grid-cols-4
+  > div::after {
+  content: "";
+  position: absolute;
+  right: -35px;
+  bottom: -65px;
+  width: 145px;
+  height: 145px;
+  border-radius: 999px;
+  background: rgba(246, 129, 34, 0.09);
+}
+.min-h-screen.bg-dark-2.pt-16
+  main
+  .grid.sm\:grid-cols-2.xl\:grid-cols-4
+  > div:hover {
+  transform: translateY(-4px);
+  border-color: rgba(246, 129, 34, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .security-marquee {
+    animation: none;
+    width: auto;
+    flex-wrap: wrap;
+  }
+}

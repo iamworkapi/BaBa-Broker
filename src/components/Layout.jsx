@@ -1,0 +1,27 @@
+import React from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import Navbar from './Navbar';
+import Footer from './Footer';
+import SharedModals from './SharedModals';
+
+const isStaffShell = (pathname) =>
+    pathname.startsWith('/admin/') || pathname.startsWith('/salesman/') || pathname.startsWith('/employee/');
+
+const Layout = () => {
+    const { pathname } = useLocation();
+    const staffShell = isStaffShell(pathname);
+    return (
+        <div className="bg-dark text-white font-sans overflow-hidden min-h-screen flex flex-col">
+            {!staffShell && <Navbar />}
+
+            <main className="flex-grow">
+                <Outlet />
+            </main>
+
+            {!staffShell && <Footer />}
+            <SharedModals />
+        </div>
+    );
+};
+
+export default Layout;

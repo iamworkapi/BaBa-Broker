@@ -1,0 +1,26 @@
+{
+  "name": "baba-broker",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "server": "node src/server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.7",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.5.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  },
+  "description": "Express + Mongoose backend, rebuilt from the original single-file `server.mjs` into a standard MVC-style folder structure.",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

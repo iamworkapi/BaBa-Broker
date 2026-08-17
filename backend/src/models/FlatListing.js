@@ -1,0 +1,54 @@
+import mongoose from 'mongoose';
+
+const flatListingSchema = new mongoose.Schema(
+  {
+    listingType: { type: String, enum: ['rent', 'buy'], required: true },
+    title: { type: String, trim: true, default: '' },
+    location: { type: String, trim: true, required: true },
+    configuration: { type: String, trim: true, required: true },
+    sizeSqft: { type: String, trim: true, default: '' },
+    floor: { type: String, trim: true, default: '' },
+    totalFloors: { type: String, trim: true, default: '' },
+    lift: { type: String, enum: ['YES', 'NO'], default: 'YES' },
+    parking: { type: String, trim: true, default: '' },
+    possessionStatus: { type: String, trim: true, default: 'Ready to Move' },
+    constructionYear: { type: String, trim: true, default: '' },
+    facing: { type: String, trim: true, default: '' },
+    reraId: { type: String, trim: true, default: 'RERA Not Applicable' },
+    amenities: { type: String, trim: true, default: '' },
+    description: { type: String, trim: true, required: true },
+    coverImage: { type: String, default: '' },
+    images: [{ type: String }],
+    videoUrl: { type: String, default: '' },
+
+    // Rent-specific
+    monthlyRent: { type: Number, default: 0 },
+    securityDeposit: { type: Number, default: 0 },
+    maintenanceCharge: { type: Number, default: 0 },
+    availableFrom: { type: String, default: '' },
+
+    // Buy-specific
+    salePrice: { type: Number, default: 0 },
+    pricePerSqft: { type: Number, default: 0 },
+    priceNegotiable: { type: Boolean, default: false },
+
+    // Primary Owner & Property Specifications
+    ownerName: { type: String, trim: true, default: '' },
+    ownerContact: { type: String, trim: true, default: '' },
+    propertyCategory: { type: String, enum: ['RK', 'HK', 'Office', 'Shop', 'Plot'], default: 'HK' },
+    furnishingStatus: { type: String, enum: ['Furnished', 'Unfurnished', 'Semi-Furnished'], default: 'Unfurnished' },
+    completeAddress: { type: String, trim: true, default: '' },
+    latitude: { type: String, trim: true, default: '' },
+    longitude: { type: String, trim: true, default: '' },
+    commission: { type: String, trim: true, default: '' },
+    specialInstructions: { type: String, trim: true, default: '' },
+    netProfit: { type: Number, default: 0 },
+
+    dealStatus: { type: String, enum: ['available', 'rented', 'sold'], default: 'available' },
+    submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true, versionKey: false }
+);
+
+export default mongoose.models.FlatListing || mongoose.model('FlatListing', flatListingSchema);
