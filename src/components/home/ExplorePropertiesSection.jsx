@@ -1,4 +1,3 @@
-import React from 'react';
 import PropertyCard from '../PropertyCard';
 import imgBlog1 from '../../assets/img/blog1.webp';
 import imgBlog2 from '../../assets/img/blog2.webp';

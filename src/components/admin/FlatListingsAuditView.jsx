@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../lib/api';
+import { safeEmbedUrl } from '../../lib/sanitize';
 import AdminPageHeader from './AdminPageHeader';
 
 const formatFlatPrice = (listing) => {
@@ -596,16 +597,20 @@ export default function FlatListingsAuditView() {
                         <i className="fa-solid fa-circle-play"></i> Video Tour
                       </h4>
                       <div className="aspect-video w-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-800">
-                        {listing.videoUrl.includes('youtube.com') || listing.videoUrl.includes('youtu.be') ? (
-                          <iframe
-                            src={listing.videoUrl.replace('watch?v=', 'embed/')}
-                            title="Flat Video"
-                            className="h-full w-full border-0"
-                            allowFullScreen
-                          ></iframe>
-                        ) : (
-                          <video src={listing.videoUrl} controls className="h-full w-full object-contain"></video>
-                        )}
+                        {(() => {
+                          const embedSrc = safeEmbedUrl(listing.videoUrl);
+                          if (embedSrc) {
+                            return (
+                              <iframe
+                                src={embedSrc}
+                                title="Flat Video"
+                                className="h-full w-full border-0"
+                                allowFullScreen
+                              ></iframe>
+                            );
+                          }
+                          return <video src={listing.videoUrl} controls className="h-full w-full object-contain"></video>;
+                        })()}
                       </div>
                     </div>
                   )}

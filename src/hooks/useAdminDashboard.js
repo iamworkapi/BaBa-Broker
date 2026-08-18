@@ -189,14 +189,16 @@ export function useAdminDashboard(routeView) {
 
       if (Array.isArray(listingData) && listingData.length > 0) {
         setProperties(listingData);
-      } else {
+      } else if (import.meta.env.DEV) {
         setProperties(SAMPLE_PROPERTIES);
       }
       setContacts(Array.isArray(contactData) ? contactData : []);
       setShareCount(typeof shares === 'number' ? shares : 0);
     } catch (error) {
       console.warn('Backend load error fallback:', error.message);
-      setProperties(SAMPLE_PROPERTIES);
+      if (import.meta.env.DEV) {
+        setProperties(SAMPLE_PROPERTIES);
+      }
       if (/sign in/i.test(error.message)) navigate('/admin/login');
     } finally {
       setLoading(false);
@@ -746,9 +748,26 @@ export function useAdminDashboard(routeView) {
     const renovateFlipCount = properties.filter((p) => p.investmentModel === 'renovate_flip').length;
 
     const totalValuationSum = properties.reduce(
-      (sum, p) => sum + (Number(p.totalValuation) || 0),
+      (sum, p) => sum + (Number(p.totalValuation) || (Number(String(p.price || '').replace(/[^\d.]/g, '')) || 0)),
       0
     );
+
+    const totalFundedCapital = properties.reduce((sum, p) => {
+      const val = Number(p.totalValuation) || (Number(String(p.price || '').replace(/[^\d.]/g, '')) || 0);
+      const pct = Number(p.fundedPercentage) || 0;
+      return sum + (val * pct) / 100;
+    }, 0);
+
+    const totalInvestorsCount = properties.reduce((sum, p) => {
+      const listLen = Array.isArray(p.investorsList) ? p.investorsList.length : 0;
+      const count = Number(p.investorsCount) || 0;
+      return sum + (listLen > 0 ? listLen : count);
+    }, 0);
+
+    const roiProps = properties.filter((p) => Number(p.expectedRoi) > 0);
+    const avgRoi = roiProps.length > 0
+      ? (roiProps.reduce((sum, p) => sum + Number(p.expectedRoi), 0) / roiProps.length).toFixed(1)
+      : '14.5';
 
     const totalLeadsCount = contacts.length;
     const totalSharesCount = shareCount;
@@ -779,6 +798,9 @@ export function useAdminDashboard(routeView) {
       coInvestmentCount,
       renovateFlipCount,
       totalValuationSum,
+      totalFundedCapital,
+      totalInvestorsCount,
+      avgRoi,
       totalLeadsCount,
       totalSharesCount,
       residentialValuation,

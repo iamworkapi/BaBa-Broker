@@ -1,4 +1,3 @@
-import React from 'react';
 import InvestmentProjectsSection from '../components/home/InvestmentProjectsSection';
 
 export default function Properties() {

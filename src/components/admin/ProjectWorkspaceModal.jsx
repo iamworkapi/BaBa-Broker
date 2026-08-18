@@ -863,7 +863,7 @@ export default function ProjectWorkspaceModal({
                   {/* Cover Image Preview Card if loaded */}
                   {propertyForm.image && (
                     <div className="relative mt-2 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900 p-2.5">
-                      <img src={propertyForm.image} alt="Cover Preview" className="h-14 w-20 rounded-lg object-cover border border-slate-800 shrink-0" />
+                      <img src={propertyForm.image} alt="Cover Preview" loading="lazy" className="h-14 w-20 rounded-lg object-cover border border-slate-800 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <span className="text-[10px] font-bold uppercase text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full inline-block mb-1">
                           {propertyForm.image.startsWith('data:') ? '📁 Uploaded File' : '🌐 Image URL'}

@@ -1,4 +1,3 @@
-import React from 'react';
 
 const PropertyCard = ({ 
     type = 'Buy', 
@@ -16,9 +15,10 @@ const PropertyCard = ({
         <div className="bg-white rounded-none shadow-md overflow-hidden flex flex-col h-full border border-gray-100 group">
             {/* Image Header */}
             <div className="relative h-60 w-full overflow-hidden bg-gray-200">
-                <img 
-                    src={image} 
-                    alt={title} 
+                <img
+                    src={image}
+                    alt={title}
+                    loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
                 

@@ -1,4 +1,3 @@
-import React from 'react';
 
 export default function Partners() {
   return (
@@ -1707,7 +1706,7 @@ export default function Partners() {
                             <div className="blog-card-img">
                                 <div className="blog-img-placeholder">
                                     {/*  <i className="fa-solid fa-city text-4xl text-primary/30"></i>  */}
-                                    <img src="./assets/img/blog1.webp" alt="blog1" className="object-fill" />
+                                    <img src="./assets/img/blog1.webp" alt="blog1" loading="lazy" className="object-fill" />
                                 </div>
                                 <span className="blog-badge">15 Jan 2026</span>
                             </div>
@@ -1730,7 +1729,7 @@ export default function Partners() {
                             <div className="blog-card-img">
                                 <div className="blog-img-placeholder">
                                     {/*  <i className="fa-solid fa-house-circle-check text-4xl text-primary/30"></i>  */}
-                                    <img src="./assets/img/blog2.webp" alt="blog2" className="object-fill" />
+                                    <img src="./assets/img/blog2.webp" alt="blog2" loading="lazy" className="object-fill" />
                                 </div>
                                 <span className="blog-badge">02 Feb 2026</span>
                             </div>
@@ -1753,7 +1752,7 @@ export default function Partners() {
                             <div className="blog-card-img">
                                 <div className="blog-img-placeholder">
                                     {/*  <i className="fa-solid fa-chart-line text-4xl text-primary/30"></i>  */}
-                                    <img src="./assets/img/blog3.webp" alt="blog3" className="object-fill" />
+                                    <img src="./assets/img/blog3.webp" alt="blog3" loading="lazy" className="object-fill" />
                                 </div>
                                 <span className="blog-badge">10 Mar 2026</span>
                             </div>
@@ -1776,7 +1775,7 @@ export default function Partners() {
                             <div className="blog-card-img">
                                 <div className="blog-img-placeholder">
                                     {/*  <i className="fa-solid fa-file-contract text-4xl text-primary/30"></i>  */}
-                                    <img src="./assets/img/blog4.webp" alt="blog4" className="object-fill" />
+                                    <img src="./assets/img/blog4.webp" alt="blog4" loading="lazy" className="object-fill" />
                                 </div>
                                 <span className="blog-badge">18 Mar 2026</span>
                             </div>

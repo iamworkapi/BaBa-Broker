@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 
 export default function AdminSidebar({ view }) {
@@ -62,11 +61,11 @@ export default function AdminSidebar({ view }) {
           <img
             src="/assets/img/logo.svg"
             alt="Baba Broker"
-            className="h-8 sm:h-9 w-auto max-w-[170px] object-contain brightness-0 invert transition-transform duration-200 group-hover:scale-105"
+            className="h-8 sm:h-9 w-auto max-w-[170px] object-contain brightness-0 invert transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-md"
           />
         </Link>
 
-        {/* Navigation Items with Enhanced Hover Effects */}
+        {/* Navigation Items with Premium Interactive Hover Effects */}
         <nav className="space-y-1 pt-0.5">
           {navItems.map((item) => {
             const isActive = view === item.id || (view === 'overview' && item.id === 'overview') || (view === 'create-project' && item.id === 'projects') || (view === 'add-investor' && item.id === 'investment-requests');
@@ -75,10 +74,10 @@ export default function AdminSidebar({ view }) {
               <Link
                 key={item.id}
                 to={item.path}
-                className={`relative flex items-center gap-2.5 px-3 py-2 rounded-xl sm:rounded-r-none transition-all duration-200 text-xs ${
+                className={`group relative flex items-center justify-between px-3 py-2 rounded-xl sm:rounded-r-none transition-all duration-200 ease-out text-xs ${
                   isActive
                     ? 'bg-white text-[#ea580c] font-semibold shadow-sm sm:shadow-none sm:-mr-3.5 sm:pr-5 z-10'
-                    : 'text-white/80 hover:text-white hover:bg-white/15 hover:translate-x-1 hover:shadow-xs font-normal'
+                    : 'text-white/80 hover:text-white hover:bg-white/20 hover:backdrop-blur-sm hover:translate-x-1.5 hover:shadow-xs font-normal'
                 }`}
               >
                 {/* Active Indicator Notch Cutout */}
@@ -89,8 +88,10 @@ export default function AdminSidebar({ view }) {
                   </>
                 )}
 
-                <i className={`${isActive ? item.activeIcon : item.icon} text-sm shrink-0 transition-transform duration-200 group-hover:scale-110`}></i>
-                <span className="truncate">{item.label}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <i className={`${isActive ? item.activeIcon : item.icon} text-sm shrink-0 transition-transform duration-200 group-hover:scale-115 ${isActive ? 'text-[#ea580c]' : 'text-white/90 group-hover:text-white'}`}></i>
+                  <span className="truncate">{item.label}</span>
+                </div>
               </Link>
             );
           })}

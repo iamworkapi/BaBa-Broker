@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { safeEmbedUrl } from '../lib/sanitize';
 
 export default function InvestmentCalculatorModal({ project, onClose }) {
   const defaultMin = project?.minInvestment > 0 ? project.minInvestment : 100000;
@@ -120,7 +121,7 @@ export default function InvestmentCalculatorModal({ project, onClose }) {
                   activeImageIndex === idx ? 'border-orange-500 scale-105' : 'border-slate-800 opacity-60 hover:opacity-100'
                 }`}
               >
-                <img src={imgUrl} alt={`Thumb ${idx}`} className="h-full w-full object-cover" />
+                <img src={imgUrl} alt={`Thumb ${idx}`} loading="lazy" className="h-full w-full object-cover" />
               </button>
             ))}
           </div>
@@ -308,16 +309,20 @@ export default function InvestmentCalculatorModal({ project, onClose }) {
               <i className="fa-solid fa-xmark"></i>
             </button>
             <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black">
-              {videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be') ? (
-                <iframe
-                  src={videoUrl.replace('watch?v=', 'embed/')}
-                  title="Project Video"
-                  className="h-full w-full border-0"
-                  allowFullScreen
-                ></iframe>
-              ) : (
-                <video src={videoUrl} controls className="h-full w-full object-contain"></video>
-              )}
+              {(() => {
+                const embedSrc = safeEmbedUrl(videoUrl);
+                if (embedSrc) {
+                  return (
+                    <iframe
+                      src={embedSrc}
+                      title="Project Video"
+                      className="h-full w-full border-0"
+                      allowFullScreen
+                    ></iframe>
+                  );
+                }
+                return <video src={videoUrl} controls className="h-full w-full object-contain"></video>;
+              })()}
             </div>
           </div>
         </div>

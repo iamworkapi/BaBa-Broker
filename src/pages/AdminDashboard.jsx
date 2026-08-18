@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAdminDashboard, emptyProperty } from '../hooks/useAdminDashboard';
 import AdminHeader from '../components/admin/AdminHeader';
 import AdminSidebar from '../components/admin/AdminSidebar';
@@ -160,6 +159,9 @@ export default function AdminDashboard({ view: routeView }) {
                 isContacts={isContacts}
                 view={view}
                 metrics={metrics}
+                properties={dash.properties}
+                contacts={contacts}
+                shareCount={dash.shareCount}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 filterStatus={filterStatus}

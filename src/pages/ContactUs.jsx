@@ -3,6 +3,52 @@ import React, { useState } from "react";
 export default function ContactUs() {
   const [activeBranch, setActiveBranch] = useState("delhi");
   const [selectedServices, setSelectedServices] = useState([]);
+  const [formData, setFormData] = useState({ name: "", email: "", phone: "", message: "" });
+  const [formErrors, setFormErrors] = useState({});
+  const [formStatus, setFormStatus] = useState({ submitting: false, success: null, error: null });
+
+  const updateField = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (formErrors[field]) setFormErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
+  };
+
+  const validate = () => {
+    const errors = {};
+    if (!formData.name.trim()) errors.name = "Full name is required.";
+    if (!formData.email.trim()) errors.email = "Email is required.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) errors.email = "Enter a valid email address.";
+    if (!formData.phone.trim()) errors.phone = "Phone number is required.";
+    else if (!/^[6-9]\d{9}$/.test(formData.phone.replace(/\D/g, ""))) errors.phone = "Enter a valid 10-digit Indian mobile number.";
+    if (!formData.message.trim()) errors.message = "Message is required.";
+    else if (formData.message.trim().length < 10) errors.message = "Message must be at least 10 characters.";
+    return errors;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const errors = validate();
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
+    setFormStatus({ submitting: true, success: null, error: null });
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, services: selectedServices }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Something went wrong.");
+      setFormStatus({ submitting: false, success: "Your enquiry has been submitted! We'll get back to you shortly.", error: null });
+      setFormData({ name: "", email: "", phone: "", message: "" });
+      setSelectedServices([]);
+    } catch (err) {
+      setFormStatus({ submitting: false, success: null, error: err.message });
+    }
+  };
+
+  const inputCls = (field) =>
+    `w-full bg-transparent px-2 py-3.5 text-sm text-white focus:outline-none placeholder-gray-600 ${
+      formErrors[field] ? "!border-red-500/60" : ""
+    }`;
 
   const toggleService = (service) => {
     setSelectedServices((prev) =>
@@ -276,7 +322,7 @@ export default function ContactUs() {
               </p>
             </div>
 
-            <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+            <form className="space-y-6" onSubmit={handleSubmit}>
               {/* Form Inputs Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="relative group/input">
@@ -290,8 +336,13 @@ export default function ContactUs() {
                     <input
                       type="text"
                       placeholder="John Doe"
-                      className="w-full bg-transparent px-2 py-3.5 text-sm text-white focus:outline-none placeholder-gray-600"
+                      className={inputCls("name")}
+                      value={formData.name}
+                      onChange={(e) => updateField("name", e.target.value)}
                     />
+                    {formErrors.name && (
+                      <p className="text-red-400 text-xs mt-1 ml-1">{formErrors.name}</p>
+                    )}
                   </div>
                 </div>
                 <div className="relative group/input">
@@ -305,8 +356,13 @@ export default function ContactUs() {
                     <input
                       type="email"
                       placeholder="john@example.com"
-                      className="w-full bg-transparent px-2 py-3.5 text-sm text-white focus:outline-none placeholder-gray-600"
+                      className={inputCls("email")}
+                      value={formData.email}
+                      onChange={(e) => updateField("email", e.target.value)}
                     />
+                    {formErrors.email && (
+                      <p className="text-red-400 text-xs mt-1 ml-1">{formErrors.email}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -322,8 +378,13 @@ export default function ContactUs() {
                   <input
                     type="tel"
                     placeholder="+91 XXXXX XXXXX"
-                    className="w-full bg-transparent px-2 py-3.5 text-sm text-white focus:outline-none placeholder-gray-600"
+                    className={inputCls("phone")}
+                    value={formData.phone}
+                    onChange={(e) => updateField("phone", e.target.value)}
                   />
+                  {formErrors.phone && (
+                    <p className="text-red-400 text-xs mt-1 ml-1">{formErrors.phone}</p>
+                  )}
                 </div>
               </div>
 
@@ -369,18 +430,37 @@ export default function ContactUs() {
                   <textarea
                     rows="4"
                     placeholder="Share specific details about target localites, space requirements, or investment timelines..."
-                    className="w-full bg-transparent px-2 py-2 text-sm text-white focus:outline-none placeholder-gray-600 resize-none"
+                    className={inputCls("message")}
+                    value={formData.message}
+                    onChange={(e) => updateField("message", e.target.value)}
                   ></textarea>
+                  {formErrors.message && (
+                    <p className="text-red-400 text-xs mt-1 ml-1">{formErrors.message}</p>
+                  )}
                 </div>
               </div>
 
+              {formStatus.success && (
+                <div className="text-center bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl px-4 py-3 text-sm font-medium">
+                  {formStatus.success}
+                </div>
+              )}
+              {formStatus.error && (
+                <div className="text-center bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm font-medium">
+                  {formStatus.error}
+                </div>
+              )}
               <div className="pt-4 flex justify-center">
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-12 py-4 rounded-xl bg-gradient-to-r from-accent to-amber-400 hover:from-accent hover:to-amber-500 text-black font-extrabold text-xs tracking-widest uppercase transition-all duration-300 shadow-xl shadow-accent/10 hover:shadow-accent/20 flex items-center justify-center gap-3 group/btn cursor-pointer"
+                  disabled={formStatus.submitting}
+                  className="w-full sm:w-auto px-12 py-4 rounded-xl bg-gradient-to-r from-accent to-amber-400 hover:from-accent hover:to-amber-500 text-black font-extrabold text-xs tracking-widest uppercase transition-all duration-300 shadow-xl shadow-accent/10 hover:shadow-accent/20 flex items-center justify-center gap-3 group/btn cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Send Request{" "}
-                  <i className="fa-solid fa-paper-plane text-xs transition-transform group-hover/btn:translate-x-1 group-hover/btn:-translate-y-0.5"></i>
+                  {formStatus.submitting ? (
+                    <span className="inline-flex items-center gap-2"><span className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full"></span>Sending…</span>
+                  ) : (
+                    <>Send Request <i className="fa-solid fa-paper-plane text-xs transition-transform group-hover/btn:translate-x-1 group-hover/btn:-translate-y-0.5"></i></>
+                  )}
                 </button>
               </div>
             </form>
@@ -450,6 +530,7 @@ export default function ContactUs() {
                     <img
                       src={blog.img}
                       alt={blog.title}
+                      loading="lazy"
                       className="w-full h-full object-cover group-hover/blog:scale-105 transition-transform duration-500"
                       onError={(e) => {
                         e.target.style.display = "none";

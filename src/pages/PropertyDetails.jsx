@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { safeEmbedUrl } from '../lib/sanitize';
 
 const defaultFallbackProject = {
   _id: 'demo-1',
@@ -292,16 +293,20 @@ export default function PropertyDetails() {
               {/* Main Display Area */}
               {activeMediaTab === 'video' && videoUrl ? (
                 <div className="aspect-video w-full overflow-hidden rounded-2xl bg-slate-950 border border-slate-800">
-                  {videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be') ? (
-                    <iframe
-                      src={videoUrl.replace('watch?v=', 'embed/')}
-                      title="Project Video Tour"
-                      className="h-full w-full border-0"
-                      allowFullScreen
-                    ></iframe>
-                  ) : (
-                    <video src={videoUrl} controls className="h-full w-full object-contain"></video>
-                  )}
+                  {(() => {
+                    const embedSrc = safeEmbedUrl(videoUrl);
+                    if (embedSrc) {
+                      return (
+                        <iframe
+                          src={embedSrc}
+                          title="Project Video Tour"
+                          className="h-full w-full border-0"
+                          allowFullScreen
+                        ></iframe>
+                      );
+                    }
+                    return <video src={videoUrl} controls className="h-full w-full object-contain"></video>;
+                  })()}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -336,7 +341,7 @@ export default function PropertyDetails() {
                               : 'border-slate-800 opacity-60 hover:opacity-100'
                           }`}
                         >
-                          <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} className="h-full w-full object-cover" />
+                          <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} loading="lazy" className="h-full w-full object-cover" />
                         </button>
                       ))}
                     </div>

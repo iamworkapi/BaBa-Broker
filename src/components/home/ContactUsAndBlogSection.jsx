@@ -1,4 +1,3 @@
-import React from "react";
 
 const ContactUsAndBlogSection = () => {
   return (
@@ -175,6 +174,7 @@ const ContactUsAndBlogSection = () => {
                       <img
                         src={blog.img}
                         alt={blog.title}
+                        loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
                       />
                       <span className="absolute bottom-2.5 left-2.5 bg-[#071426]/90 backdrop-blur-md text-[#f68122] font-bold text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-md border border-white/10 shadow-md">

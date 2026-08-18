@@ -1,23 +1,27 @@
-import React from 'react';
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import { getAuth } from './lib/auth';
+import LoadingFallback from './components/LoadingFallback';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import Home from './pages/Home';
 import AboutUs from './pages/AboutUs';
-import AboutUsAlternate from './pages/AboutUsAlternate';
 import ContactUs from './pages/ContactUs';
-import Auth from './pages/Auth';
-import Blank from './pages/Blank';
-import Investor from './pages/Investor';
-import BecomeInvestor from './pages/BecomeInvestor';
-import Partners from './pages/Partners';
 import Properties from './pages/Properties';
-import PropertyDetails from './pages/PropertyDetails';
-import StaffLogin from './pages/StaffLogin';
-import AdminDashboard from './pages/AdminDashboard';
-import SalesmanDashboard from './pages/SalesmanDashboard';
-import EmployeeDashboard from './pages/EmployeeDashboard';
+import Auth from './pages/Auth';
+import NotFound from './pages/NotFound';
+
+const AboutUsAlternate = lazy(() => import('./pages/AboutUsAlternate'));
+const Investor      = lazy(() => import('./pages/Investor'));
+const Partners      = lazy(() => import('./pages/Partners'));
+const Blank         = lazy(() => import('./pages/Blank'));
+const PropertyDetails = lazy(() => import('./pages/PropertyDetails'));
+const StaffLogin    = lazy(() => import('./pages/StaffLogin'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const SalesmanDashboard = lazy(() => import('./pages/SalesmanDashboard'));
+const EmployeeDashboard = lazy(() => import('./pages/EmployeeDashboard'));
+const BecomeInvestor   = lazy(() => import('./pages/BecomeInvestor'));
 
 function ProtectedRoute({ allowedRoles, children }) {
   const auth = getAuth();
@@ -36,47 +40,54 @@ function ProtectedRoute({ allowedRoles, children }) {
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          {/* Public Routes */}
-          <Route index element={<Home />} />
-          <Route path="about" element={<AboutUs />} />
-          <Route path="about-1" element={<AboutUsAlternate />} />
-          <Route path="contact" element={<ContactUs />} />
-          <Route path="auth" element={<Auth />} />
-          <Route path="blank" element={<Blank />} />
-          <Route path="investor" element={<Investor />} />
-          <Route path="become-investor" element={<BecomeInvestor />} />
-          <Route path="partners" element={<Partners />} />
-          <Route path="properties" element={<Properties />} />
-          <Route path="property-details" element={<PropertyDetails />} />
+    <ErrorBoundary>
+      <Router>
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              {/* Public Routes */}
+              <Route index element={<Home />} />
+              <Route path="about" element={<AboutUs />} />
+              <Route path="about-1" element={<AboutUsAlternate />} />
+              <Route path="contact" element={<ContactUs />} />
+              <Route path="auth" element={<Auth />} />
+              <Route path="blank" element={<Blank />} />
+              <Route path="investor" element={<Investor />} />
+              <Route path="become-investor" element={<BecomeInvestor />} />
+              <Route path="partners" element={<Partners />} />
+              <Route path="properties" element={<Properties />} />
+              <Route path="property-details" element={<PropertyDetails />} />
 
-          {/* Auth Login Routes */}
-          <Route path="admin/login" element={<StaffLogin role="admin" />} />
-          <Route path="salesman/login" element={<StaffLogin role="salesman" />} />
-          <Route path="employee/login" element={<StaffLogin role="employee" />} />
+              {/* Auth Login Routes */}
+              <Route path="admin/login" element={<StaffLogin role="admin" />} />
+              <Route path="salesman/login" element={<StaffLogin role="salesman" />} />
+              <Route path="employee/login" element={<StaffLogin role="employee" />} />
 
-          {/* Protected Admin Routes */}
-          <Route path="admin" element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
-          <Route path="admin/projects" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="projects" /></ProtectedRoute>} />
-          <Route path="admin/create-project" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="create-project" /></ProtectedRoute>} />
-          <Route path="admin/featured" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="featured" /></ProtectedRoute>} />
-          <Route path="admin/flats" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="flats" /></ProtectedRoute>} />
-          <Route path="admin/plots" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="plots" /></ProtectedRoute>} />
-          <Route path="admin/staff" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="staff" /></ProtectedRoute>} />
-          <Route path="admin/contacts" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="contacts" /></ProtectedRoute>} />
-          <Route path="admin/add-investor" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="add-investor" /></ProtectedRoute>} />
-          <Route path="admin/investment-requests" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="investment-requests" /></ProtectedRoute>} />
-          <Route path="admin/whatsapp" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="whatsapp" /></ProtectedRoute>} />
+              {/* Protected Admin Routes */}
+              <Route path="admin" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+              <Route path="admin/projects" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="projects" /></ProtectedRoute>} />
+              <Route path="admin/create-project" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="create-project" /></ProtectedRoute>} />
+              <Route path="admin/featured" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="featured" /></ProtectedRoute>} />
+              <Route path="admin/flats" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="flats" /></ProtectedRoute>} />
+              <Route path="admin/plots" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="plots" /></ProtectedRoute>} />
+              <Route path="admin/staff" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="staff" /></ProtectedRoute>} />
+              <Route path="admin/contacts" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="contacts" /></ProtectedRoute>} />
+              <Route path="admin/add-investor" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="add-investor" /></ProtectedRoute>} />
+              <Route path="admin/investment-requests" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="investment-requests" /></ProtectedRoute>} />
+              <Route path="admin/whatsapp" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="whatsapp" /></ProtectedRoute>} />
 
-          {/* Protected Staff Routes */}
-          <Route path="salesman/dashboard" element={<ProtectedRoute allowedRoles={['salesman', 'admin']}><SalesmanDashboard /></ProtectedRoute>} />
-          <Route path="employee/dashboard" element={<ProtectedRoute allowedRoles={['employee', 'admin']}><EmployeeDashboard /></ProtectedRoute>} />
-        </Route>
-      </Routes>
-    </Router>
+              {/* Protected Staff Routes */}
+              <Route path="salesman/dashboard" element={<ProtectedRoute allowedRoles={['salesman', 'admin']}><SalesmanDashboard /></ProtectedRoute>} />
+              <Route path="employee/dashboard" element={<ProtectedRoute allowedRoles={['employee', 'admin']}><EmployeeDashboard /></ProtectedRoute>} />
+
+              {/* Catch-all: 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+        </Suspense>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

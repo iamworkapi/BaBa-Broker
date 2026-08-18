@@ -1,4 +1,3 @@
-import React from 'react';
 import AboutSection from '../components/home/AboutSection';
 import WhyChooseUsSection from '../components/home/WhyChooseUsSection';
 
@@ -279,7 +278,7 @@ export default function AboutUs() {
                     <div
                         className="overflow-hidden rounded-2xl bg-dark-3 border border-white/5 mb-3 aspect-[3/4] group-hover:border-accent transition-all duration-300">
                         <img src="https://placehold.co/300x400/1f2937/6b7280?text=V.A" alt="Vinay Angadi"
-                            className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500" />
+                            loading="lazy" className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500" />
                     </div>
                     <p className="font-semibold text-sm text-white">Vinay Angadi</p>
                     <p className="text-gray-400 text-xs mt-0.5">Founder</p>
@@ -728,7 +727,7 @@ export default function AboutUs() {
                             <div className="blog-card-img">
                                 <div className="blog-img-placeholder">
                                     {/*  <i className="fa-solid fa-city text-4xl text-primary/30"></i>  */}
-                                    <img src="./assets/img/blog1.webp" alt="blog1" className="object-fill" />
+                                    <img src="./assets/img/blog1.webp" alt="blog1" loading="lazy" className="object-fill" />
                                 </div>
                                 <span className="blog-badge">15 Jan 2026</span>
                             </div>
@@ -751,7 +750,7 @@ export default function AboutUs() {
                             <div className="blog-card-img">
                                 <div className="blog-img-placeholder">
                                     {/*  <i className="fa-solid fa-house-circle-check text-4xl text-primary/30"></i>  */}
-                                    <img src="./assets/img/blog2.webp" alt="blog2" className="object-fill" />
+                                    <img src="./assets/img/blog2.webp" alt="blog2" loading="lazy" className="object-fill" />
                                 </div>
                                 <span className="blog-badge">02 Feb 2026</span>
                             </div>
@@ -774,7 +773,7 @@ export default function AboutUs() {
                             <div className="blog-card-img">
                                 <div className="blog-img-placeholder">
                                     {/*  <i className="fa-solid fa-chart-line text-4xl text-primary/30"></i>  */}
-                                    <img src="./assets/img/blog3.webp" alt="blog3" className="object-fill" />
+                                    <img src="./assets/img/blog3.webp" alt="blog3" loading="lazy" className="object-fill" />
                                 </div>
                                 <span className="blog-badge">10 Mar 2026</span>
                             </div>
@@ -797,7 +796,7 @@ export default function AboutUs() {
                             <div className="blog-card-img">
                                 <div className="blog-img-placeholder">
                                     {/*  <i className="fa-solid fa-file-contract text-4xl text-primary/30"></i>  */}
-                                    <img src="./assets/img/blog4.webp" alt="blog4" className="object-fill" />
+                                    <img src="./assets/img/blog4.webp" alt="blog4" loading="lazy" className="object-fill" />
                                 </div>
                                 <span className="blog-badge">18 Mar 2026</span>
                             </div>

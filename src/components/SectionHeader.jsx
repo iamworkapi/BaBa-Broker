@@ -1,4 +1,3 @@
-import React from 'react';
 
 export default function SectionHeader({ eyebrow, title, description, align = 'center' }) {
   const alignment = align === 'left' ? 'text-left items-start' : 'text-center items-center';

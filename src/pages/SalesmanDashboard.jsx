@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { clearAuth, getAuth } from '../lib/auth';
@@ -98,7 +98,7 @@ function PropertyDetailDrawer({ listing, onClose, onEdit }) {
           {/* Cover Photo Header */}
           <div className="relative h-56 w-full bg-slate-950 overflow-hidden">
             {listing.coverImage ? (
-              <img src={listing.coverImage} alt={listing.title} className="h-full w-full object-cover" />
+              <img src={listing.coverImage} alt={listing.title} loading="lazy" className="h-full w-full object-cover" />
             ) : (
               <div className="h-full w-full flex items-center justify-center text-slate-800 bg-slate-950">
                 <i className="fa-solid fa-building text-6xl opacity-30" />
@@ -506,7 +506,7 @@ export default function SalesmanDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const data = await api('/api/flat-listings');
       setListings(Array.isArray(data) ? data : []);
@@ -516,11 +516,11 @@ export default function SalesmanDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   // Auto-dismiss status notification after 5 seconds
   useEffect(() => {
@@ -1529,7 +1529,7 @@ export default function SalesmanDashboard() {
                         />
                         {form.coverImage && (
                           <div className="relative mt-1 rounded-xl overflow-hidden border border-slate-800 h-14 w-full bg-slate-950">
-                            <img src={form.coverImage} alt="Cover Preview" className="h-full w-full object-cover" />
+                            <img src={form.coverImage} alt="Cover Preview" loading="lazy" className="h-full w-full object-cover" />
                             <button
                               type="button"
                               onClick={() => setForm((prev) => ({ ...prev, coverImage: '' }))}
@@ -1553,7 +1553,7 @@ export default function SalesmanDashboard() {
                           <div className="flex gap-1 mt-1 overflow-x-auto p-0.5">
                             {form.images.map((img, idx) => (
                               <div key={idx} className="relative rounded-xl overflow-hidden border border-slate-800 h-10 w-10 shrink-0 bg-slate-950 group">
-                                <img src={img} alt={`Gallery ${idx}`} className="h-full w-full object-cover" />
+                                <img src={img} alt={`Gallery ${idx}`} loading="lazy" className="h-full w-full object-cover" />
                                 <button
                                   type="button"
                                   onClick={() => removeGalleryImage(idx)}

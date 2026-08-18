@@ -1,7 +1,30 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { api } from "../lib/api";
 
 export default function Footer() {
+  const [subEmail, setSubEmail] = useState("");
+  const [subStatus, setSubStatus] = useState(null);
+
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    if (!subEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(subEmail)) {
+      setSubStatus({ ok: false, msg: "Please enter a valid email." });
+      return;
+    }
+    try {
+      await api('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: subEmail.trim() }),
+      });
+      setSubStatus({ ok: true, msg: "Subscribed! Welcome aboard." });
+      setSubEmail("");
+    } catch {
+      setSubStatus({ ok: false, msg: "Subscription failed. Please try again later." });
+    }
+    setTimeout(() => setSubStatus(null), 5000);
+  };
   return (
     <footer className="relative bg-[#071426] pt-24 text-white overflow-visible">
       {/* Background Ambient Glow */}
@@ -23,11 +46,13 @@ export default function Footer() {
             </div>
 
             <form
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={handleSubscribe}
               className="flex items-center bg-[#071426] border border-white/10 rounded-full p-1.5 overflow-hidden w-full sm:w-auto sm:min-w-[340px] shadow-inner focus-within:border-[#f68122]/50 transition-colors"
             >
               <input
                 type="email"
+                value={subEmail}
+                onChange={(e) => setSubEmail(e.target.value)}
                 placeholder="Enter your email address"
                 className="flex-1 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none bg-transparent min-w-0"
               />
@@ -38,6 +63,11 @@ export default function Footer() {
                 Subscribe
               </button>
             </form>
+            {subStatus && (
+              <p className={`text-xs mt-2 ${subStatus.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                {subStatus.msg}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -60,14 +90,14 @@ export default function Footer() {
             <div className="lg:border-r lg:border-white/10 lg:pr-8">
               <p className="text-sm text-gray-400 leading-relaxed mb-6">
                 Baba Broker is your trusted real estate partner — helping you
-                buy, sell, and rent residential & commercial properties with
+                buy, sell, and rent residential &amp; commercial properties with
                 complete transparency.
               </p>
               <p className="text-xs font-bold uppercase tracking-widest text-[#f68122] mb-3">
                 Speak With Us
               </p>
               <a
-                href="#about"
+                href="tel:+919586505111"
                 className="group inline-flex items-center gap-3 rounded-2xl bg-[#0b1f3e]/80 border border-white/10 px-4 py-3 text-sm font-bold text-white transition-all duration-300 hover:bg-[#0b1f3e] hover:border-[#f68122]/40"
               >
                 <img
@@ -94,16 +124,16 @@ export default function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <a
-                    href="#properties"
+                  <Link
+                    to="/properties"
                     className="hover:text-[#f68122] transition-colors flex items-center gap-2"
                   >
                     <span className="text-[#f68122] text-xs">◆</span> Properties
-                  </a>
+                  </Link>
                 </li>
                 <li>
                   <Link
-                    to="/about-us"
+                    to="/about"
                     className="hover:text-[#f68122] transition-colors flex items-center gap-2"
                   >
                     <span className="text-[#f68122] text-xs">◆</span> About Us
@@ -111,7 +141,7 @@ export default function Footer() {
                 </li>
                 <li>
                   <Link
-                    to="/contact-us"
+                    to="/contact"
                     className="hover:text-[#f68122] transition-colors flex items-center gap-2"
                   >
                     <span className="text-[#f68122] text-xs">◆</span> Contact Us
@@ -256,10 +286,10 @@ export default function Footer() {
                 <li className="flex items-center gap-3">
                   <i className="fa-solid fa-phone text-[#f68122] w-4 shrink-0"></i>
                   <a
-                    href="tel:+919155643043"
+                    href="tel:+919586505111"
                     className="hover:text-[#f68122] transition-colors"
                   >
-                    +1 (800) 000-0000
+                    +91 95865 05111
                   </a>
                 </li>
                 <li className="flex items-center gap-3">
@@ -274,10 +304,10 @@ export default function Footer() {
                 <li className="flex items-center gap-3">
                   <i className="fa-brands fa-skype text-[#f68122] w-4 shrink-0"></i>
                   <a
-                    href="#"
+                    href="mailto:info@bababroker.com"
                     className="hover:text-[#f68122] transition-colors"
                   >
-                    bababroker.skype
+                    bababroker
                   </a>
                 </li>
                 <li className="flex items-center gap-3">
