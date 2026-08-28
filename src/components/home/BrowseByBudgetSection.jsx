@@ -45,6 +45,8 @@ export const formatCurrency = (value) => {
   return `₹${value.toLocaleString("en-IN")}`;
 };
 
+import ScrollReveal from "../ScrollReveal";
+
 const INVESTMENT_TICKETS = [
   { label: "₹2.5L", value: "2.5 Lakhs" },
   { label: "₹5L", value: "5 Lakhs" },
@@ -303,7 +305,8 @@ const BrowseByBudgetSection = () => {
       <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-blue-600/[0.03] rounded-full blur-[130px] pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-6 lg:px-10 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+        <ScrollReveal>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
           
           {/* Left Column: Fast-Track Investment Access Form (Replaces Growth Planner here) */}
           <div className="lg:col-span-6 w-full">
@@ -525,6 +528,7 @@ const BrowseByBudgetSection = () => {
           </div>
 
         </div>
+        </ScrollReveal>
       </div>
     </section>
   );

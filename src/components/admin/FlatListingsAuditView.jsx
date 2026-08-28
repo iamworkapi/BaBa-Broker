@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { api } from '../../lib/api';
-import { safeEmbedUrl } from '../../lib/sanitize';
+import { api } from '../../services/api';
+import { safeEmbedUrl } from '../../utils/sanitize';
 import AdminPageHeader from './AdminPageHeader';
 
 const formatFlatPrice = (listing) => {

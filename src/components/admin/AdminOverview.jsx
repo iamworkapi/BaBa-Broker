@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../../lib/api';
+import { api } from '../../services/api';
 import AdminPageHeader from './AdminPageHeader';
 
 const emptyInvestorForm = {
@@ -1524,31 +1524,35 @@ export default function AdminOverview({
           </div>
         </>
       ) : (
-        /* OTHER SUB-VIEWS */
-        <>
-          {/* COMPACT UNIFIED HIGH-DEMAND HEADER & TOOLBAR */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-xs space-y-2.5">
-            {/* Top Row: Title + High Demand Badge + Action CTA Button */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#ea580c]">
-                  {isContacts
-                    ? 'Leads Directory'
-                    : view === 'featured'
-                    ? 'Direct Hot Sales'
-                    : 'Investment Deals'}
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-orange-50 text-[#ea580c] border border-orange-200/60">
-                  <i className="ri-fire-fill text-[10px]"></i> High Demand
-                </span>
-                <h1 className="text-sm sm:text-base font-bold text-slate-800 tracking-tight flex items-center gap-1.5">
-                  {isContacts
-                    ? 'Customer Leads & Proposals'
-                    : view === 'featured'
-                    ? 'Featured Hot Sale Properties'
-                    : 'All Investment Projects'}
-                  <span className="text-[11px] font-normal text-slate-400">({filteredProperties?.length || 0})</span>
-                </h1>
+        /* OTHER SUB-VIEWS: FEATURED HOT SALES & ALL PROJECTS */
+        <div className="space-y-4 font-['Inter',sans-serif] select-text">
+          {/* COMPACT UNIFIED HEADER & TOOLBAR */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs space-y-3">
+            {/* Top Row: Title + Badge + Create CTA Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="h-8 w-8 rounded-xl bg-orange-50 text-[#ea580c] flex items-center justify-center font-bold text-sm border border-orange-200/60 shadow-2xs shrink-0">
+                  <i className={view === 'featured' ? 'ri-fire-fill' : 'ri-building-2-line'} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-sm sm:text-base font-black text-slate-900 leading-none">
+                      {isContacts
+                        ? 'Customer Leads & Proposals'
+                        : view === 'featured'
+                        ? 'Featured Hot Sale Properties'
+                        : 'All Investment Projects'}
+                    </h1>
+                    <span className="text-[10px] font-black uppercase text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200/60">
+                      {filteredProperties?.length || 0} Units
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-normal leading-tight mt-0.5">
+                    {view === 'featured'
+                      ? 'Direct high-demand inventory featured on homepage showcase.'
+                      : 'Fractional co-investment pools and flip opportunities.'}
+                  </p>
+                </div>
               </div>
 
               {/* Action Button */}
@@ -1565,9 +1569,9 @@ export default function AdminOverview({
                         if (typeof setShowProjectModal === 'function') setShowProjectModal(true);
                       }
                     }}
-                    className="inline-flex items-center gap-1 rounded-full bg-[#ea580c] hover:bg-[#c2410c] px-3 py-1 text-[11px] font-semibold text-white shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#ea580c] hover:bg-[#c2410c] px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-orange-500/20 transition cursor-pointer"
                   >
-                    <i className="ri-fire-line text-xs"></i>
+                    <i className="ri-fire-line text-xs" />
                     <span>Create Hot Deal</span>
                   </button>
                 ) : view === 'projects' ? (
@@ -1582,22 +1586,22 @@ export default function AdminOverview({
                         if (typeof setShowProjectModal === 'function') setShowProjectModal(true);
                       }
                     }}
-                    className="inline-flex items-center gap-1 rounded-full bg-[#ea580c] hover:bg-[#c2410c] px-3 py-1 text-[11px] font-semibold text-white shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#ea580c] hover:bg-[#c2410c] px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-orange-500/20 transition cursor-pointer"
                   >
-                    <i className="ri-add-circle-line text-xs"></i>
+                    <i className="ri-add-circle-line text-xs" />
                     <span>Create Investment Project</span>
                   </button>
                 ) : null}
               </div>
             </div>
 
-            {/* Bottom Row: Quick Status Tabs + Compact Search + Type Dropdown */}
+            {/* Bottom Row: Status Filter Pills + Search Box + Type Dropdown */}
             {!isContacts && (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2.5 border-t border-slate-100">
                 {/* Status Tab Pills */}
                 <div className="flex items-center gap-1 overflow-x-auto pb-0.5 sm:pb-0">
                   {[
-                    { id: 'all', label: 'All' },
+                    { id: 'all', label: 'All Status' },
                     { id: 'running', label: '🚀 Running' },
                     { id: 'upcoming', label: '⏳ Upcoming' },
                     { id: 'delivered', label: '✅ Delivered' },
@@ -1606,10 +1610,10 @@ export default function AdminOverview({
                       key={st.id}
                       type="button"
                       onClick={() => setFilterStatus(st.id)}
-                      className={`px-2.5 py-0.5 rounded-lg text-[10px] font-medium transition-all whitespace-nowrap cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                         filterStatus === st.id
-                          ? 'bg-[#ea580c] text-white shadow-xs'
-                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                          ? 'bg-[#ea580c] text-white shadow-2xs font-black'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
                       }`}
                     >
                       {st.label}
@@ -1617,25 +1621,25 @@ export default function AdminOverview({
                   ))}
                 </div>
 
-                {/* Search & Type Select */}
-                <div className="flex items-center gap-1.5">
-                  <div className="relative flex-1 sm:w-48">
-                    <i className="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400"></i>
+                {/* Search & Category Select */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 sm:w-52">
+                    <i className="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search title, location..."
-                      className="w-full rounded-lg border border-slate-200 bg-slate-50 pl-7 pr-2 py-1 text-[10px] text-slate-800 placeholder-slate-400 outline-none focus:border-[#ea580c] focus:bg-white font-normal"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-[#ea580c] focus:bg-white font-medium"
                     />
                   </div>
 
                   <select
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
-                    className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] text-slate-700 outline-none cursor-pointer hover:bg-slate-100"
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none cursor-pointer hover:bg-slate-100"
                   >
-                    <option value="all">All Types</option>
+                    <option value="all">All Categories</option>
                     <option value="residential">🏢 Residential</option>
                     <option value="commercial">🏬 Commercial</option>
                     <option value="plot">🏞️ Plot / Land</option>
@@ -1648,96 +1652,131 @@ export default function AdminOverview({
           {isContacts && <AddInvestorPanel />}
 
           {!isContacts && (
-            <>
-
-              {/* Property Cards Grid */}
-              <div>
-                {loading ? (
-                  <div className="py-10 text-center text-slate-400 font-normal text-[11px]">
-                    <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-slate-100 border-t-[#ea580c]"></div>
-                    <p className="mt-1.5">Loading investment portfolio...</p>
-                  </div>
-                ) : filteredProperties.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 font-normal">
-                    {filteredProperties.map((p) => (
-                      <div
-                        key={p._id}
-                        className="group relative flex flex-col justify-between rounded-xl border border-slate-100 bg-white overflow-hidden shadow-xs transition-all duration-200 hover:shadow-md"
-                      >
-                        <div>
-                          <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-100">
-                            {p.image ? (
-                              <img
-                                src={p.image}
-                                alt={p.title}
-                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100 text-slate-400">
-                                <i className="ri-building-line text-xl mb-1"></i>
-                                <span className="text-[10px]">No Cover Photo</span>
-                              </div>
-                            )}
-
-                            <div className="absolute left-2 top-2 right-2 flex items-center justify-between gap-1 z-10">
-                              <span className="rounded-md px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wider bg-[#ea580c] text-white">
-                                {p.status || 'Running'}
-                              </span>
-
-                              <button
-                                type="button"
-                                onClick={() => toggleFeaturedStatus(p)}
-                                className={`rounded-md px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wider backdrop-blur-md transition-all cursor-pointer ${
-                                  p.isFeatured
-                                    ? 'bg-amber-400 text-slate-900'
-                                    : 'bg-white/90 text-slate-600 hover:text-slate-900 border border-slate-200'
-                                }`}
-                              >
-                                {p.isFeatured ? '⭐ Hot Product' : 'Mark Hot Sale'}
-                              </button>
+            <div>
+              {loading ? (
+                <div className="py-16 text-center text-slate-400 text-xs flex flex-col items-center gap-2 bg-white rounded-3xl border border-slate-200/90 p-8">
+                  <i className="ri-loader-4-line animate-spin text-2xl text-[#ea580c]" />
+                  <span>Loading properties portfolio...</span>
+                </div>
+              ) : filteredProperties.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredProperties.map((p) => (
+                    <div
+                      key={p._id}
+                      className="group relative flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white overflow-hidden shadow-2xs hover:border-orange-300 hover:shadow-md transition-all duration-200"
+                    >
+                      <div>
+                        {/* Cover Image & Badges */}
+                        <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
+                          {p.image ? (
+                            <img
+                              src={p.image}
+                              alt={p.title}
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100 text-slate-400">
+                              <i className="ri-building-line text-2xl mb-1 text-slate-300" />
+                              <span className="text-[10px] font-bold">No Cover Photo</span>
                             </div>
-                          </div>
+                          )}
 
-                          <div className="p-3 space-y-1">
-                            <h3 className="text-[11px] font-semibold text-slate-800 line-clamp-1">
+                          {/* Top Badges */}
+                          <div className="absolute left-2.5 top-2.5 right-2.5 flex items-center justify-between gap-1.5 z-10">
+                            <span className="rounded-xl px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-black/60 backdrop-blur-md text-white border border-white/20">
+                              {p.status || 'Running'}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => toggleFeaturedStatus(p)}
+                              className={`rounded-xl px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider backdrop-blur-md transition cursor-pointer flex items-center gap-1 ${
+                                p.isFeatured
+                                  ? 'bg-amber-400 text-slate-950 shadow-xs'
+                                  : 'bg-white/90 text-slate-700 hover:text-slate-950 border border-slate-200 shadow-2xs'
+                              }`}
+                            >
+                              <i className={p.isFeatured ? "ri-star-fill text-amber-900" : "ri-star-line text-amber-500"} />
+                              <span>{p.isFeatured ? 'Hot Deal' : 'Mark Hot'}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Card Details */}
+                        <div className="p-4 space-y-2">
+                          <div>
+                            <span className="text-[10px] font-black uppercase text-[#ea580c] block tracking-wider">
+                              {p.propertyType === 'commercial' ? '🏬 Commercial' : p.propertyType === 'plot' ? '🏞️ Plot / Land' : '🏢 Residential'}
+                            </span>
+                            <h3 className="text-xs sm:text-sm font-black text-slate-900 line-clamp-1 group-hover:text-[#ea580c] transition">
                               {p.title}
                             </h3>
-                            <p className="text-[10px] text-slate-500 flex items-center gap-1 font-normal">
-                              <i className="ri-map-pin-line text-[#ea580c]"></i>
+                            <p className="text-[11px] text-slate-500 flex items-center gap-1 font-medium mt-0.5">
+                              <i className="ri-map-pin-2-line text-[#ea580c]" />
                               <span className="truncate">{p.location}</span>
                             </p>
-                            <p className="text-[11px] font-bold text-[#ea580c]">
-                              {formatINR(p.totalValuation) || p.price || '₹0'}
-                            </p>
+                          </div>
+
+                          {/* Price & Equity Breakdown */}
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                            <div>
+                              <span className="text-[9px] uppercase font-extrabold text-slate-400 block">Valuation / Price</span>
+                              <span className="text-sm font-black text-slate-900">
+                                {formatINR(p.totalValuation) || p.price || '₹0'}
+                              </span>
+                            </div>
+
+                            {p.expectedRoi && (
+                              <div className="text-right">
+                                <span className="text-[9px] uppercase font-extrabold text-slate-400 block">Target ROI</span>
+                                <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                                  {p.expectedRoi}% p.a.
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
-
-                        <div className="p-3 pt-0 flex items-center gap-1.5 border-t border-slate-100 mt-1">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(p)}
-                            className="flex-1 rounded-md bg-slate-100 hover:bg-slate-200 py-1 text-[10px] font-semibold text-slate-700 transition cursor-pointer"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteProperty(p._id)}
-                            className="rounded-md bg-red-50 hover:bg-red-500 text-red-500 hover:text-white p-1 transition cursor-pointer"
-                          >
-                            <i className="ri-delete-bin-line text-[10px]"></i>
-                          </button>
-                        </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-10 text-center text-slate-400 text-[11px] font-normal">No properties found.</div>
-                )}
-              </div>
-            </>
+
+                      {/* Action Bar */}
+                      <div className="p-3 pt-0 flex items-center gap-2 border-t border-slate-100/80 mt-1">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(p)}
+                          className="flex-1 rounded-xl bg-slate-100 hover:bg-slate-200 py-1.5 text-xs font-bold text-slate-700 transition cursor-pointer flex items-center justify-center gap-1"
+                        >
+                          <i className="ri-edit-line" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openWhatsAppShare(p)}
+                          className="rounded-xl bg-emerald-50 hover:bg-emerald-500 hover:text-white text-emerald-600 px-2.5 py-1.5 text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                          title="Share on WhatsApp"
+                        >
+                          <i className="ri-whatsapp-line text-sm" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteProperty(p._id)}
+                          className="rounded-xl bg-red-50 hover:bg-red-500 text-red-500 hover:text-white px-2.5 py-1.5 text-xs font-bold transition cursor-pointer"
+                          title="Delete Property"
+                        >
+                          <i className="ri-delete-bin-line text-sm" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-16 text-center text-slate-400 text-xs bg-white rounded-3xl border border-slate-200/90 p-8 space-y-1">
+                  <i className="ri-inbox-line text-3xl text-slate-300 block mb-1" />
+                  <span className="font-bold text-slate-600 block">No properties found</span>
+                </div>
+              )}
+            </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

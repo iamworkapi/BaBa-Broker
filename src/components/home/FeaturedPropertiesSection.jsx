@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import ScrollReveal from "../ScrollReveal";
 
 const fallbackProperties = [
   {
@@ -140,7 +141,7 @@ export default function FeaturedPropertiesSection() {
       <div className="absolute -left-32 bottom-16 h-80 w-80 rounded-full bg-amber-500/5 blur-[120px] mix-blend-screen pointer-events-none"></div>
 
       <div className="relative mx-auto max-w-7xl">
-        {/* Section Header Grid */}
+        <ScrollReveal>
         <div className="mb-14 flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
           <div>
             <span className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.25em] text-orange-500">
@@ -270,6 +271,7 @@ export default function FeaturedPropertiesSection() {
             </div>
           ))}
         </div>
+        </ScrollReveal>
       </div>
     </section>
   );

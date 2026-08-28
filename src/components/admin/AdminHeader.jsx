@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clearAuth } from '../../lib/auth';
+import { useAuthStore } from '../../store/AuthContext';
 
 export default function AdminHeader({ auth, onSearch }) {
   const navigate = useNavigate();
+  const { clearAuth } = useAuthStore();
   const [searchVal, setSearchVal] = useState('');
   const [hasNotification, setHasNotification] = useState(true);
 

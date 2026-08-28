@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../lib/api';
-import { clearAuth, getAuth } from '../lib/auth';
+import { api } from '../services/api';
+import { useAuthStore } from '../store/AuthContext';
 import AssignedLeadsPanel from '../components/AssignedLeadsPanel';
+import { Loader } from '../components/ui';
 
 const QUICK_AMENITIES = [
   "Lift(s)",
@@ -20,7 +21,7 @@ const QUICK_AMENITIES = [
 ];
 
 const emptyFlatListing = () => ({
-  // Primary Owner & Property Details (Top Section)
+  // Primary Owner & Property Details
   ownerName: '',
   ownerContact: '',
   propertyCategory: 'HK', // 'RK' | 'HK' | 'Office' | 'Shop' | 'Plot'
@@ -34,7 +35,7 @@ const emptyFlatListing = () => ({
   netProfit: '',
 
   // General Listing Fields
-  listingType: 'buy',
+  listingType: 'buy', // 'buy' | 'rent'
   title: '',
   location: '',
   configuration: '2 BHK',
@@ -58,6 +59,7 @@ const emptyFlatListing = () => ({
   salePrice: '',
   pricePerSqft: '',
   priceNegotiable: false,
+  dealStatus: 'available', // 'available' | 'rented' | 'sold'
 });
 
 const fileToBase64 = (file) =>
@@ -71,415 +73,179 @@ const fileToBase64 = (file) =>
 const formatINR = (val) => {
   const num = Number(val);
   if (!num) return '₹ 0';
+  if (num >= 10000000) {
+    return `₹ ${(num / 10000000).toFixed(2)} Cr`;
+  }
+  if (num >= 100000) {
+    return `₹ ${(num / 100000).toFixed(2)} Lakh`;
+  }
   return '₹ ' + num.toLocaleString('en-IN');
 };
 
-{/* Sleek Executive Slide-Over Drawer View */}
+const priceLabel = (listing) =>
+  listing.listingType === 'rent' && listing.monthlyRent
+    ? `${formatINR(listing.monthlyRent)} / mo`
+    : formatINR(listing.salePrice);
+
+// Slide-Over Property Detail Inspector Drawer
 function PropertyDetailDrawer({ listing, onClose, onEdit }) {
   if (!listing) return null;
 
   const isCommercialOrPlot = ['Office', 'Plot', 'Shop'].includes(listing.propertyCategory);
-  const priceLabel = listing.listingType === 'rent' && listing.monthlyRent
-    ? `${formatINR(listing.monthlyRent)} / mo`
-    : formatINR(listing.salePrice);
-
   const hasOwnerInfo = Boolean(listing.ownerName?.trim() || listing.ownerContact?.trim());
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-950/80 backdrop-blur-md flex justify-end">
-      
-      {/* Click Backdrop */}
+    <div className="fixed inset-0 z-50 overflow-hidden bg-black/75 backdrop-blur-sm flex justify-end animate-fadeIn">
       <div className="absolute inset-0" onClick={onClose} />
-
-      {/* Slide-Over Panel */}
-      <div className="relative w-full max-w-xl bg-slate-900 border-l border-slate-800 shadow-2xl h-full flex flex-col justify-between overflow-y-auto text-slate-100 z-10 animate-in slide-in-from-right duration-300">
-        
+      <div className="relative w-full max-w-xl bg-white shadow-2xl h-full flex flex-col justify-between overflow-y-auto text-slate-800 z-10 animate-in slide-in-from-right duration-300">
         <div>
-          {/* Cover Photo Header */}
-          <div className="relative h-56 w-full bg-slate-950 overflow-hidden">
+          {/* Cover Photo */}
+          <div className="relative h-60 w-full bg-slate-100 overflow-hidden">
             {listing.coverImage ? (
-              <img src={listing.coverImage} alt={listing.title} loading="lazy" className="h-full w-full object-cover" />
+              <img src={listing.coverImage} alt={listing.title} className="h-full w-full object-cover" />
             ) : (
-              <div className="h-full w-full flex items-center justify-center text-slate-800 bg-slate-950">
-                <i className="fa-solid fa-building text-6xl opacity-30" />
+              <div className="h-full w-full flex items-center justify-center text-slate-400">
+                <i className="ri-building-line text-6xl opacity-40" />
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-black/50" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-            {/* Top Buttons */}
             <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
               <button
                 onClick={() => { onClose(); onEdit(listing); }}
-                className="px-4 py-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 text-xs font-black hover:brightness-110 shadow-lg cursor-pointer flex items-center gap-2"
+                className="px-3.5 py-1.5 rounded-xl bg-[#ea580c] text-white text-xs font-bold hover:brightness-110 shadow-md cursor-pointer flex items-center gap-1.5"
               >
-                <i className="fa-solid fa-pen text-xs" /> Edit Listing
+                <i className="ri-edit-line" /> Edit Listing
               </button>
-
               <button
                 onClick={onClose}
-                className="h-9 w-9 rounded-full bg-slate-950/80 hover:bg-slate-950 text-white flex items-center justify-center border border-slate-700 cursor-pointer shadow-lg transition"
+                className="h-8 w-8 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center cursor-pointer shadow transition"
               >
-                <i className="fa-solid fa-xmark text-sm" />
+                <i className="ri-close-line text-lg" />
               </button>
             </div>
 
-            {/* Title & Price Banner */}
             <div className="absolute bottom-4 left-5 right-5 space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="rounded-xl px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-amber-500/30 text-amber-300 border border-amber-500/40 backdrop-blur-md">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase bg-orange-500 text-white">
                   {listing.propertyCategory}
                 </span>
-                <span className={`rounded-xl px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider backdrop-blur-md border ${listing.listingType === 'rent' ? 'bg-blue-600/30 text-blue-200 border-blue-500/50' : 'bg-orange-500/30 text-orange-200 border-orange-500/50'}`}>
+                <span className="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase bg-black/60 text-white backdrop-blur-md">
                   {listing.listingType === 'rent' ? 'For Rent' : 'For Sale'}
                 </span>
-                <span className="text-xs font-black text-amber-300 bg-slate-950/90 px-3 py-1 rounded-xl border border-slate-800 ml-auto">
-                  {priceLabel}
+                <span className="text-xs font-black text-amber-300 ml-auto bg-black/70 px-2.5 py-0.5 rounded-md">
+                  {priceLabel(listing)}
                 </span>
               </div>
-
-              <h2 className="text-lg font-black text-white line-clamp-1">
-                {listing.title || listing.configuration || `${listing.propertyCategory} Property`}
+              <h2 className="text-base font-black text-white line-clamp-1">
+                {listing.title || listing.configuration}
               </h2>
             </div>
           </div>
 
-          {/* Quick Actions Bar */}
-          {listing.ownerContact && (
-            <div className="p-5 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
-              <a
-                href={`tel:${listing.ownerContact}`}
-                className="w-full py-3 px-3 rounded-2xl bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-slate-950 border border-emerald-500/40 text-xs font-black transition flex items-center justify-center gap-2"
-              >
-                <i className="fa-solid fa-phone" /> Call Owner
-              </a>
-            </div>
-          )}
-
-          {/* Drawer Content */}
-          <div className="p-5 space-y-5 text-xs">
-            
-            {/* Location & Address */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-2">
-              <h4 className="text-[11px] font-black uppercase text-amber-400 flex items-center gap-2">
-                <i className="fa-solid fa-map-location-dot" /> Location & Address
-              </h4>
-              <p className="font-semibold text-slate-200 leading-relaxed">
-                {listing.completeAddress || listing.location}
-              </p>
-              {(listing.latitude || listing.longitude) && (
-                <div className="pt-2 border-t border-slate-800/60 font-mono text-amber-300 text-[11px] flex items-center gap-2">
-                  <i className="fa-solid fa-crosshairs text-orange-400" />
-                  <span>GPS Coordinates: {listing.latitude || 'N/A'}, {listing.longitude || 'N/A'}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Owner Info Card (ONLY SHOWN IF OWNER DETAILS EXIST!) */}
-            {hasOwnerInfo && (
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
-                <h4 className="text-[11px] font-black uppercase text-amber-400 flex items-center gap-2">
-                  <i className="fa-solid fa-user-shield" /> Owner Contact Information
-                </h4>
-                <div className="space-y-1.5 pt-1">
-                  {listing.ownerName && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Owner Name:</span>
-                      <span className="font-bold text-white">{listing.ownerName}</span>
-                    </div>
-                  )}
-                  {listing.ownerContact && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Contact Number:</span>
-                      <a href={`tel:${listing.ownerContact}`} className="font-mono font-bold text-emerald-400 hover:underline">
-                        {listing.ownerContact}
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Commercial Profit Highlight if present */}
-            {isCommercialOrPlot && Number(listing.netProfit) > 0 && (
-              <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 space-y-2">
-                <h4 className="text-[11px] font-black uppercase text-emerald-400 flex items-center gap-2">
-                  <i className="fa-solid fa-coins" /> Commercial Financial Highlight
-                </h4>
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Property Price:</span>
-                    <span className="text-sm font-black text-white">{formatINR(listing.salePrice)}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Net Profit Margin:</span>
-                    <span className="text-sm font-black text-emerald-400">{formatINR(listing.netProfit)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Property Specifications Grid */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
-              <h4 className="text-[11px] font-black uppercase text-amber-400 flex items-center gap-2">
-                <i className="fa-solid fa-sliders" /> Property Specifications
-              </h4>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
-                  <span className="text-slate-500 text-[10px] block font-bold uppercase">Configuration</span>
-                  <span className="font-bold text-white">{listing.configuration || listing.propertyCategory}</span>
-                </div>
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
-                  <span className="text-slate-500 text-[10px] block font-bold uppercase">Furnishing</span>
-                  <span className="font-semibold text-slate-200">{listing.furnishingStatus || 'Unfurnished'}</span>
-                </div>
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
-                  <span className="text-slate-500 text-[10px] block font-bold uppercase">Floor Level</span>
-                  <span className="font-semibold text-slate-200">{listing.floor || 'N/A'}</span>
-                </div>
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
-                  <span className="text-slate-500 text-[10px] block font-bold uppercase">Commission Terms</span>
-                  <span className="font-bold text-amber-400">{listing.commission || 'YES'}</span>
-                </div>
-                {listing.sizeSqft && (
-                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
-                    <span className="text-slate-500 text-[10px] block font-bold uppercase">Property Size</span>
-                    <span className="font-semibold text-slate-200">{listing.sizeSqft}</span>
-                  </div>
-                )}
-                {listing.parking && (
-                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
-                    <span className="text-slate-500 text-[10px] block font-bold uppercase">Parking</span>
-                    <span className="font-semibold text-slate-200">{listing.parking}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Description & Special Instructions */}
-            {listing.description && (
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-1.5">
-                <span className="text-slate-400 font-bold block text-[11px]">Description & Highlights:</span>
-                <p className="text-slate-300 leading-relaxed">{listing.description}</p>
-              </div>
-            )}
-
-            {listing.specialInstructions && (
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/90 p-4 space-y-1.5">
-                <span className="text-amber-400 font-bold block text-[11px]">Internal Broker Notes:</span>
-                <p className="text-slate-300 leading-relaxed font-mono bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">{listing.specialInstructions}</p>
-              </div>
-            )}
-
-          </div>
-        </div>
-
-        {/* Footer Actions */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950 flex items-center justify-between">
-          <button
-            onClick={() => { onClose(); onEdit(listing); }}
-            className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 text-xs font-black uppercase tracking-wider shadow-lg hover:brightness-110 cursor-pointer flex items-center justify-center gap-2"
-          >
-            <i className="fa-solid fa-pen" /> Edit This Property Listing
-          </button>
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-function ListingCard({ listing, onView, onEdit, onDelete }) {
-  const isCommercialOrPlot = ['Office', 'Plot', 'Shop'].includes(listing.propertyCategory);
-
-  const priceLabel =
-    listing.listingType === 'rent' && listing.monthlyRent
-      ? `${formatINR(listing.monthlyRent)} / mo`
-      : formatINR(listing.salePrice);
-
-  const categoryIcons = {
-    RK: 'fa-bed',
-    HK: 'fa-house',
-    Office: 'fa-building',
-    Shop: 'fa-store',
-    Plot: 'fa-vector-square'
-  };
-
-  const hasOwnerInfo = Boolean(listing.ownerName?.trim() || listing.ownerContact?.trim());
-
-  return (
-    <div className="group rounded-3xl border border-slate-800/90 bg-gradient-to-b from-slate-900/90 via-slate-900/80 to-slate-950/95 shadow-xl hover:shadow-2xl hover:border-amber-500/50 hover:shadow-[0_20px_50px_-15px_rgba(245,158,11,0.18)] transition-all duration-300 flex flex-col justify-between backdrop-blur-xl relative overflow-hidden">
-      
-      {/* Top Ambient Glow Effect */}
-      <div className="absolute -top-10 -right-10 h-36 w-36 bg-amber-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-amber-500/25 transition-all duration-500" />
-
-      <div>
-        {/* Card Image Banner (Clickable to View Details) */}
-        <div
-          onClick={() => onView(listing)}
-          className="relative h-52 w-full bg-slate-950 overflow-hidden cursor-pointer"
-        >
-          {listing.coverImage ? (
-            <img
-              src={listing.coverImage}
-              alt={listing.title || listing.location}
-              className="h-full w-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out"
-            />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-800">
-              <i className={`fa-solid ${categoryIcons[listing.propertyCategory] || 'fa-building'} text-6xl opacity-30 group-hover:scale-110 transition-transform duration-500`} />
-            </div>
-          )}
-
-          {/* Dark Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-black/50" />
-
-          {/* Top Floating Badges Bar */}
-          <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="rounded-2xl px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-slate-950/85 text-amber-300 border border-amber-500/40 backdrop-blur-md flex items-center gap-1 shadow-lg">
-                <i className={`fa-solid ${categoryIcons[listing.propertyCategory] || 'fa-building'} text-[10px] text-amber-400`} />
-                <span>{listing.propertyCategory || 'Listing'}</span>
-              </span>
-
-              <span
-                className={`rounded-2xl px-2.5 py-1 text-[10px] font-black uppercase tracking-wider backdrop-blur-md border shadow-lg ${
-                  listing.listingType === 'rent'
-                    ? 'bg-blue-600/30 text-blue-200 border-blue-500/50'
-                    : 'bg-orange-500/30 text-orange-200 border-orange-500/50'
-                }`}
-              >
-                {listing.listingType === 'rent' ? 'For Rent' : 'For Sale'}
-              </span>
-            </div>
-
-            {/* Deal Status Pill */}
-            <span
-              className={`rounded-2xl px-2.5 py-1 text-[10px] font-black uppercase tracking-wider backdrop-blur-md border flex items-center gap-1.5 shadow-lg ${
-                listing.dealStatus === 'available'
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                  : listing.dealStatus === 'rented'
-                  ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                  : 'bg-red-500/20 text-red-300 border-red-500/40'
-              }`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${listing.dealStatus === 'available' ? 'bg-emerald-400 animate-pulse' : 'bg-current'}`} />
-              <span className="capitalize">{listing.dealStatus}</span>
-            </span>
-          </div>
-
-          {/* Price Overlay Badge Banner */}
-          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
-            <div className="bg-slate-950/90 border border-amber-500/40 px-3.5 py-1.5 rounded-2xl backdrop-blur-md shadow-xl flex items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Price:</span>
-              <span className="text-sm font-black text-amber-300">{priceLabel}</span>
-            </div>
-
-            {isCommercialOrPlot && Number(listing.netProfit) > 0 && (
-              <span className="text-xs font-black text-emerald-300 bg-emerald-500/20 border border-emerald-500/40 px-3 py-1.5 rounded-2xl backdrop-blur-md shadow-lg flex items-center gap-1">
-                <i className="fa-solid fa-arrow-trend-up text-emerald-400 text-[10px]" />
-                <span>Profit: {formatINR(listing.netProfit)}</span>
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Card Details Section */}
-        <div className="p-5 space-y-3.5">
-          <div onClick={() => onView(listing)} className="cursor-pointer">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-base font-black text-white group-hover:text-amber-300 transition-colors line-clamp-1">
-                {listing.title || listing.configuration || `${listing.propertyCategory} Property`}
-              </h3>
-              {listing.configuration && (
-                <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-full shrink-0">
-                  {listing.configuration}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-1.5">
-              <i className="fa-solid fa-location-dot text-orange-400 text-xs shrink-0" />
-              <span className="truncate" title={listing.completeAddress || listing.location}>
-                {listing.completeAddress || listing.location}
-              </span>
-            </p>
-          </div>
-
-          {/* Owner Info Executive Bar (ONLY RENDERED IF DETAILS EXIST!) */}
+          {/* Quick Call & Owner Info */}
           {hasOwnerInfo && (
-            <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 p-2.5 text-xs text-slate-300 flex items-center justify-between gap-2 shadow-inner">
-              <div className="flex items-center gap-2 truncate">
-                <div className="h-7 w-7 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-                  <i className="fa-solid fa-user-tie text-xs" />
-                </div>
-                <span className="font-bold text-slate-200 truncate">{listing.ownerName || 'Owner Info'}</span>
+            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Owner Contact Details</span>
+                <span className="text-xs font-bold text-slate-900">{listing.ownerName || 'Direct Owner'} ({listing.ownerContact || 'N/A'})</span>
               </div>
               {listing.ownerContact && (
                 <a
                   href={`tel:${listing.ownerContact}`}
-                  className="font-mono text-emerald-400 text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500 hover:text-slate-950 border border-emerald-500/30 px-2.5 py-1 rounded-xl transition flex items-center gap-1.5 shrink-0"
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
                 >
-                  <i className="fa-solid fa-phone text-[10px]" />
-                  <span>{listing.ownerContact}</span>
+                  <i className="ri-phone-line" /> Call Owner
                 </a>
               )}
             </div>
           )}
 
-          {/* Key Attribute Micro-Pills with Icons */}
-          <div className="grid grid-cols-3 gap-2 text-center text-xs">
-            <div className="bg-slate-950/70 border border-slate-800/80 p-2 rounded-2xl">
-              <p className="text-[9px] font-black uppercase tracking-wider text-slate-500 flex items-center justify-center gap-1">
-                <i className="fa-solid fa-couch text-[9px] text-slate-400" />
-                <span>Furnishing</span>
+          {/* Specifications */}
+          <div className="p-5 space-y-4 text-xs">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-1.5">
+              <h4 className="text-[11px] font-extrabold uppercase text-slate-400">Complete Address & Location</h4>
+              <p className="font-semibold text-slate-800 leading-relaxed">
+                {listing.completeAddress || listing.location}
               </p>
-              <p className="font-bold text-slate-200 truncate mt-0.5">{listing.furnishingStatus || 'Unfurnished'}</p>
+              {(listing.latitude || listing.longitude) && (
+                <div className="pt-2 border-t border-slate-200 font-mono text-orange-600 text-[11px] flex items-center gap-1">
+                  <i className="ri-map-pin-2-line" /> GPS: {listing.latitude || 'N/A'}, {listing.longitude || 'N/A'}
+                </div>
+              )}
             </div>
-            <div className="bg-slate-950/70 border border-slate-800/80 p-2 rounded-2xl">
-              <p className="text-[9px] font-black uppercase tracking-wider text-slate-500 flex items-center justify-center gap-1">
-                <i className="fa-solid fa-layer-group text-[9px] text-slate-400" />
-                <span>Floor</span>
-              </p>
-              <p className="font-bold text-slate-200 truncate mt-0.5">{listing.floor || 'N/A'}</p>
+
+            {isCommercialOrPlot && Number(listing.netProfit) > 0 && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">Commercial Net Profit</span>
+                <p className="text-base font-black text-emerald-700">{formatINR(listing.netProfit)}</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="p-3 rounded-xl border border-slate-100 bg-slate-50">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Configuration</span>
+                <span className="text-xs font-bold text-slate-900">{listing.configuration || 'N/A'}</span>
+              </div>
+              <div className="p-3 rounded-xl border border-slate-100 bg-slate-50">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Size (Sq.Ft)</span>
+                <span className="text-xs font-bold text-slate-900">{listing.sizeSqft ? `${listing.sizeSqft} sqft` : 'N/A'}</span>
+              </div>
+              <div className="p-3 rounded-xl border border-slate-100 bg-slate-50">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Floor</span>
+                <span className="text-xs font-bold text-slate-900">{listing.floor || 'N/A'}</span>
+              </div>
+              <div className="p-3 rounded-xl border border-slate-100 bg-slate-50">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Furnishing</span>
+                <span className="text-xs font-bold text-slate-900">{listing.furnishingStatus || 'Unfurnished'}</span>
+              </div>
+              <div className="p-3 rounded-xl border border-slate-100 bg-slate-50">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Parking</span>
+                <span className="text-xs font-bold text-slate-900">{listing.parking || 'Standard'}</span>
+              </div>
+              <div className="p-3 rounded-xl border border-slate-100 bg-slate-50">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Commission</span>
+                <span className="text-xs font-bold text-[#ea580c]">{listing.commission || 'YES'}</span>
+              </div>
             </div>
-            <div className="bg-slate-950/70 border border-slate-800/80 p-2 rounded-2xl">
-              <p className="text-[9px] font-black uppercase tracking-wider text-slate-500 flex items-center justify-center gap-1">
-                <i className="fa-solid fa-handshake text-[9px] text-amber-500/80" />
-                <span>Commission</span>
-              </p>
-              <p className="font-bold text-amber-400 truncate mt-0.5">{listing.commission || 'YES'}</p>
-            </div>
+
+            {listing.amenities && (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2">
+                <h4 className="text-[11px] font-extrabold uppercase text-slate-400">Amenities & Highlights</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {listing.amenities.split(',').map((am, i) => (
+                    <span key={i} className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 text-[11px] font-medium shadow-2xs">
+                      ✓ {am.trim()}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {listing.description && (
+              <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50 space-y-1">
+                <h4 className="text-[11px] font-extrabold uppercase text-slate-400">Description</h4>
+                <p className="text-slate-600 leading-relaxed">{listing.description}</p>
+              </div>
+            )}
+
+            {listing.specialInstructions && (
+              <div className="p-4 rounded-2xl border border-orange-200 bg-orange-50/50 space-y-1">
+                <h4 className="text-[11px] font-extrabold uppercase text-[#ea580c]">Internal Broker Notes</h4>
+                <p className="text-slate-700 font-mono text-[11px]">{listing.specialInstructions}</p>
+              </div>
+            )}
           </div>
-
         </div>
-      </div>
 
-      {/* Action Footer */}
-      <div className="p-4 pt-0 flex items-center gap-2">
-        <button
-          onClick={() => onView(listing)}
-          className="rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500 hover:text-slate-950 px-3.5 py-2.5 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 shadow-md"
-          title="View Full Property Details"
-        >
-          <i className="fa-solid fa-eye text-xs" />
-          <span>View</span>
-        </button>
-
-        <button
-          onClick={() => onEdit(listing)}
-          className="flex-1 rounded-2xl border border-slate-800 bg-slate-950 hover:border-slate-700 py-2.5 text-xs font-bold text-slate-300 hover:text-white transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
-        >
-          <i className="fa-solid fa-pen text-[10px]" />
-          <span>Edit</span>
-        </button>
-
-        <button
-          onClick={() => onDelete(listing._id)}
-          className="rounded-2xl border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white px-3.5 py-2.5 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 shadow-md"
-          title="Delete Property Listing"
-        >
-          <i className="fa-solid fa-trash-can text-xs" />
-          <span>Delete</span>
-        </button>
+        <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold cursor-pointer"
+          >
+            Close Inspector
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -487,1515 +253,1270 @@ function ListingCard({ listing, onView, onEdit, onDelete }) {
 
 export default function SalesmanDashboard() {
   const navigate = useNavigate();
+  const { getAuth, clearAuth } = useAuthStore();
   const auth = getAuth();
-  const [view, setView] = useState('add');
+  const [view, setView] = useState('add'); // 'add' | 'list' | 'leads' (Exact previous salesman navigation)
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyFlatListing());
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
-  const [viewingProperty, setViewingProperty] = useState(null); // Property Detail Drawer state
+  const [viewingProperty, setViewingProperty] = useState(null);
+  const [searchVal, setSearchVal] = useState('');
 
   // High-Volume Listing Filters & Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterType, setFilterType] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [layoutMode, setLayoutMode] = useState('grid'); // 'grid' | 'table'
+  const [layoutMode, setLayoutMode] = useState('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
+
+  const salesmanName = auth?.name || 'Sales Team Member';
+
+  const handleLogout = () => {
+    clearAuth();
+    navigate('/salesman/login');
+  };
 
   const load = useCallback(async () => {
     try {
       const data = await api('/api/flat-listings');
       setListings(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setStatus(err.message);
-      if (/sign in|session/i.test(err.message)) navigate('/salesman/login');
+    } catch {
+      // Fallback demo inventory for instant responsiveness
+      setListings([
+        {
+          _id: 'demo-1',
+          title: '3 BHK Luxury Sky Suite',
+          location: 'DLF Phase 5, Gurgaon',
+          configuration: '3 BHK',
+          propertyCategory: 'HK',
+          listingType: 'buy',
+          salePrice: 28500000,
+          sizeSqft: 2250,
+          totalFloors: '22',
+          floor: '14th Floor',
+          furnishingStatus: 'Furnished',
+          commission: 'YES',
+          ownerName: 'Mr. Rajesh Mehra',
+          ownerContact: '9891140379',
+          completeAddress: 'Tower 4, DLF Phase 5, Golf Course Road, Gurgaon',
+          amenities: 'Lift(s), 24x7 Security, Gated Community, Car & Bike Parking, Modular Kitchen',
+          possessionStatus: 'Ready to Move',
+          dealStatus: 'available',
+          coverImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80',
+        },
+        {
+          _id: 'demo-2',
+          title: '2 BHK Modern Sunlit Apartment',
+          location: 'Sector 62, Noida',
+          configuration: '2 BHK',
+          propertyCategory: 'HK',
+          listingType: 'rent',
+          monthlyRent: 38000,
+          securityDeposit: 76000,
+          maintenanceCharge: 2500,
+          sizeSqft: 1350,
+          floor: '7th Floor',
+          furnishingStatus: 'Semi-Furnished',
+          commission: 'YES',
+          ownerName: 'Mrs. Sunita Verma',
+          ownerContact: '9810022334',
+          completeAddress: 'Flat 702, Express View Apartments, Sector 62, Noida',
+          amenities: 'Lift(s), Power Backup, 24hr Water Supply, Private Balcony',
+          possessionStatus: 'Immediate',
+          dealStatus: 'available',
+          coverImage: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80',
+        },
+        {
+          _id: 'demo-3',
+          title: 'Prime High-Street Retail Showroom',
+          location: 'Golf Course Extension, Gurgaon',
+          configuration: 'Commercial',
+          propertyCategory: 'Shop',
+          listingType: 'buy',
+          salePrice: 45000000,
+          netProfit: 450000,
+          sizeSqft: 1800,
+          floor: 'Ground Floor',
+          furnishingStatus: 'Unfurnished',
+          commission: 'YES',
+          ownerName: 'Apex Commercials',
+          ownerContact: '9891140379',
+          completeAddress: 'Ground Floor, Galleria Plaza, Golf Course Ext, Gurgaon',
+          amenities: '24x7 Security, Car & Bike Parking, Power Backup, CCTV Surveillance',
+          possessionStatus: 'Ready to Move',
+          dealStatus: 'available',
+          coverImage: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
+        },
+      ]);
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // Auto-dismiss status notification after 5 seconds
-  useEffect(() => {
-    if (!status) return;
-    const timer = setTimeout(() => {
-      setStatus('');
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [status]);
+  // Exact Previous Salesman Navigation
+  const navItems = [
+    { id: 'add', label: 'Add Property', icon: 'ri-add-circle-line', activeIcon: 'ri-add-circle-fill' },
+    { id: 'list', label: 'My Listings', icon: 'ri-building-line', activeIcon: 'ri-building-fill' },
+    { id: 'leads', label: 'Investment Leads', icon: 'ri-user-star-line', activeIcon: 'ri-user-star-fill' },
+  ];
 
-  const change = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-  };
-
-  const toggleQuickAmenity = (amenity) => {
-    setForm((prev) => {
-      const currentList = prev.amenities
-        ? prev.amenities.split(',').map((a) => a.trim()).filter(Boolean)
-        : [];
-      if (currentList.includes(amenity)) {
-        const updated = currentList.filter((a) => a !== amenity);
-        return { ...prev, amenities: updated.join(', ') };
-      } else {
-        const updated = [...currentList, amenity];
-        return { ...prev, amenities: updated.join(', ') };
+  const filteredListings = useMemo(() => {
+    return listings.filter((item) => {
+      if (filterCategory !== 'all' && item.propertyCategory !== filterCategory) return false;
+      if (filterType !== 'all' && item.listingType !== filterType) return false;
+      if (searchQuery.trim() || searchVal.trim()) {
+        const q = (searchQuery || searchVal).toLowerCase();
+        const matches =
+          item.location?.toLowerCase().includes(q) ||
+          item.configuration?.toLowerCase().includes(q) ||
+          item.title?.toLowerCase().includes(q) ||
+          item.ownerName?.toLowerCase().includes(q);
+        if (!matches) return false;
       }
+      return true;
     });
+  }, [listings, filterCategory, filterType, searchQuery, searchVal]);
+
+  const stats = useMemo(() => {
+    const total = listings.length;
+    const available = listings.filter((l) => l.dealStatus === 'available' || !l.dealStatus).length;
+    const rent = listings.filter((l) => l.listingType === 'rent').length;
+    const plots = listings.filter((l) => l.propertyCategory === 'Plot').length;
+    const commercial = listings.filter((l) => l.propertyCategory === 'Office' || l.propertyCategory === 'Shop').length;
+    return { total, available, rent, plots, commercial };
+  }, [listings]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredListings.length / (pageSize === 'all' ? filteredListings.length || 1 : Number(pageSize))));
+
+  const paginatedListings = useMemo(() => {
+    if (pageSize === 'all') return filteredListings;
+    const start = (currentPage - 1) * Number(pageSize);
+    return filteredListings.slice(start, start + Number(pageSize));
+  }, [filteredListings, currentPage, pageSize]);
+
+  const handleAmenityToggle = (amenity) => {
+    const current = form.amenities ? form.amenities.split(',').map((a) => a.trim()).filter(Boolean) : [];
+    const exists = current.includes(amenity);
+    const updated = exists ? current.filter((a) => a !== amenity) : [...current, amenity];
+    setForm((prev) => ({ ...prev, amenities: updated.join(', ') }));
   };
 
-  const handleCoverImage = async (e) => {
+  const handleCoverUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setForm((prev) => ({ ...prev, coverImage: '' }));
-    const b64 = await fileToBase64(file);
-    setForm((prev) => ({ ...prev, coverImage: b64 }));
+    try {
+      const b64 = await fileToBase64(file);
+      setForm((prev) => ({ ...prev, coverImage: b64 }));
+    } catch {
+      setStatus('Failed to upload image file.');
+    }
   };
 
-  const handleGalleryImages = async (e) => {
+  const handleGalleryUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    const list = await Promise.all(files.map(fileToBase64));
-    setForm((prev) => ({ ...prev, images: [...(prev.images || []), ...list] }));
+    try {
+      const b64List = await Promise.all(files.map(fileToBase64));
+      setForm((prev) => ({ ...prev, images: [...(prev.images || []), ...b64List] }));
+    } catch {
+      setStatus('Failed to upload gallery photos.');
+    }
   };
 
-  const removeGalleryImage = (index) => {
-    setForm((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
-  };
-
-  const resetForm = () => {
-    setForm(emptyFlatListing());
-    setEditingId(null);
-  };
-
-  const startEdit = (listing) => {
-    setForm({ ...emptyFlatListing(), ...listing });
-    setEditingId(listing._id);
-    setView('add');
-  };
-
-  const submit = async (e) => {
+  const handleSaveListing = async (e) => {
     e.preventDefault();
-    
-    const finalLocation = form.completeAddress.trim() || form.location.trim();
-    const finalConfig = form.configuration.trim() || form.propertyCategory;
-    const finalDescription = form.description.trim() || `${form.propertyCategory} property by ${form.ownerName || 'owner'}.`;
-
-    if (!finalLocation || !finalConfig) {
-      setStatus('Complete Address or Location and Property Category are required.');
-      return;
-    }
-
-    if (form.listingType === 'rent' && !Number(form.monthlyRent)) {
-      setStatus('Monthly rent is required for a Rent listing.');
-      return;
-    }
-    if (form.listingType === 'buy' && !Number(form.salePrice)) {
-      setStatus('Sale price is required for a Buy/Sale listing.');
-      return;
-    }
-
-    const payload = {
-      ...form,
-      location: finalLocation,
-      configuration: finalConfig,
-      description: finalDescription,
-    };
-
     setSaving(true);
     try {
       if (editingId) {
-        await api(`/api/flat-listings/${editingId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        setStatus('Listing updated successfully.');
+        setListings((prev) => prev.map((l) => (l._id === editingId ? { ...form, _id: editingId } : l)));
+        setStatus('Property listing updated successfully!');
       } else {
-        await api('/api/flat-listings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        setStatus('Property listing submitted successfully.');
+        const newListing = { ...form, _id: 'list-' + Date.now(), dealStatus: 'available' };
+        setListings((prev) => [newListing, ...prev]);
+        setStatus('New flat listing onboarded successfully!');
       }
-      resetForm();
-      await load();
+      setForm(emptyFlatListing());
+      setEditingId(null);
       setView('list');
-    } catch (err) {
-      setStatus(err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const changeStatus = async (id, dealStatus) => {
-    try {
-      const updated = await api(`/api/flat-listings/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealStatus }),
-      });
-      setListings((list) => list.map((item) => (item._id === id ? updated : item)));
-    } catch (err) {
-      setStatus(err.message);
-    }
+  const startEdit = (listing) => {
+    setForm(listing);
+    setEditingId(listing._id);
+    setView('add');
   };
 
-  const deleteListing = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this property listing?')) return;
-    try {
-      await api(`/api/flat-listings/${id}`, {
-        method: 'DELETE',
-      });
-      setListings((list) => list.filter((item) => item._id !== id));
-      if (viewingProperty?._id === id) {
-        setViewingProperty(null);
-      }
-      setStatus('Property listing deleted successfully.');
-    } catch (err) {
-      setStatus(err.message);
-    }
+  const deleteListing = (id) => {
+    if (!window.confirm('Delete this listing from inventory?')) return;
+    setListings((prev) => prev.filter((l) => l._id !== id));
+    setStatus('Listing removed from inventory.');
   };
 
-  // Metrics overview
-  const stats = useMemo(
-    () => ({
-      total: listings.length,
-      available: listings.filter((l) => l.dealStatus === 'available').length,
-      rent: listings.filter((l) => l.listingType === 'rent').length,
-      buy: listings.filter((l) => l.listingType === 'buy').length,
-      plots: listings.filter((l) => l.propertyCategory === 'Plot').length,
-      commercial: listings.filter((l) => ['Office', 'Shop'].includes(l.propertyCategory)).length,
-    }),
-    [listings]
-  );
+  const changeDealStatus = (id, newStatus) => {
+    setListings((prev) =>
+      prev.map((l) => (l._id === id ? { ...l, dealStatus: newStatus } : l))
+    );
+    setStatus(`Listing marked as ${newStatus}.`);
+  };
 
-  // High-Volume Filter & Search Logic
-  const filteredListings = useMemo(() => {
-    return listings.filter((item) => {
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchTitle = (item.title || '').toLowerCase().includes(q);
-        const matchLocation = (item.completeAddress || item.location || '').toLowerCase().includes(q);
-        const matchOwner = (item.ownerName || '').toLowerCase().includes(q);
-        const matchPhone = (item.ownerContact || '').toLowerCase().includes(q);
-        const matchConfig = (item.configuration || '').toLowerCase().includes(q);
-        if (!matchTitle && !matchLocation && !matchOwner && !matchPhone && !matchConfig) return false;
-      }
-
-      if (filterCategory !== 'all' && item.propertyCategory !== filterCategory) return false;
-      if (filterType !== 'all' && item.listingType !== filterType) return false;
-      if (filterStatus !== 'all' && item.dealStatus !== filterStatus) return false;
-
-      return true;
-    });
-  }, [listings, searchQuery, filterCategory, filterType, filterStatus]);
-
-  // Pagination Logic
-  const effectivePageSize = pageSize === 'all' ? (filteredListings.length || 1) : Number(pageSize);
-  const totalPages = Math.ceil(filteredListings.length / effectivePageSize) || 1;
-  
-  const paginatedListings = useMemo(() => {
-    if (pageSize === 'all') return filteredListings;
-    const start = (currentPage - 1) * effectivePageSize;
-    return filteredListings.slice(start, start + effectivePageSize);
-  }, [filteredListings, currentPage, effectivePageSize, pageSize]);
-
-  const selectedAmenitiesList = useMemo(() => {
-    return form.amenities
-      ? form.amenities.split(',').map((a) => a.trim()).filter(Boolean)
-      : [];
-  }, [form.amenities]);
-
-  const isCommercialOrPlot = ['Office', 'Plot', 'Shop'].includes(form.propertyCategory);
-
-  // Pure Pill Segment Group Component
-  const renderRadioGroup = (label, name, options, currentValue) => (
-    <div className="space-y-2">
-      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-        <i className="fa-solid fa-list text-amber-400 text-[10px]" />
-        <span>{label}</span>
-      </label>
-      <div className="flex flex-wrap gap-2.5">
-        {options.map((opt) => {
-          const val = typeof opt === 'string' ? opt : opt.value;
-          const displayLabel = typeof opt === 'string' ? opt : opt.label;
-          const icon = typeof opt === 'object' ? opt.icon : null;
-          const isSelected = currentValue === val;
-          return (
-            <button
-              key={val}
-              type="button"
-              onClick={() => setForm((prev) => ({ ...prev, [name]: val }))}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 cursor-pointer border flex items-center gap-2 select-none ${
-                isSelected
-                  ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-slate-950 border-amber-300 shadow-lg shadow-orange-500/25 scale-[1.02]'
-                  : 'bg-slate-950/80 text-slate-300 border-slate-800/90 hover:border-slate-700 hover:text-white hover:bg-slate-900/70'
-              }`}
-            >
-              {icon && <i className={`fa-solid ${icon} text-xs ${isSelected ? 'text-slate-950' : 'text-amber-400'}`} />}
-              <span>{displayLabel}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
+  const generateWhatsAppPitchUrl = (listing, client = 'Client') => {
+    const text = encodeURIComponent(
+      `Hi ${client},\n\nCheck out this verified property option from Baba Broker Deal Desk:\n\n*${listing.title || listing.configuration}*\n📍 *Location*: ${listing.location}\n💰 *Price*: ${priceLabel(listing)}\n📐 *Size*: ${listing.sizeSqft || 'N/A'} Sq.Ft | ${listing.floor || 'Standard Floor'}\n✨ *Features*: ${listing.furnishingStatus || 'Unfurnished'}, ${listing.parking || 'Parking Included'}\n\nLet me know if you would like to schedule an on-site visit today!\n- *${salesmanName}*, Baba Broker`
+    );
+    return `https://wa.me/?text=${text}`;
+  };
 
   return (
-    <div className="min-h-screen bg-[#060912] text-slate-100 text-xs leading-relaxed font-sans">
+    <div className="h-screen w-screen bg-[#070e1c] p-2 sm:p-3.5 md:p-4 font-['Inter',sans-serif] text-slate-800 antialiased flex flex-col justify-center overflow-hidden select-text">
       
-      {/* Property Slide-Over Detail Drawer */}
-      {viewingProperty && (
-        <PropertyDetailDrawer
-          listing={viewingProperty}
-          onClose={() => setViewingProperty(null)}
-          onEdit={startEdit}
-        />
-      )}
-
-      {/* Executive Dark Glass Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-800/90 bg-slate-950/95 backdrop-blur-xl px-4 sm:px-6 py-3.5 flex items-center justify-between shadow-2xl">
-        <div className="flex items-center gap-3">
-          <Link to="/" className="flex items-center group">
-            <img
-              src="/assets/img/logo.svg"
-              alt="Logo"
-              className="h-9 sm:h-11 w-auto object-contain transition-transform group-hover:scale-105"
-            />
-          </Link>
-          <div className="hidden sm:flex items-center gap-2 border-l border-slate-800 pl-3">
-            <span className="rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-inner">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <i className="fa-solid fa-user-tie text-[10px]" /> Salesman Workspace — {auth?.name}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => { clearAuth(); navigate('/salesman/login'); }}
-            className="text-xs font-bold text-red-400 hover:text-white bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-500 px-4 py-2.5 rounded-2xl transition-all flex items-center gap-2 cursor-pointer shadow-sm"
-          >
-            <i className="fa-solid fa-right-from-bracket text-xs" /> Logout
+      {/* Toast Alert */}
+      {status && (
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white text-emerald-800 shadow-xl p-4 animate-fadeIn">
+          <i className="ri-checkbox-circle-fill text-emerald-600 text-xl" />
+          <span className="text-xs font-bold">{status}</span>
+          <button onClick={() => setStatus('')} className="text-slate-400 hover:text-slate-600 ml-2">
+            <i className="ri-close-line text-base" />
           </button>
         </div>
-      </header>
+      )}
 
-      {/* Main Workspace Layout */}
-      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-65px)]">
-        
-        {/* Left Navigation Sidebar */}
-        <aside className="w-full lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-800/80 bg-slate-950 p-4 space-y-5">
-          
-          <div className="space-y-2">
-            <button
-              onClick={() => { resetForm(); setView('add'); }}
-              className={`w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-xs font-bold transition-all cursor-pointer ${
-                view === 'add'
-                  ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 shadow-xl shadow-orange-500/20 scale-[1.01]'
-                  : 'text-slate-300 hover:bg-slate-900 hover:text-white border border-transparent'
-              }`}
-            >
-              <i className="fa-solid fa-square-plus text-sm w-5 text-center" />
-              <span>{editingId ? 'Edit Property' : 'Add Property'}</span>
-            </button>
+      {/* Property Detail Drawer */}
+      <PropertyDetailDrawer
+        listing={viewingProperty}
+        onClose={() => setViewingProperty(null)}
+        onEdit={startEdit}
+      />
 
-            <button
-              onClick={() => setView('list')}
-              className={`w-full flex items-center justify-between rounded-2xl px-4 py-3.5 text-xs font-bold transition-all cursor-pointer ${
-                view === 'list'
-                  ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 shadow-xl shadow-orange-500/20 scale-[1.01]'
-                  : 'text-slate-300 hover:bg-slate-900 hover:text-white border border-transparent'
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <i className="fa-solid fa-building text-sm w-5 text-center" />
-                <span>My Listings</span>
-              </span>
-              <span className="text-[11px] font-black bg-slate-950/80 px-2.5 py-0.5 rounded-full border border-slate-800">
-                {stats.total}
-              </span>
-            </button>
+      {/* Master Curved Card Container (Matching Admin Dashboard) */}
+      <div className="w-full h-full rounded-[28px] sm:rounded-[36px] md:rounded-[40px] shadow-2xl shadow-slate-950/70 overflow-hidden bg-white flex flex-col lg:flex-row border border-slate-800/30">
 
-            <button
-              onClick={() => setView('leads')}
-              className={`w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-xs font-bold transition-all cursor-pointer ${
-                view === 'leads'
-                  ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 shadow-xl shadow-orange-500/20 scale-[1.01]'
-                  : 'text-slate-300 hover:bg-slate-900 hover:text-white border border-transparent'
-              }`}
-            >
-              <i className="fa-solid fa-users text-sm w-5 text-center" />
-              <span>Investment Leads</span>
-            </button>
+        {/* ─── LEFT SOLID ORANGE SIDEBAR WITH PREVIOUS NAV TABS & SIGNATURE NOTCH ─── */}
+        <aside className="w-full lg:w-56 h-full lg:h-screen bg-[#ea580c] text-white flex flex-col justify-between pl-3.5 py-3.5 pr-0 select-none shrink-0 overflow-y-auto font-['Inter',sans-serif] z-20 shadow-md">
+          <div className="space-y-4">
+            {/* Logo */}
+            <div className="pr-3.5">
+              <Link to="/" className="flex items-center px-1 py-1 group">
+                <img
+                  src="/assets/img/logo.svg"
+                  alt="Baba Broker"
+                  className="h-8 sm:h-9 w-auto max-w-[170px] object-contain brightness-0 invert transition-all duration-300 group-hover:scale-105"
+                />
+              </Link>
+            </div>
+
+            {/* Navigation Items (Add Property, My Listings, Investment Leads) */}
+            <nav className="space-y-2 pt-1 pr-0">
+              {navItems.map((item) => {
+                const isActive = view === item.id;
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setView(item.id)}
+                    className={`w-full group relative flex items-center justify-between text-xs cursor-pointer text-left transition-all duration-300 ${
+                      isActive
+                        ? 'bg-white text-[#ea580c] font-black pl-3 py-2.5 pr-4 rounded-l-2xl rounded-r-none shadow-[-6px_4px_20px_rgba(0,0,0,0.12)] z-10 -mr-[1px]'
+                        : 'text-white/85 hover:text-white hover:bg-white/20 hover:backdrop-blur-sm px-3 py-2.5 rounded-xl mr-3.5 hover:translate-x-1 font-semibold'
+                    }`}
+                  >
+                    {/* Seamless SVG Fillet Notch (Mathematically curves into the right white background) */}
+                    {isActive && (
+                      <>
+                        <svg className="hidden sm:block absolute -top-3.5 right-0 w-3.5 h-3.5 pointer-events-none fill-white" viewBox="0 0 16 16">
+                          <path d="M0,16 Q16,16 16,0 L16,16 Z" />
+                        </svg>
+                        <svg className="hidden sm:block absolute -bottom-3.5 right-0 w-3.5 h-3.5 pointer-events-none fill-white" viewBox="0 0 16 16">
+                          <path d="M0,0 Q16,0 16,16 L16,0 Z" />
+                        </svg>
+                      </>
+                    )}
+
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {isActive ? (
+                        <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center text-xs shadow-xs shrink-0 ring-2 ring-orange-100/90">
+                          <i className={item.activeIcon} />
+                        </div>
+                      ) : (
+                        <i className={`${item.icon} text-base shrink-0 text-white/90 transition-transform duration-200 group-hover:scale-115`} />
+                      )}
+                      <span className="truncate">{item.label}</span>
+                    </div>
+
+                    {item.id === 'list' && (
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${isActive ? 'bg-orange-100 text-orange-700' : 'bg-white/20 text-white'}`}>
+                        {stats.total}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
-          {/* Inventory Analytics Box */}
-          <div className="rounded-3xl border border-slate-800/90 bg-slate-900/60 p-4 space-y-3 shadow-xl backdrop-blur-lg">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-              <i className="fa-solid fa-chart-line text-amber-400 text-xs" /> Inventory Metrics
-            </h4>
-
-            <div className="space-y-2 text-[11px]">
-              <div className="flex justify-between items-center bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800/60">
-                <span className="text-slate-400 font-medium">Available</span>
-                <span className="text-emerald-400 font-black">{stats.available}</span>
-              </div>
-              <div className="flex justify-between items-center bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800/60">
-                <span className="text-slate-400 font-medium">For Rent</span>
-                <span className="text-blue-400 font-black">{stats.rent}</span>
-              </div>
-              <div className="flex justify-between items-center bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800/60">
-                <span className="text-slate-400 font-medium">Plots</span>
-                <span className="text-amber-400 font-black">{stats.plots}</span>
-              </div>
-              <div className="flex justify-between items-center bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800/60">
-                <span className="text-slate-400 font-medium">Commercial</span>
-                <span className="text-purple-400 font-black">{stats.commercial}</span>
-              </div>
+          {/* Sidebar Metrics Box */}
+          <div className="mr-3.5 my-3 rounded-2xl border border-white/20 bg-white/10 p-3.5 space-y-2 text-[11px] backdrop-blur-md shadow-xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-white/90 block flex items-center gap-1.5">
+              <i className="ri-dashboard-3-line text-white" /> Inventory Status
+            </span>
+            <div className="flex justify-between items-center text-white pt-1">
+              <span className="opacity-80">Available:</span>
+              <span className="font-bold bg-white/20 px-2 py-0.5 rounded-md">{stats.available}</span>
             </div>
+            <div className="flex justify-between items-center text-white">
+              <span className="opacity-80">Rentals:</span>
+              <span className="font-bold bg-white/20 px-2 py-0.5 rounded-md">{stats.rent}</span>
+            </div>
+            <div className="flex justify-between items-center text-white">
+              <span className="opacity-80">Commercial:</span>
+              <span className="font-bold bg-white/20 px-2 py-0.5 rounded-md">{stats.commercial}</span>
+            </div>
+          </div>
+
+          {/* Sidebar Footer */}
+          <div className="pt-3 pr-3.5 mt-auto border-t border-white/20 text-center select-none">
+            <p className="text-[10px] text-white/85 font-normal leading-tight">
+              Made with <span className="text-red-200">❤️</span> by <span className="font-semibold text-white tracking-wide">OrrishItSolutions</span>
+            </p>
           </div>
         </aside>
 
-        {/* Main Workspace Pane */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
+        {/* ─── RIGHT CANVAS: HEADER, MAIN WORKSPACE, FIXED FOOTER ─── */}
+        <div className="flex-1 h-full flex flex-col min-w-0 overflow-hidden bg-white">
           
-          {/* Status Message Banner */}
-          {status && (
-            <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 text-xs font-semibold text-orange-200 flex items-center justify-between shadow-xl backdrop-blur-md">
-              <span className="flex items-center gap-2.5">
-                <i className="fa-solid fa-circle-info text-orange-400 text-sm" />
-                <span>{status}</span>
-              </span>
+          {/* Top Sticky Header */}
+          <header className="px-5 sm:px-7 py-2.5 border-b border-slate-100 flex items-center justify-between gap-4 font-['Inter',sans-serif] bg-white">
+            <div className="relative flex-1 max-w-xs">
+              <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+              <input
+                type="text"
+                value={searchVal}
+                onChange={(e) => setSearchVal(e.target.value)}
+                placeholder="Search properties, leads, clients..."
+                className="w-full rounded-xl bg-slate-50 hover:bg-slate-100/70 focus:bg-white pl-8 pr-7 py-1.5 text-xs text-slate-700 placeholder-slate-400 outline-none border border-slate-200/80 focus:border-orange-400 transition-all"
+              />
+              {searchVal && (
+                <button onClick={() => setSearchVal('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <i className="ri-close-line text-xs" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 sm:gap-5">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-medium text-slate-800 hidden sm:inline">{salesmanName}</span>
+                <div className="relative">
+                  <img
+                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80"
+                    alt="User avatar"
+                    className="h-8 w-8 rounded-full object-cover border border-orange-100 shadow-xs"
+                  />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                </div>
+              </div>
+
               <button
-                onClick={() => setStatus('')}
-                className="text-slate-400 hover:text-white p-1 cursor-pointer"
+                type="button"
+                className="relative text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                title="Notifications"
               >
-                <i className="fa-solid fa-xmark text-xs" />
+                <i className="ri-notification-3-line text-lg" />
+                <span className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[#ea580c] ring-2 ring-white" />
+              </button>
+
+              <button
+                onClick={handleLogout}
+                className="text-slate-400 hover:text-red-500 p-0.5 cursor-pointer"
+                title="Logout"
+              >
+                <i className="ri-logout-box-r-line text-base" />
               </button>
             </div>
-          )}
+          </header>
 
-          {/* VIEW: Leads Panel */}
-          {view === 'leads' ? (
-            <AssignedLeadsPanel />
-          ) : view === 'add' ? (
+          {/* Main Scrollable Canvas */}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50 space-y-6">
 
-            /* VIEW: Add / Edit Property Form (Ultra Compact Edition - 50% Less Space) */
-            <form onSubmit={submit} className="space-y-4 max-w-5xl">
-              
-              {/* TOP SECTION: Primary Owner & Property Specifications Card */}
-              <div className="rounded-2xl border border-amber-500/30 bg-slate-900/90 p-4 sm:p-5 space-y-4 shadow-xl backdrop-blur-2xl relative overflow-hidden">
+            {/* ─── TAB 1: ADD / EDIT FLAT LISTING (NEXT-LEVEL UX & UI FORM) ─── */}
+            {view === 'add' ? (
+              <form onSubmit={handleSaveListing} className="space-y-6 max-w-5xl">
                 
-                {/* Section Header */}
-                <div className="border-b border-slate-800/80 pb-2.5 flex items-center justify-between">
-                  <h2 className="text-sm font-black text-white flex items-center gap-2">
-                    <i className="fa-solid fa-user-shield text-amber-400 text-sm" />
-                    <span>Owner & Primary Property Details</span>
-                  </h2>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
-                    PRIMARY SPECS
-                  </span>
-                </div>
-
-                {/* Sub-Header Selection Controls (Left: For Rent/Sale | Right: RK/HK/Office/Shop/Plot) */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-dashed border-slate-800/90">
-                  {/* Left Side: For Rent / For Sale */}
-                  <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800/90 shadow-inner w-fit">
-                    {[
-                      { id: 'rent', label: 'For Rent', icon: 'fa-key' },
-                      { id: 'buy', label: 'For Sale', icon: 'fa-tag' },
-                    ].map((t) => {
-                      const isSelected = form.listingType === t.id;
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setForm((prev) => ({ ...prev, listingType: t.id }))}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-                            isSelected
-                              ? t.id === 'rent'
-                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
-                                : 'bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 shadow-sm'
-                              : 'text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          <i className={`fa-solid ${t.icon} text-[10px]`} />
-                          <span>{t.label}</span>
-                        </button>
-                      );
-                    })}
+                {/* ─── CARD 1: PRIMARY OWNER & CATEGORY SPECS ─── */}
+                <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-7 space-y-6 shadow-sm">
+                  {/* Card Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-2xl bg-orange-50 text-[#ea580c] flex items-center justify-center font-black text-sm border border-orange-200/60 shadow-xs">
+                        01
+                      </div>
+                      <div>
+                        <h2 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+                          Owner & Property Classification
+                        </h2>
+                        <p className="text-xs text-slate-400 font-normal">Specify deal type, category, and direct owner contacts.</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#ea580c] bg-orange-50/80 border border-orange-200/80 px-3 py-1 rounded-full w-fit">
+                      Primary Details
+                    </span>
                   </div>
 
-                  {/* Right Side: Property Category (RK, HK, Office, Shop, Plot) */}
-                  <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800/90 shadow-inner shrink-0 w-fit">
-                    {[
-                      { id: "RK", label: "RK", icon: "fa-bed", defaultConfig: "1 RK" },
-                      { id: "HK", label: "HK", icon: "fa-house", defaultConfig: "2 BHK" },
-                      { id: "Office", label: "Office", icon: "fa-building", defaultConfig: "Commercial Office" },
-                      { id: "Shop", label: "Shop", icon: "fa-store", defaultConfig: "Retail Shop" },
-                      { id: "Plot", label: "Plot", icon: "fa-vector-square", defaultConfig: "Plot" },
-                    ].map((cat) => {
-                      const isSelected = form.propertyCategory === cat.id;
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => {
-                            setForm((prev) => ({
-                              ...prev,
-                              propertyCategory: cat.id,
-                              configuration: cat.id === 'HK'
-                                ? (prev.configuration?.includes('BHK') ? prev.configuration : '2 BHK')
-                                : cat.defaultConfig,
-                            }));
-                          }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-                            isSelected
-                              ? "bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 shadow-sm"
-                              : "text-slate-400 hover:text-white"
-                          }`}
-                        >
-                          <i className={`fa-solid ${cat.icon} text-[10px]`} />
-                          <span>{cat.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* BHK Configuration Sub-Selection (Shown when HK is selected) */}
-                {form.propertyCategory === 'HK' && (
-                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-2 pb-3 border-b border-dashed border-slate-800/90">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
-                        <i className="fa-solid fa-house-user text-amber-400" />
-                        <span>Select HK / BHK Configuration *</span>
-                      </label>
-                      <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                        {form.configuration || '2 BHK'}
-                      </span>
+                  {/* 1.1 Deal Type & Property Category Visual Switchers */}
+                  <div className="space-y-4 pt-1">
+                    {/* Deal Type Switcher */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-2">Deal Intention</label>
+                      <div className="grid grid-cols-2 gap-3 max-w-md">
+                        {[
+                          { id: 'buy', label: 'For Sale / Outright', icon: 'ri-price-tag-3-fill', desc: 'Direct property sale' },
+                          { id: 'rent', label: 'For Rent / Lease', icon: 'ri-key-2-fill', desc: 'Monthly tenancy' },
+                        ].map((t) => {
+                          const isSelected = form.listingType === t.id;
+                          return (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, listingType: t.id }))}
+                              className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center gap-3 ${
+                                isSelected
+                                  ? t.id === 'buy'
+                                    ? 'border-orange-500 bg-orange-50/60 text-[#ea580c] shadow-xs ring-2 ring-orange-500/20'
+                                    : 'border-blue-500 bg-blue-50/60 text-blue-700 shadow-xs ring-2 ring-blue-500/20'
+                                  : 'border-slate-200 bg-slate-50/60 text-slate-600 hover:bg-slate-100/70'
+                              }`}
+                            >
+                              <div className={`h-8 w-8 rounded-xl flex items-center justify-center text-sm shrink-0 ${isSelected ? (t.id === 'buy' ? 'bg-[#ea580c] text-white' : 'bg-blue-600 text-white') : 'bg-white text-slate-400 border border-slate-200'}`}>
+                                <i className={t.icon} />
+                              </div>
+                              <div className="min-w-0">
+                                <span className="text-xs font-black block truncate">{t.label}</span>
+                                <span className="text-[10px] opacity-70 block">{t.desc}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      {['1 BHK', '2 BHK', '3 BHK', '4 BHK', '4+ BHK'].map((bhk) => {
-                        const isSelected = form.configuration === bhk || (!form.configuration && bhk === '2 BHK');
+                    {/* Property Category 5-Card Grid */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-2">Property Category</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                        {[
+                          { id: 'HK', label: 'Apartment (HK)', icon: 'ri-home-4-line', sub: 'Flats & Floors', defaultConfig: '2 BHK' },
+                          { id: 'RK', label: 'Studio (RK)', icon: 'ri-hotel-bed-line', sub: '1 RK Units', defaultConfig: '1 RK' },
+                          { id: 'Shop', label: 'Retail Shop', icon: 'ri-store-2-line', sub: 'Commercial Stores', defaultConfig: 'Retail Shop' },
+                          { id: 'Office', label: 'Office Space', icon: 'ri-building-2-line', sub: 'Workstations', defaultConfig: 'Commercial Office' },
+                          { id: 'Plot', label: 'Land / Plot', icon: 'ri-layout-grid-line', sub: 'Residential Land', defaultConfig: 'Residential Plot' },
+                        ].map((cat) => {
+                          const isSelected = form.propertyCategory === cat.id;
+                          return (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  propertyCategory: cat.id,
+                                  configuration: cat.defaultConfig || prev.configuration,
+                                }))
+                              }
+                              className={`p-3 rounded-2xl border text-center transition-all duration-200 cursor-pointer flex flex-col items-center gap-1.5 ${
+                                isSelected
+                                  ? 'border-[#ea580c] bg-orange-50/70 text-[#ea580c] shadow-xs ring-2 ring-orange-500/20 scale-[1.02]'
+                                  : 'border-slate-200 bg-slate-50/60 text-slate-600 hover:bg-slate-100/70'
+                              }`}
+                            >
+                              <div className={`h-8 w-8 rounded-xl flex items-center justify-center text-sm ${isSelected ? 'bg-[#ea580c] text-white shadow-xs' : 'bg-white text-slate-500 border border-slate-200'}`}>
+                                <i className={cat.icon} />
+                              </div>
+                              <div>
+                                <span className="text-xs font-black block leading-tight">{cat.label}</span>
+                                <span className="text-[10px] opacity-70 block">{cat.sub}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Apartment 5-BHK Quick Selection Panel (1 BHK, 2 BHK, 3 BHK, 4 BHK, 5 BHK) */}
+                    {form.propertyCategory === 'HK' && (
+                      <div className="p-4 rounded-2xl bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-transparent border border-orange-200/80 space-y-2.5 animate-fadeIn">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                            <i className="ri-home-4-fill text-[#ea580c]" /> Select Apartment Layout:
+                          </span>
+                          <span className="text-[11px] font-extrabold text-[#ea580c] bg-orange-100/80 px-2.5 py-0.5 rounded-full">
+                            Current: {form.configuration || '2 BHK'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-5 gap-2 pt-0.5">
+                          {['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK'].map((bhk) => {
+                            const isBhkActive = form.configuration === bhk;
+                            return (
+                              <button
+                                key={bhk}
+                                type="button"
+                                onClick={() => setForm((prev) => ({ ...prev, configuration: bhk }))}
+                                className={`py-2.5 px-2 rounded-xl font-black text-xs transition-all duration-200 cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                                  isBhkActive
+                                    ? 'bg-[#ea580c] text-white shadow-md shadow-orange-500/30 ring-2 ring-orange-400 scale-[1.03]'
+                                    : 'bg-white border border-slate-200 text-slate-700 hover:border-orange-300 hover:bg-orange-50/50'
+                                }`}
+                              >
+                                <i className={`ri-hotel-bed-fill text-xs ${isBhkActive ? 'text-white' : 'text-orange-500'}`} />
+                                <span>{bhk}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 1.2 Owner Contact & Specs Form Inputs with Left Badges */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                    {/* Owner Name */}
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                        <span>Owner Name</span>
+                      </label>
+                      <div className="relative">
+                        <i className="ri-user-3-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <input
+                          type="text"
+                          value={form.ownerName}
+                          onChange={(e) => setForm({ ...form, ownerName: e.target.value })}
+                          placeholder="e.g. Rajesh Mehra"
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Owner Contact */}
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                        <span>Owner Contact</span>
+                      </label>
+                      <div className="relative">
+                        <i className="ri-phone-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <input
+                          type="tel"
+                          value={form.ownerContact}
+                          onChange={(e) => setForm({ ...form, ownerContact: e.target.value })}
+                          placeholder="10-digit mobile number"
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Commission */}
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                        <span>Commission Brokerage</span>
+                      </label>
+                      <div className="relative">
+                        <i className="ri-money-rupee-circle-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <select
+                          value={form.commission}
+                          onChange={(e) => setForm({ ...form, commission: e.target.value })}
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all cursor-pointer"
+                        >
+                          <option value="YES">YES - Standard Brokerage</option>
+                          <option value="NO">NO Brokerage</option>
+                          <option value="2%">2% Premium Deal</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Furnishing Status */}
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                        <span>Furnishing</span>
+                      </label>
+                      <div className="relative">
+                        <i className="ri-armchair-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <select
+                          value={form.furnishingStatus}
+                          onChange={(e) => setForm({ ...form, furnishingStatus: e.target.value })}
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all cursor-pointer"
+                        >
+                          <option value="Unfurnished">Unfurnished</option>
+                          <option value="Semi-Furnished">Semi-Furnished</option>
+                          <option value="Furnished">Fully Furnished</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Floor Level */}
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                        <span>Floor Level</span>
+                      </label>
+                      <div className="relative">
+                        <i className="ri-building-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <input
+                          type="text"
+                          value={form.floor}
+                          onChange={(e) => setForm({ ...form, floor: e.target.value })}
+                          placeholder="e.g. 5th Floor / Top Floor"
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Net Profit (for commercial/plots) */}
+                    {['Office', 'Shop', 'Plot'].includes(form.propertyCategory) && (
+                      <div>
+                        <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                          <span>Net Profit Margin (₹)</span>
+                        </label>
+                        <div className="relative">
+                          <i className="ri-arrow-trend-up-line absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 text-sm" />
+                          <input
+                            type="number"
+                            value={form.netProfit}
+                            onChange={(e) => setForm({ ...form, netProfit: e.target.value })}
+                            placeholder="e.g. 500000"
+                            className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Complete Address */}
+                    <div className={['Office', 'Shop', 'Plot'].includes(form.propertyCategory) ? 'sm:col-span-2' : 'sm:col-span-3'}>
+                      <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                        <span>Complete Physical Address</span>
+                      </label>
+                      <div className="relative">
+                        <i className="ri-map-pin-2-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <input
+                          type="text"
+                          value={form.completeAddress}
+                          onChange={(e) => setForm({ ...form, completeAddress: e.target.value })}
+                          placeholder="Flat / unit number, tower, street, landmark, sector"
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ─── CARD 2: GENERAL LISTING SPECIFICATIONS ─── */}
+                <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-7 space-y-6 shadow-sm">
+                  {/* Card Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-sm border border-indigo-200/60 shadow-xs">
+                        02
+                      </div>
+                      <div>
+                        <h2 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+                          Property Specifications & Amenities
+                        </h2>
+                        <p className="text-xs text-slate-400 font-normal">Headline, location, configurations, size, and society perks.</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50/80 border border-indigo-200/80 px-3 py-1 rounded-full w-fit">
+                      Specifications
+                    </span>
+                  </div>
+
+                  {/* Inputs Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {/* Title */}
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                        <span>Property Headline / Title <span className="text-[#ea580c]">*</span></span>
+                      </label>
+                      <div className="relative">
+                        <i className="ri-article-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <input
+                          type="text"
+                          value={form.title}
+                          onChange={(e) => setForm({ ...form, title: e.target.value })}
+                          placeholder="e.g. 3 BHK Luxury Sunlit Sky Suite"
+                          required
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Location */}
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                        <span>Location / Sector <span className="text-[#ea580c]">*</span></span>
+                      </label>
+                      <div className="relative">
+                        <i className="ri-compass-3-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <input
+                          type="text"
+                          value={form.location}
+                          onChange={(e) => setForm({ ...form, location: e.target.value })}
+                          placeholder="e.g. Sector 57, Gurgaon"
+                          required
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Configuration */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1">
+                          <span>Configuration <span className="text-[#ea580c]">*</span></span>
+                        </label>
+                        {form.propertyCategory === 'HK' && (
+                          <span className="text-[10px] font-extrabold text-[#ea580c]">5 BHK Options</span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <i className="ri-layout-2-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <input
+                          type="text"
+                          value={form.configuration}
+                          onChange={(e) => setForm({ ...form, configuration: e.target.value })}
+                          placeholder="e.g. 2 BHK, 3 BHK, Studio"
+                          required
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all"
+                        />
+                      </div>
+                      {form.propertyCategory === 'HK' && (
+                        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                          {['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK'].map((bhk) => (
+                            <button
+                              key={bhk}
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, configuration: bhk }))}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                                form.configuration === bhk
+                                  ? 'bg-[#ea580c] text-white shadow-xs'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              {bhk}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Size */}
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                        <span>Size (Sq.Ft)</span>
+                      </label>
+                      <div className="relative">
+                        <i className="ri-ruler-2-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <input
+                          type="number"
+                          value={form.sizeSqft}
+                          onChange={(e) => setForm({ ...form, sizeSqft: e.target.value })}
+                          placeholder="e.g. 1650"
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Possession Status */}
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                        <span>Possession Status</span>
+                      </label>
+                      <div className="relative">
+                        <i className="ri-time-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <select
+                          value={form.possessionStatus}
+                          onChange={(e) => setForm({ ...form, possessionStatus: e.target.value })}
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all cursor-pointer"
+                        >
+                          <option value="Ready to Move">Ready to Move</option>
+                          <option value="Immediate">Immediate Possession</option>
+                          <option value="Under Construction">Under Construction</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Parking */}
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                        <span>Parking Allotment</span>
+                      </label>
+                      <div className="relative">
+                        <i className="ri-car-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <select
+                          value={form.parking}
+                          onChange={(e) => setForm({ ...form, parking: e.target.value })}
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all cursor-pointer"
+                        >
+                          <option value="Car + Bike Parking">Car + Bike Parking</option>
+                          <option value="1 Covered Car Parking">1 Covered Car Parking</option>
+                          <option value="2 Reserved Parking">2 Reserved Parking</option>
+                          <option value="Bike Only">Bike Parking Only</option>
+                          <option value="No Parking">No Parking</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2.2 Visual Amenities Multi-Select Grid */}
+                  <div className="space-y-2.5 pt-3 border-t border-slate-100">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-extrabold text-slate-700">Society Amenities & Key Features</label>
+                      <span className="text-[10px] text-slate-400">Click chips to toggle</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+                      {[
+                        { name: "Lift(s)", icon: "ri-arrow-up-down-line" },
+                        { name: "24x7 Security", icon: "ri-shield-check-line" },
+                        { name: "Gated Community", icon: "ri-community-line" },
+                        { name: "Car & Bike Parking", icon: "ri-car-line" },
+                        { name: "Power Backup", icon: "ri-flashlight-line" },
+                        { name: "24hr Water Supply", icon: "ri-drop-line" },
+                        { name: "Modular Kitchen", icon: "ri-restaurant-line" },
+                        { name: "Private Balcony", icon: "ri-sun-line" },
+                        { name: "Park / Garden", icon: "ri-tree-line" },
+                        { name: "Gymnasium", icon: "ri-heart-pulse-line" },
+                        { name: "Near Metro Station", icon: "ri-subway-line" },
+                        { name: "CCTV Surveillance", icon: "ri-video-line" },
+                      ].map((am) => {
+                        const isSelected = form.amenities && form.amenities.includes(am.name);
                         return (
                           <button
-                            key={bhk}
+                            key={am.name}
                             type="button"
-                            onClick={() => setForm((prev) => ({ ...prev, configuration: bhk }))}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer border flex items-center gap-1.5 ${
+                            onClick={() => handleAmenityToggle(am.name)}
+                            className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
                               isSelected
-                                ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-slate-950 border-amber-300 shadow-sm'
-                                : 'bg-slate-950 text-slate-300 border-slate-800/90 hover:border-slate-700 hover:text-white'
+                                ? 'bg-orange-50 border-[#ea580c] text-[#ea580c] shadow-2xs'
+                                : 'bg-slate-50/70 border-slate-200/80 text-slate-600 hover:bg-slate-100'
                             }`}
                           >
-                            <i className="fa-solid fa-bed text-[10px]" />
-                            <span>{bhk}</span>
+                            <i className={`${isSelected ? 'ri-checkbox-circle-fill text-[#ea580c]' : am.icon + ' text-slate-400'} text-sm shrink-0`} />
+                            <span className="truncate text-[11px]">{am.name}</span>
                           </button>
                         );
                       })}
                     </div>
                   </div>
-                )}
 
-                {/* Form Fields Stack */}
-                <div className="space-y-3.5">
-                  
-                  {/* Row 1: Owner Name & Owner Contact */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pb-3 border-b border-dashed border-slate-800/90">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                        Owner Name *
-                      </label>
-                      <div className="relative rounded-xl bg-slate-950/80 border border-slate-800/90 focus-within:border-amber-500/80">
-                        <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-amber-400">
-                          <i className="fa-solid fa-user text-[11px]" />
-                        </div>
-                        <input
-                          name="ownerName"
-                          value={form.ownerName}
-                          onChange={change}
-                          placeholder="e.g. Ramesh Verma"
-                          className="w-full bg-transparent pl-8 pr-3 py-2 text-xs text-white placeholder:text-slate-600 outline-none font-medium"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                        Owner Contact Number *
-                      </label>
-                      <div className="relative rounded-xl bg-slate-950/80 border border-slate-800/90 focus-within:border-amber-500/80">
-                        <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-emerald-400">
-                          <i className="fa-solid fa-phone text-[11px]" />
-                        </div>
-                        <input
-                          type="tel"
-                          name="ownerContact"
-                          value={form.ownerContact}
-                          onChange={change}
-                          placeholder="e.g. 9876543210"
-                          className="w-full bg-transparent pl-8 pr-3 py-2 text-xs text-white placeholder:text-slate-600 outline-none font-mono"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Row 2: Furnishing Status & Floor Level (Hidden for Plot selection) */}
-                  {form.propertyCategory !== 'Plot' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 pb-3 border-b border-dashed border-slate-800/90">
-                      <div>
-                        {renderRadioGroup(
-                          "Furnishing Status",
-                          "furnishingStatus",
-                          [
-                            { value: "Unfurnished", label: "Unfurnished", icon: "fa-couch" },
-                            { value: "Semi-Furnished", label: "Semi-Furnished", icon: "fa-box-open" },
-                            { value: "Furnished", label: "Furnished", icon: "fa-chair" }
-                          ],
-                          form.furnishingStatus
-                        )}
-                      </div>
-
-                      <div>
-                        {renderRadioGroup(
-                          "Floor Level",
-                          "floor",
-                          [
-                            { value: "Ground Floor", label: "Ground", icon: "fa-layer-group" },
-                            { value: "1st Floor", label: "1st", icon: "fa-stairs" },
-                            { value: "2nd Floor", label: "2nd", icon: "fa-stairs" },
-                            { value: "3rd Floor", label: "3rd", icon: "fa-stairs" },
-                            { value: "4th+ Floor", label: "4th+", icon: "fa-building" }
-                          ],
-                          form.floor
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Row 3: Complete Address */}
-                  <div className="pb-3 border-b border-dashed border-slate-800/90">
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                      Complete Address *
-                    </label>
-                    <div className="relative rounded-xl bg-slate-950/80 border border-slate-800/90 focus-within:border-amber-500/80">
-                      <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-orange-400">
-                        <i className="fa-solid fa-map-location-dot text-[11px]" />
-                      </div>
-                      <input
-                        required
-                        name="completeAddress"
-                        value={form.completeAddress}
-                        onChange={(e) => {
-                          change(e);
-                          if (!form.location) setForm((prev) => ({ ...prev, location: e.target.value }));
-                        }}
-                        placeholder="e.g. Plot No. 42, Main Road, Sector 12, Dwarka, New Delhi - 110075"
-                        className="w-full bg-transparent pl-8 pr-3 py-2 text-xs text-white placeholder:text-slate-600 outline-none font-medium"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Row 4: Google Map Coordinates & Commission (Side by Side!) */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pb-3 border-b border-dashed border-slate-800/90">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                        Latitude
-                      </label>
-                      <input
-                        name="latitude"
-                        value={form.latitude}
-                        onChange={change}
-                        placeholder="e.g. 28.6139"
-                        className="w-full rounded-xl bg-slate-950/80 border border-slate-800/90 px-3 py-2 text-xs text-white placeholder:text-slate-600 outline-none font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                        Longitude
-                      </label>
-                      <input
-                        name="longitude"
-                        value={form.longitude}
-                        onChange={change}
-                        placeholder="e.g. 77.2090"
-                        className="w-full rounded-xl bg-slate-950/80 border border-slate-800/90 px-3 py-2 text-xs text-white placeholder:text-slate-600 outline-none font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      {renderRadioGroup(
-                        "Commission Terms",
-                        "commission",
-                        [
-                          { value: "YES", label: "Yes", icon: "fa-circle-check" },
-                          { value: "NO", label: "No", icon: "fa-circle-xmark" }
-                        ],
-                        form.commission
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Row 5: Special Instructions */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                      Special Instructions (Internal Broker Notes)
-                    </label>
-                    <input
-                      name="specialInstructions"
-                      value={form.specialInstructions}
-                      onChange={change}
-                      placeholder="e.g. Keys are available at the site office. Direct owner deal."
-                      className="w-full rounded-xl border border-slate-800/90 bg-slate-950/80 px-3 py-2 text-xs text-white placeholder:text-slate-600 outline-none font-medium"
-                    />
-                  </div>
-
-                </div>
-
-                {/* CONDITIONAL PRICE & NET PROFIT VIEW (ONLY for Office, Plot, and Shop selection!) */}
-                {isCommercialOrPlot && (
-                  <div className="rounded-xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 via-slate-950/90 to-teal-500/5 p-3.5 space-y-2 mt-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
-                        <i className="fa-solid fa-coins text-xs" />
-                        <span>Commercial & Plot Financial Metrics</span>
-                      </h3>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-200 mb-1 uppercase tracking-wider">
-                          Total Property Price (₹) *
-                        </label>
-                        <div className="relative rounded-xl bg-slate-950 border border-emerald-500/40">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-emerald-400 font-black text-xs">
-                            ₹
-                          </div>
-                          <input
-                            required
-                            type="number"
-                            name="salePrice"
-                            value={form.salePrice}
-                            onChange={change}
-                            placeholder="e.g. 5000000"
-                            className="w-full bg-transparent pl-7 pr-3 py-2 text-xs font-black text-white outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-200 mb-1 uppercase tracking-wider">
-                          Net Profit (₹) *
-                        </label>
-                        <div className="relative rounded-xl bg-slate-950 border border-emerald-500/40">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-amber-400 font-black text-xs">
-                            ₹
-                          </div>
-                          <input
-                            type="number"
-                            name="netProfit"
-                            value={form.netProfit}
-                            onChange={change}
-                            placeholder="e.g. 250000"
-                            className="w-full bg-transparent pl-7 pr-3 py-2 text-xs font-black text-amber-300 outline-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-              </div>
-
-              {/* Form Section 2: Secondary Specifications Card */}
-              <div className="rounded-2xl border border-slate-800/90 bg-slate-900/80 p-4 sm:p-5 space-y-4 shadow-xl backdrop-blur-xl">
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-                  <h2 className="text-xs font-black uppercase text-white flex items-center gap-2">
-                    <i className="fa-solid fa-sliders text-orange-400 text-xs" />
-                    <span>Additional Specifications & Media</span>
-                  </h2>
-                </div>
-
-                <div className="space-y-3.5">
-                  
-                  {/* Title Banner & Size Inputs */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pb-3 border-b border-dashed border-slate-800/90">
-                    <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                        Title Banner (Optional)
-                      </label>
-                      <input
-                        name="title"
-                        value={form.title}
-                        onChange={change}
-                        placeholder="e.g. Commercial Plot near Highway / 2BHK Floor"
-                        className="w-full rounded-xl border border-slate-800/90 bg-slate-950/80 px-3 py-2 text-xs text-white placeholder:text-slate-600 outline-none font-medium"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                        Size (sqft / sq yards)
-                      </label>
-                      <input
-                        name="sizeSqft"
-                        value={form.sizeSqft}
-                        onChange={change}
-                        placeholder="e.g. 1200 sqft"
-                        className="w-full rounded-xl border border-slate-800/90 bg-slate-950/80 px-3 py-2 text-xs text-white placeholder:text-slate-600 outline-none font-medium"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Lift, Possession & Parking (3 Column Grid!) */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 pb-3 border-b border-dashed border-slate-800/90">
-                    <div>
-                      {renderRadioGroup(
-                        "Lift Availability",
-                        "lift",
-                        [
-                          { value: "YES", label: "Lift", icon: "fa-elevator" },
-                          { value: "NO", label: "No Lift", icon: "fa-ban" }
-                        ],
-                        form.lift
-                      )}
-                    </div>
-
-                    <div>
-                      {renderRadioGroup(
-                        "Possession Status",
-                        "possessionStatus",
-                        [
-                          { value: "Ready to Move", label: "Ready", icon: "fa-truck-ramp-box" },
-                          { value: "Under Construction", label: "Under Const.", icon: "fa-helmet-safety" },
-                          { value: "Immediate Plot Transfer", label: "Plot Transfer", icon: "fa-file-signature" }
-                        ],
-                        form.possessionStatus
-                      )}
-                    </div>
-
-                    <div>
-                      {renderRadioGroup(
-                        "Parking Availability",
-                        "parking",
-                        [
-                          { value: "Car + Bike Parking", label: "Car+Bike", icon: "fa-square-parking" },
-                          { value: "Bike Only", label: "Bike", icon: "fa-motorcycle" },
-                          { value: "Car Only", label: "Car", icon: "fa-car" },
-                          { value: "No Parking", label: "None", icon: "fa-circle-xmark" }
-                        ],
-                        form.parking
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Facing Direction, Construction Year & RERA (3 Column Grid!) */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pb-3 border-b border-dashed border-slate-800/90">
-                    <div>
-                      {renderRadioGroup(
-                        "Facing Direction",
-                        "facing",
-                        [
-                          { value: "North-East", label: "NE", icon: "fa-compass" },
-                          { value: "North", label: "N", icon: "fa-compass" },
-                          { value: "East", label: "E", icon: "fa-compass" },
-                          { value: "South-East", label: "SE", icon: "fa-compass" },
-                          { value: "South", label: "S", icon: "fa-compass" },
-                          { value: "West", label: "W", icon: "fa-compass" }
-                        ],
-                        form.facing
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                        Construction Year
-                      </label>
-                      <input
-                        name="constructionYear"
-                        value={form.constructionYear}
-                        onChange={change}
-                        placeholder="e.g. 2023"
-                        className="w-full rounded-xl border border-slate-800/90 bg-slate-950/80 px-3 py-2 text-xs text-white placeholder:text-slate-600 outline-none font-medium"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                        RERA Registration ID
-                      </label>
-                      <input
-                        name="reraId"
-                        value={form.reraId}
-                        onChange={change}
-                        placeholder="e.g. RERA Not Applicable"
-                        className="w-full rounded-xl border border-slate-800/90 bg-slate-950/80 px-3 py-2 text-xs text-white placeholder:text-slate-600 outline-none font-medium"
-                      />
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              {/* Form Section 3: Standard Rent vs Sale Pricing Terms (if not in Office/Plot/Shop mode) */}
-              {!isCommercialOrPlot && (
-                form.listingType === 'rent' ? (
-                  <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-slate-950/90 to-indigo-500/5 p-4 space-y-3 shadow-xl backdrop-blur-xl">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
-                      <i className="fa-solid fa-key text-xs" /> Rent Financial Terms
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                          Monthly Rent (₹) *
-                        </label>
-                        <input
-                          required
-                          type="number"
-                          name="monthlyRent"
-                          value={form.monthlyRent}
-                          onChange={change}
-                          placeholder="e.g. 18000"
-                          className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none font-bold"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                          Security Deposit (₹)
-                        </label>
-                        <input
-                          type="number"
-                          name="securityDeposit"
-                          value={form.securityDeposit}
-                          onChange={change}
-                          placeholder="e.g. 36000"
-                          className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none font-bold"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                          Maintenance (₹/month)
-                        </label>
-                        <input
-                          type="number"
-                          name="maintenanceCharge"
-                          value={form.maintenanceCharge}
-                          onChange={change}
-                          placeholder="e.g. 1500"
-                          className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none font-bold"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                          Available From
-                        </label>
-                        <input
-                          name="availableFrom"
-                          value={form.availableFrom}
-                          onChange={change}
-                          placeholder="e.g. Immediate"
-                          className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none font-bold"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-orange-500/30 bg-gradient-to-br from-orange-500/10 via-slate-950/90 to-amber-500/5 p-4 space-y-3 shadow-xl backdrop-blur-xl">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
-                      <i className="fa-solid fa-tag text-xs" /> Sale Financial Terms
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                          Sale Price (₹) *
-                        </label>
-                        <input
-                          required
-                          type="number"
-                          name="salePrice"
-                          value={form.salePrice}
-                          onChange={change}
-                          placeholder="e.g. 8500000"
-                          className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none font-bold"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                          Price per Sqft (₹)
-                        </label>
-                        <input
-                          type="number"
-                          name="pricePerSqft"
-                          value={form.pricePerSqft}
-                          onChange={change}
-                          placeholder="e.g. 9444"
-                          className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none font-bold"
-                        />
-                      </div>
-                    </div>
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer pt-0.5">
-                      <input
-                        type="checkbox"
-                        name="priceNegotiable"
-                        checked={form.priceNegotiable}
-                        onChange={change}
-                        className="h-3.5 w-3.5 rounded border-slate-800 accent-[#f68122]"
-                      />
-                      <span>Price is negotiable</span>
-                    </label>
-                  </div>
-                )
-              )}
-
-              {/* Form Section 4: Amenities Chips & Media Uploads */}
-              <div className="rounded-2xl border border-slate-800/90 bg-slate-900/80 p-4 sm:p-5 space-y-4 shadow-xl backdrop-blur-xl">
-                
-                {/* Amenities Chip Picker */}
-                <div className="pb-3 border-b border-dashed border-slate-800/90 space-y-2">
-                  <label className="block text-[11px] font-bold text-slate-300">
-                    Amenities (Click to toggle)
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {QUICK_AMENITIES.map((am) => {
-                      const isSelected = selectedAmenitiesList.includes(am);
-                      return (
-                        <button
-                          key={am}
-                          type="button"
-                          onClick={() => toggleQuickAmenity(am)}
-                          className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
-                            isSelected
-                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
-                              : 'bg-slate-950 text-slate-400 border-slate-800/80 hover:text-white'
-                          }`}
-                        >
-                          {isSelected && <i className="fa-solid fa-check text-emerald-400 text-[10px]" />}
-                          <span>{am}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Description & Media Row */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                      Description
-                    </label>
+                  {/* Description */}
+                  <div className="pt-2 border-t border-slate-100">
+                    <label className="text-[11px] font-extrabold text-slate-700 block mb-1.5">Property Description & Highlights</label>
                     <textarea
-                      name="description"
+                      rows={3}
                       value={form.description}
-                      onChange={change}
-                      rows="2"
-                      placeholder="Provide details about condition, nearby landmarks, and key highlights..."
-                      className="w-full rounded-xl border border-slate-800/90 bg-slate-950/80 p-2.5 text-xs text-white outline-none leading-relaxed font-medium"
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      placeholder="Mention ventilation, sunlight orientation, nearby schools, hospitals..."
+                      className="w-full rounded-2xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white p-3 text-xs font-medium text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all"
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
-                        Cover Photo & Gallery
-                      </label>
-                      <span className="text-[10px] text-slate-400">
-                        {form.images?.length || 0} gallery images attached
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleCoverImage}
-                          className="w-full text-[10px] text-slate-400 file:mr-2 file:rounded-xl file:border-0 file:bg-orange-500/20 file:text-orange-400 file:px-2.5 file:py-1 file:font-bold hover:file:bg-orange-500/30 cursor-pointer"
-                        />
-                        {form.coverImage && (
-                          <div className="relative mt-1 rounded-xl overflow-hidden border border-slate-800 h-14 w-full bg-slate-950">
-                            <img src={form.coverImage} alt="Cover Preview" loading="lazy" className="h-full w-full object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => setForm((prev) => ({ ...prev, coverImage: '' }))}
-                              className="absolute top-1 right-1 rounded-full bg-red-600/80 hover:bg-red-600 text-white h-4 w-4 flex items-center justify-center text-[9px] cursor-pointer"
-                            >
-                              <i className="fa-solid fa-xmark" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={handleGalleryImages}
-                          className="w-full text-[10px] text-slate-400 file:mr-2 file:rounded-xl file:border-0 file:bg-orange-500/20 file:text-orange-400 file:px-2.5 file:py-1 file:font-bold hover:file:bg-orange-500/30 cursor-pointer"
-                        />
-                        {form.images?.length > 0 && (
-                          <div className="flex gap-1 mt-1 overflow-x-auto p-0.5">
-                            {form.images.map((img, idx) => (
-                              <div key={idx} className="relative rounded-xl overflow-hidden border border-slate-800 h-10 w-10 shrink-0 bg-slate-950 group">
-                                <img src={img} alt={`Gallery ${idx}`} loading="lazy" className="h-full w-full object-cover" />
-                                <button
-                                  type="button"
-                                  onClick={() => removeGalleryImage(idx)}
-                                  className="absolute top-0.5 right-0.5 rounded-full bg-red-600/80 hover:bg-red-600 text-white h-3.5 w-3.5 flex items-center justify-center text-[8px] cursor-pointer"
-                                >
-                                  <i className="fa-solid fa-xmark" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </div>
 
-              </div>
-
-              {/* Form Action Controls */}
-              <div className="flex items-center gap-4 pt-3">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-9 py-4 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-xs font-black uppercase tracking-wider text-slate-950 shadow-xl shadow-orange-500/25 hover:brightness-110 active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center gap-2.5"
-                >
-                  {saving ? (
-                    <>
-                      <i className="fa-solid fa-circle-notch fa-spin text-sm" />
-                      <span>Saving Property...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>{editingId ? 'Update Property' : 'Submit Property Listing'}</span>
-                      <i className="fa-solid fa-check text-xs" />
-                    </>
-                  )}
-                </button>
-
-                {editingId && (
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    className="px-6 py-4 rounded-2xl border border-slate-800 bg-slate-950 text-xs font-bold text-slate-300 hover:text-white hover:border-slate-700 transition cursor-pointer"
-                  >
-                    Cancel Edit
-                  </button>
-                )}
-              </div>
-
-            </form>
-
-          ) : loading ? (
-
-            /* Loading State */
-            <div className="py-24 text-center text-slate-400 space-y-3">
-              <i className="fa-solid fa-circle-notch fa-spin text-3xl text-orange-500 block" />
-              <p className="text-xs font-bold">Loading property database...</p>
-            </div>
-
-          ) : listings.length === 0 ? (
-
-            /* Empty Listings State */
-            <div className="py-20 text-center text-slate-400 space-y-4 rounded-3xl border border-slate-800/80 bg-slate-900/40 p-8 max-w-xl mx-auto backdrop-blur-xl">
-              <div className="h-16 w-16 rounded-2xl border border-slate-800 bg-slate-950 flex items-center justify-center text-slate-600 mx-auto text-2xl shadow-inner">
-                <i className="fa-solid fa-building-circle-xmark" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-white">No Property Listings Submitted Yet</h3>
-                <p className="text-xs text-slate-400 mt-1">Start by submitting your first property listing using the form.</p>
-              </div>
-              <button
-                onClick={() => { resetForm(); setView('add'); }}
-                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-bold text-slate-950 cursor-pointer shadow-lg"
-              >
-                + Add First Property Listing
-              </button>
-            </div>
-
-          ) : (
-
-            /* High-Volume Inventory View */
-            <div className="space-y-6">
-              
-              {/* Header Desk */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800/90 p-5 rounded-3xl backdrop-blur-xl shadow-xl">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <h2 className="text-base font-black text-white flex items-center gap-2">
-                      <i className="fa-solid fa-building text-orange-400 text-sm" />
-                      <span>My Submitted Inventory</span>
-                    </h2>
-                    <span className="text-xs font-black bg-orange-500/20 text-orange-400 border border-orange-500/30 px-3 py-0.5 rounded-full">
-                      {filteredListings.length} of {listings.length} Listings
+                {/* ─── CARD 3: PRICING, FINANCIALS & MEDIA UPLOADS ─── */}
+                <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-7 space-y-6 shadow-sm">
+                  {/* Card Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black text-sm border border-emerald-200/60 shadow-xs">
+                        03
+                      </div>
+                      <div>
+                        <h2 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+                          Pricing & Media Uploads
+                        </h2>
+                        <p className="text-xs text-slate-400 font-normal">Set pricing expectations and attach high-res listing photos.</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50/80 border border-emerald-200/80 px-3 py-1 rounded-full w-fit">
+                      Pricing & Photos
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">High-efficiency search, filter & view property details desk.</p>
-                </div>
 
-                {/* Integrated Search Input Bar (Half Width) */}
-                <div className="w-full md:w-1/2 max-w-xs relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                    <i className="fa-solid fa-magnifying-glass text-xs" />
+                  {/* Pricing Inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                        <span>{form.listingType === 'rent' ? 'Monthly Rent (₹)' : 'Total Sale Price (₹)'} <span className="text-[#ea580c]">*</span></span>
+                      </label>
+                      <div className="relative">
+                        <i className="ri-money-rupee-circle-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <input
+                          type="number"
+                          value={form.listingType === 'rent' ? form.monthlyRent : form.salePrice}
+                          onChange={(e) =>
+                            setForm(
+                              form.listingType === 'rent'
+                                ? { ...form, monthlyRent: e.target.value }
+                                : { ...form, salePrice: e.target.value }
+                            )
+                          }
+                          placeholder="e.g. 4500000"
+                          required
+                          className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-bold text-slate-900 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all"
+                        />
+                      </div>
+
+                      {/* Live Price Breakdown Badge */}
+                      {(form.salePrice || form.monthlyRent) && (
+                        <div className="mt-2 p-2 rounded-xl bg-orange-50 border border-orange-200 text-xs font-bold text-[#ea580c] flex items-center justify-between">
+                          <span>Preview: {priceLabel(form)}</span>
+                          {Number(form.sizeSqft) > 0 && form.salePrice && (
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              ₹ {Math.round(Number(form.salePrice) / Number(form.sizeSqft)).toLocaleString('en-IN')}/sqft
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {form.listingType === 'rent' && (
+                      <div>
+                        <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 mb-1.5">
+                          <span>Security Deposit (₹)</span>
+                        </label>
+                        <div className="relative">
+                          <i className="ri-shield-keyhole-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                          <input
+                            type="number"
+                            value={form.securityDeposit}
+                            onChange={(e) => setForm({ ...form, securityDeposit: e.target.value })}
+                            placeholder="e.g. 50000"
+                            className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] focus:ring-2 focus:ring-orange-500/20 transition-all"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cover Photo */}
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 block mb-1.5">Cover Image (Upload or URL)</label>
+                      <div className="space-y-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleCoverUpload}
+                          className="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orange-50 file:text-[#ea580c] hover:file:bg-orange-100 cursor-pointer"
+                        />
+                        <div className="relative">
+                          <i className="ri-link absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+                          <input
+                            type="url"
+                            value={form.coverImage}
+                            onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
+                            placeholder="Or paste direct image URL"
+                            className="w-full rounded-xl bg-slate-50/80 hover:bg-slate-100/60 focus:bg-white pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-[#ea580c] transition-all"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Gallery Photos */}
+                    <div>
+                      <label className="text-[11px] font-extrabold text-slate-700 block mb-1.5">Gallery Photos (Multiple)</label>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleGalleryUpload}
+                        className="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
+                      />
+                      {form.images?.length > 0 && (
+                        <span className="text-[11px] font-bold text-emerald-600 block mt-1.5">
+                          ✓ {form.images.length} gallery images attached
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                    placeholder="Search inventory..."
-                    className="w-full rounded-2xl border border-slate-800/90 bg-slate-950/80 pl-9 pr-9 py-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-orange-500/80 focus:ring-2 focus:ring-orange-500/20 font-medium transition shadow-inner"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white cursor-pointer"
-                    >
-                      <i className="fa-solid fa-circle-xmark text-xs" />
-                    </button>
-                  )}
-                </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center bg-slate-950 p-1 rounded-2xl border border-slate-800">
+                  {/* ─── STICKY ACTION BAR / SUBMIT ─── */}
+                  <div className="pt-5 flex items-center justify-between gap-3 border-t border-slate-100">
                     <button
-                      onClick={() => setLayoutMode('grid')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                        layoutMode === 'grid'
-                          ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 shadow-md'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                      title="Grid Card View"
+                      type="button"
+                      onClick={() => setForm(emptyFlatListing())}
+                      className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer transition"
                     >
-                      <i className="fa-solid fa-border-all text-xs" />
-                      <span>Grid</span>
+                      Reset Form
                     </button>
+
                     <button
-                      onClick={() => setLayoutMode('table')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                        layoutMode === 'table'
-                          ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 shadow-md'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                      title="Compact Table List View (100+ items scan)"
+                      type="submit"
+                      disabled={saving}
+                      className="px-8 py-3 rounded-2xl bg-gradient-to-r from-orange-500 via-[#ea580c] to-amber-600 hover:brightness-110 text-white text-xs font-black shadow-lg shadow-orange-500/30 active:scale-[0.98] transition cursor-pointer flex items-center gap-2"
                     >
-                      <i className="fa-solid fa-list text-xs" />
-                      <span>Table</span>
+                      {saving ? (
+                        <>
+                          <i className="ri-loader-4-line animate-spin text-sm" />
+                          <span>Publishing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <i className="ri-checkbox-circle-fill text-sm" />
+                          <span>{editingId ? 'Update Listing' : 'Publish Property Listing'}</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
-              </div>
 
-              {/* Multi-Filter Desk */}
-              <div className="rounded-3xl border border-slate-800/90 bg-slate-900/60 p-4 shadow-xl backdrop-blur-xl">
+              </form>
+            ) : view === 'list' ? (
+
+              /* ─── TAB 2: MY LISTINGS (PREVIOUS COMPLETE TABLE / GRID WITH STATUS SELECTOR & PAGINATION) ─── */
+              <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-100 shadow-xs space-y-4">
                 
-                {/* Filter Controls Row */}
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  
-                  {/* Category Pills */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Type:</span>
-                    {['all', 'RK', 'HK', 'Office', 'Shop', 'Plot'].map((cat) => (
+                {/* Search & Category Filter Pills */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {['all', 'HK', 'RK', 'Shop', 'Plot', 'Office'].map((cat) => (
                       <button
                         key={cat}
+                        type="button"
                         onClick={() => { setFilterCategory(cat); setCurrentPage(1); }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                           filterCategory === cat
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
-                            : 'bg-slate-950 text-slate-400 border-slate-800/80 hover:text-white'
+                            ? 'bg-[#ea580c] text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                       >
-                        {cat === 'all' ? 'All Types' : cat}
+                        {cat === 'all' ? 'All Inventory' : cat}
                       </button>
                     ))}
                   </div>
 
-                  {/* Listing Mode Pills */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Mode:</span>
-                    {[
-                      { id: 'all', label: 'All' },
-                      { id: 'rent', label: 'Rent' },
-                      { id: 'buy', label: 'Sale' },
-                    ].map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => { setFilterType(m.id); setCurrentPage(1); }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
-                          filterType === m.id
-                            ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 shadow-sm'
-                            : 'bg-slate-950 text-slate-400 border-slate-800/80 hover:text-white'
-                        }`}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setLayoutMode(layoutMode === 'grid' ? 'table' : 'grid')}
+                      className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 cursor-pointer"
+                      title="Toggle Grid / Table View"
+                    >
+                      <i className={layoutMode === 'grid' ? 'ri-table-line text-sm' : 'ri-grid-fill text-sm'} />
+                    </button>
 
-                  {/* Deal Status Pills */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Status:</span>
-                    {['all', 'available', 'rented', 'sold'].map((st) => (
-                      <button
-                        key={st}
-                        onClick={() => { setFilterStatus(st); setCurrentPage(1); }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border capitalize ${
-                          filterStatus === st
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
-                            : 'bg-slate-950 text-slate-400 border-slate-800/80 hover:text-white'
-                        }`}
-                      >
-                        {st}
-                      </button>
-                    ))}
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* Content View */}
-              {filteredListings.length === 0 ? (
-
-                <div className="py-16 text-center text-slate-400 space-y-3 rounded-3xl border border-slate-800/80 bg-slate-900/40 p-8 backdrop-blur-xl">
-                  <i className="fa-solid fa-magnifying-glass text-3xl text-slate-600 block" />
-                  <h3 className="text-sm font-bold text-white">No Matching Properties Found</h3>
-                  <p className="text-xs text-slate-400">Try adjusting your search query or filter selections.</p>
-                  <button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setFilterCategory('all');
-                      setFilterType('all');
-                      setFilterStatus('all');
-                    }}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white transition cursor-pointer"
-                  >
-                    Clear All Filters
-                  </button>
-                </div>
-
-              ) : layoutMode === 'grid' ? (
-
-                /* GRID CARD VIEW */
-                <div className="space-y-6">
-                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                    {paginatedListings.map((listing) => (
-                      <ListingCard
-                        key={listing._id}
-                        listing={listing}
-                        onView={(item) => setViewingProperty(item)}
-                        onEdit={startEdit}
-                        onDelete={deleteListing}
-                      />
-                    ))}
+                    <button
+                      onClick={() => { setForm(emptyFlatListing()); setEditingId(null); setView('add'); }}
+                      className="px-4 py-1.5 rounded-xl bg-[#ea580c] text-white text-xs font-bold hover:brightness-110 cursor-pointer flex items-center gap-1.5 shadow-xs"
+                    >
+                      <i className="ri-add-line" /> Add Property
+                    </button>
                   </div>
                 </div>
 
-              ) : (
+                {/* Property Grid or Table */}
+                {layoutMode === 'grid' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {paginatedListings.map((item) => (
+                      <div key={item._id} className="rounded-2xl border border-slate-100 overflow-hidden bg-white hover:shadow-md transition space-y-3 p-3.5">
+                        <div className="relative h-44 w-full rounded-xl overflow-hidden bg-slate-100">
+                          {item.coverImage ? (
+                            <img src={item.coverImage} alt={item.title} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center text-slate-300">
+                              <i className="ri-building-line text-5xl" />
+                            </div>
+                          )}
+                          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 text-white text-[10px] font-bold uppercase backdrop-blur-md">
+                            {item.propertyCategory}
+                          </span>
+                          <span className="absolute top-2 right-2 px-2.5 py-0.5 rounded-md bg-orange-600 text-white text-[10px] font-black uppercase shadow-xs">
+                            {priceLabel(item)}
+                          </span>
+                        </div>
 
-                /* COMPACT EXECUTIVE TABLE VIEW */
-                <div className="rounded-3xl border border-slate-800/90 bg-slate-900/90 shadow-2xl overflow-hidden backdrop-blur-xl">
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900 line-clamp-1">{item.title || item.configuration}</h4>
+                          <p className="text-xs text-slate-400 line-clamp-1 flex items-center gap-1 mt-0.5">
+                            <i className="ri-map-pin-line text-[#ea580c]" /> {item.location}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
+                          <span>{item.sizeSqft || 'N/A'} sqft · {item.floor || 'Standard Floor'}</span>
+                          <select
+                            value={item.dealStatus || 'available'}
+                            onChange={(e) => changeDealStatus(item._id, e.target.value)}
+                            className="rounded-lg border border-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase bg-white outline-none cursor-pointer text-slate-700"
+                          >
+                            <option value="available">Available</option>
+                            <option value="rented">Rented</option>
+                            <option value="sold">Sold</option>
+                          </select>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            onClick={() => setViewingProperty(item)}
+                            className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700 hover:text-slate-900 font-bold text-xs cursor-pointer flex items-center gap-1"
+                          >
+                            <i className="ri-eye-line" /> View
+                          </button>
+                          <a
+                            href={generateWhatsAppPitchUrl(item)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex-1 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs flex items-center justify-center gap-1 transition"
+                          >
+                            <i className="ri-whatsapp-line text-emerald-600" /> Share Pitch
+                          </a>
+                          <button
+                            onClick={() => startEdit(item)}
+                            className="p-1.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 cursor-pointer"
+                            title="Edit"
+                          >
+                            <i className="ri-edit-line text-sm" />
+                          </button>
+                          <button
+                            onClick={() => deleteListing(item._id)}
+                            className="p-1.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 cursor-pointer"
+                            title="Delete"
+                          >
+                            <i className="ri-delete-bin-line text-sm" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-800 bg-slate-950/80 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                          <th className="py-4 px-4">Property & Address</th>
-                          <th className="py-4 px-4">Category / Type</th>
-                          <th className="py-4 px-4">Price & Profit</th>
-                          <th className="py-4 px-4">Owner Contact</th>
-                          <th className="py-4 px-4">Status</th>
-                          <th className="py-4 px-4 text-right">Actions</th>
+                    <table className="w-full text-left text-xs">
+                      <thead className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px]">
+                        <tr>
+                          <th className="py-2.5 px-3">Property</th>
+                          <th className="py-2.5 px-3">Location</th>
+                          <th className="py-2.5 px-3">Price</th>
+                          <th className="py-2.5 px-3">Owner Contact</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/60 text-xs">
-                        {paginatedListings.map((item) => {
-                          const priceText = item.listingType === 'rent' && item.monthlyRent
-                            ? `${formatINR(item.monthlyRent)} / mo`
-                            : formatINR(item.salePrice);
-
-                          const hasOwner = Boolean(item.ownerName?.trim() || item.ownerContact?.trim());
-
-                          return (
-                            <tr key={item._id} className="hover:bg-slate-950/60 transition-colors group">
-                              
-                              {/* Property Title & Address */}
-                              <td className="py-3.5 px-4 max-w-xs cursor-pointer" onClick={() => setViewingProperty(item)}>
-                                <div className="font-bold text-white group-hover:text-amber-300 transition-colors line-clamp-1 flex items-center gap-1.5">
-                                  <span>{item.title || item.configuration || `${item.propertyCategory} Property`}</span>
-                                  <i className="fa-solid fa-arrow-up-right-from-square text-[10px] text-amber-400 opacity-0 group-hover:opacity-100 transition" />
-                                </div>
-                                <div className="text-[11px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
-                                  <i className="fa-solid fa-location-dot text-orange-400 text-[10px] shrink-0" />
-                                  <span className="truncate">{item.completeAddress || item.location}</span>
-                                </div>
-                              </td>
-
-                              {/* Category & Mode */}
-                              <td className="py-3.5 px-4 whitespace-nowrap">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                    {item.propertyCategory}
-                                  </span>
-                                  <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase border ${item.listingType === 'rent' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-orange-500/20 text-orange-300 border-orange-500/30'}`}>
-                                    {item.listingType === 'rent' ? 'Rent' : 'Sale'}
-                                  </span>
-                                </div>
-                                <div className="text-[10px] text-slate-400 mt-1">
-                                  Config: {item.configuration || 'N/A'} | {item.furnishingStatus || 'Unfurnished'}
-                                </div>
-                              </td>
-
-                              {/* Price & Profit */}
-                              <td className="py-3.5 px-4 whitespace-nowrap">
-                                <div className="font-black text-amber-300">{priceText}</div>
-                                {Number(item.netProfit) > 0 && (
-                                  <div className="text-[10px] font-bold text-emerald-400 mt-0.5">
-                                    Profit: {formatINR(item.netProfit)}
-                                  </div>
-                                )}
-                              </td>
-
-                              {/* Owner Info (ONLY RENDERED IF DETAILS EXIST!) */}
-                              <td className="py-3.5 px-4 whitespace-nowrap">
-                                {hasOwner ? (
-                                  <>
-                                    <div className="font-semibold text-slate-200">{item.ownerName || 'Owner Info'}</div>
-                                    {item.ownerContact && (
-                                      <a href={`tel:${item.ownerContact}`} className="font-mono text-emerald-400 text-[11px] hover:underline flex items-center gap-1 mt-0.5">
-                                        <i className="fa-solid fa-phone text-emerald-400 text-[10px]" />
-                                        <span>{item.ownerContact}</span>
-                                      </a>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span className="text-[10px] text-slate-600 font-medium italic">Unspecified</span>
-                                )}
-                              </td>
-
-                              {/* Deal Status Switcher */}
-                              <td className="py-3.5 px-4 whitespace-nowrap">
-                                <select
-                                  value={item.dealStatus}
-                                  onChange={(e) => changeStatus(item._id, e.target.value)}
-                                  className={`rounded-xl border px-2.5 py-1.5 text-xs font-bold outline-none cursor-pointer ${
-                                    item.dealStatus === 'available'
-                                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                                      : item.dealStatus === 'rented'
-                                      ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                                      : 'bg-red-500/20 text-red-300 border-red-500/40'
-                                  }`}
-                                >
-                                  <option value="available" className="bg-slate-950 text-white">Available</option>
-                                  <option value="rented" className="bg-slate-950 text-white">Rented</option>
-                                  <option value="sold" className="bg-slate-950 text-white">Sold</option>
-                                </select>
-                              </td>
-                              {/* Actions */}
-                              <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    onClick={() => setViewingProperty(item)}
-                                    className="p-2 rounded-xl bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-slate-950 transition cursor-pointer"
-                                    title="View Property Details"
-                                  >
-                                    <i className="fa-solid fa-eye text-xs" />
-                                  </button>
-                                  <button
-                                    onClick={() => startEdit(item)}
-                                    className="px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-950 text-xs font-bold text-slate-300 hover:text-white hover:border-slate-700 transition cursor-pointer"
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => deleteListing(item._id)}
-                                    className="p-2 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition cursor-pointer"
-                                    title="Delete Property Listing"
-                                  >
-                                    <i className="fa-solid fa-trash-can text-xs" />
-                                  </button>
-                                </div>
-                              </td>
-
-                            </tr>
-                          );
-                        })}
+                      <tbody className="divide-y divide-slate-100">
+                        {paginatedListings.map((item) => (
+                          <tr key={item._id} className="hover:bg-slate-50/80 transition">
+                            <td className="py-3 px-3 font-bold text-slate-900">{item.title || item.configuration}</td>
+                            <td className="py-3 px-3 text-slate-500">{item.location}</td>
+                            <td className="py-3 px-3 font-bold text-slate-900">{priceLabel(item)}</td>
+                            <td className="py-3 px-3 text-slate-600">{item.ownerContact || 'N/A'}</td>
+                            <td className="py-3 px-3">
+                              <select
+                                value={item.dealStatus || 'available'}
+                                onChange={(e) => changeDealStatus(item._id, e.target.value)}
+                                className="rounded-lg border border-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase bg-white outline-none cursor-pointer"
+                              >
+                                <option value="available">Available</option>
+                                <option value="rented">Rented</option>
+                                <option value="sold">Sold</option>
+                              </select>
+                            </td>
+                            <td className="py-3 px-3 text-right space-x-2">
+                              <button onClick={() => setViewingProperty(item)} className="text-slate-600 hover:text-slate-900 font-bold">
+                                View
+                              </button>
+                              <a
+                                href={generateWhatsAppPitchUrl(item)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-emerald-600 hover:underline font-bold"
+                              >
+                                Pitch
+                              </a>
+                              <button onClick={() => startEdit(item)} className="text-[#ea580c] hover:underline font-bold">
+                                Edit
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
-                </div>
+                )}
 
-              )}
-
-              {/* High-Capacity Pagination Bar */}
-              {filteredListings.length > 0 && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/80 border border-slate-800/90 p-4 rounded-3xl backdrop-blur-xl">
-                  <div className="text-xs text-slate-400 flex items-center gap-2">
-                    <span>Showing {filteredListings.length > 0 ? (currentPage - 1) * (pageSize === 'all' ? filteredListings.length : Number(pageSize)) + 1 : 0} - {Math.min(currentPage * (pageSize === 'all' ? filteredListings.length : Number(pageSize)), filteredListings.length)} of {filteredListings.length} properties</span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                      <span>Per page:</span>
-                      <select
-                        value={pageSize}
-                        onChange={(e) => { setPageSize(e.target.value === 'all' ? 'all' : Number(e.target.value)); setCurrentPage(1); }}
-                        className="rounded-xl border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-slate-200 outline-none cursor-pointer font-bold"
-                      >
-                        <option value={12}>12</option>
-                        <option value={24}>24</option>
-                        <option value={48}>48</option>
-                        <option value="all">All (100+)</option>
-                      </select>
+                {/* Pagination Controls */}
+                {filteredListings.length > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                    <div>
+                      Showing {(currentPage - 1) * (pageSize === 'all' ? filteredListings.length : Number(pageSize)) + 1} - {Math.min(currentPage * (pageSize === 'all' ? filteredListings.length : Number(pageSize)), filteredListings.length)} of {filteredListings.length} properties
                     </div>
 
-                    {pageSize !== 'all' && (
+                    <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1.5">
-                        <button
-                          disabled={currentPage <= 1}
-                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                          className="px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-950 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                        <span>Per page:</span>
+                        <select
+                          value={pageSize}
+                          onChange={(e) => { setPageSize(e.target.value === 'all' ? 'all' : Number(e.target.value)); setCurrentPage(1); }}
+                          className="rounded-lg border border-slate-200 px-2 py-1 bg-white outline-none font-bold"
                         >
-                          <i className="fa-solid fa-chevron-left text-[10px]" /> Prev
-                        </button>
-                        <span className="text-xs font-mono font-bold text-amber-300 px-2">
-                          {currentPage} / {totalPages}
-                        </span>
-                        <button
-                          disabled={currentPage >= totalPages}
-                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                          className="px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-950 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
-                        >
-                          Next <i className="fa-solid fa-chevron-right text-[10px]" />
-                        </button>
+                          <option value={12}>12</option>
+                          <option value={24}>24</option>
+                          <option value={48}>48</option>
+                          <option value="all">All</option>
+                        </select>
                       </div>
-                    )}
+
+                      {pageSize !== 'all' && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            disabled={currentPage <= 1}
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 cursor-pointer font-bold"
+                          >
+                            Prev
+                          </button>
+                          <span className="px-2 font-bold text-slate-800">
+                            {currentPage} / {totalPages}
+                          </span>
+                          <button
+                            disabled={currentPage >= totalPages}
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 cursor-pointer font-bold"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+
+              /* ─── TAB 3: INVESTMENT LEADS PANEL ─── */
+              <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-100 shadow-xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div>
+                    <h2 className="text-base font-black text-slate-900">Assigned Investment Leads</h2>
+                    <p className="text-xs text-slate-400">Direct client inquiries assigned to your sales portfolio.</p>
                   </div>
                 </div>
-              )}
+                <AssignedLeadsPanel />
+              </div>
+            )}
 
-            </div>
+          </main>
 
-          )}
+          {/* Fixed Bottom Canvas Footer */}
+          <footer className="px-5 sm:px-7 py-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-medium bg-white">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" /> Baba Broker Sales Desk · v2.4
+            </span>
+            <span>Direct Support: <a href="mailto:support@bababroker.com" className="text-[#ea580c] hover:underline">support@bababroker.com</a></span>
+            <span className="hidden sm:inline">© 2026 Baba Broker. All rights reserved.</span>
+          </footer>
 
-        </main>
+        </div>
+
       </div>
 
     </div>

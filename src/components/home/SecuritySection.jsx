@@ -1,4 +1,7 @@
 
+import React from "react";
+import ScrollReveal from "../ScrollReveal";
+
 const levels = [
   {
     icon: "fa-house-circle-check",
@@ -109,7 +112,7 @@ export default function SecuritySection() {
       `}</style>
 
       <div className="mx-auto max-w-7xl relative z-10">
-        {/* Header Block */}
+        <ScrollReveal>
         <div className="mb-12 grid gap-8 border-b border-white/5 pb-10 lg:grid-cols-[1.2fr_.8fr] lg:items-end">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#f68122]/30 bg-[#f68122]/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-[#f68122]">
@@ -155,6 +158,7 @@ export default function SecuritySection() {
             ))}
           </div>
         </div>
+        </ScrollReveal>
       </div>
     </section>
   );

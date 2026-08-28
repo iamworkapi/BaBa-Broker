@@ -4,6 +4,18 @@ import cors from "cors";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
+import multer from "multer";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ok = /\.(xlsx|xls|csv)$/i.test(file.originalname) || file.mimetype.includes('sheet') || file.mimetype.includes('excel') || file.mimetype === 'text/csv';
+    cb(null, ok ? undefined : new Error('Only Excel/CSV files are allowed.'));
+  },
+});
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load backend/.env explicitly so this server behaves the same regardless of
@@ -16,6 +28,8 @@ const { default: User } = await import("./models/User.js");
 const { default: apiRoutes } = await import("./routes/index.js");
 const { errorHandler } = await import("./middleware/errorHandler.js");
 const { default: bcrypt } = await import("bcryptjs");
+
+const excelUploadRoutes = (await import("./routes/excelUploadRoutes.js")).default;
 
 // backend/src/server.js -> backend/src -> backend -> project root (where dist/ lives)
 const root = dirname(dirname(__dirname));
@@ -41,6 +55,7 @@ app.use(express.json({ limit: "15mb" }));
 
 // API routes
 app.use("/api", apiRoutes);
+app.use("/api/admin/excel-upload", excelUploadRoutes);
 
 // Serve the built frontend (Vite build output in /dist)
 if (existsSync(distDirectory)) {

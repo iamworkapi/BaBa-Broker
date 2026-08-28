@@ -7,6 +7,7 @@ import InvestmentRequestsView from '../components/admin/InvestmentRequestsView';
 import WhatsAppShareDrawer from '../components/admin/WhatsAppShareDrawer';
 import ProjectWorkspaceModal from '../components/admin/ProjectWorkspaceModal';
 import AdminOverview from '../components/admin/AdminOverview';
+import AdminExcelView from '../components/admin/AdminExcelView';
 
 export default function AdminDashboard({ view: routeView }) {
   const dash = useAdminDashboard(routeView);
@@ -126,6 +127,8 @@ export default function AdminDashboard({ view: routeView }) {
               <FlatListingsAuditView />
             ) : view === 'investment-requests' ? (
               <InvestmentRequestsView />
+            ) : view === 'excel' ? (
+              <AdminExcelView />
             ) : showProjectModal ? (
               <ProjectWorkspaceModal
                 view={view}

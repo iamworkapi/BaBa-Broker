@@ -1,4 +1,7 @@
+import React from "react";
 import { Link } from "react-router-dom";
+
+import ScrollReveal from "../ScrollReveal";
 
 const services = [
   {
@@ -104,7 +107,7 @@ export default function WeHandleEverythingSection() {
       <div className="absolute -right-44 -bottom-44 h-[650px] w-[650px] rounded-full bg-blue-600/10 blur-[160px] mix-blend-screen pointer-events-none"></div>
 
       <div className="relative mx-auto max-w-7xl z-10">
-        {/* Top Header Section */}
+        <ScrollReveal>
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10 mb-16 border-b border-white/5 pb-12">
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#f68122]/30 bg-[#f68122]/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-[#f68122] shadow-[0_0_15px_rgba(246,129,34,0.1)]">
@@ -207,6 +210,7 @@ export default function WeHandleEverythingSection() {
             </div>
           ))}
         </div>
+        </ScrollReveal>
       </div>
     </section>
   );

@@ -1,4 +1,7 @@
 
+import React from "react";
+import ScrollReveal from "../ScrollReveal";
+
 const PropertyTokenizationSection = () => {
   return (
     <section className="relative overflow-hidden bg-slate-950 px-6 py-24 sm:py-32 antialiased">
@@ -7,7 +10,7 @@ const PropertyTokenizationSection = () => {
       <div className="absolute left-1/2 top-12 -translate-x-1/2 -translate-y-1/2 h-[450px] w-[550px] rounded-full bg-amber-500/10 blur-[130px] mix-blend-screen pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-6 lg:px-10 relative z-10">
-        {/* Heading */}
+        <ScrollReveal>
         <div className="text-center mb-20 lg:mb-32 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 border border-slate-800 bg-slate-900/60 backdrop-blur-md rounded-full px-5 py-2 text-xs font-bold tracking-widest text-orange-400 uppercase mb-6 shadow-sm">
             <i className="fa-solid fa-microchip"></i> The Engine
@@ -227,6 +230,7 @@ const PropertyTokenizationSection = () => {
             View Technical Docs <i className="fa-solid fa-arrow-right"></i>
           </button>
         </div>
+        </ScrollReveal>
       </div>
     </section>
   );

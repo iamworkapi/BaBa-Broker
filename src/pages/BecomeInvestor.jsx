@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getInvestorProfile, setInvestorProfile } from '../lib/investorProfile';
+import { getInvestorProfile, setInvestorProfile } from '../utils/investorProfile';
 import { CalculatorCard } from '../components/home/BrowseByBudgetSection';
 
 const BUDGET_RANGES = [

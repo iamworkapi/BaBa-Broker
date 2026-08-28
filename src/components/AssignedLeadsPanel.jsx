@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { api } from '../services/api';
 
 const FOLLOW_UP_OPTIONS = [
   { id: 'contacted', label: 'Contacted' },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { safeEmbedUrl } from '../lib/sanitize';
+import { safeEmbedUrl } from '../utils/sanitize';
 
 const defaultFallbackProject = {
   _id: 'demo-1',

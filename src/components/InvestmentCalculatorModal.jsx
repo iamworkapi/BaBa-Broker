@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { safeEmbedUrl } from '../lib/sanitize';
+import { safeEmbedUrl } from '../utils/sanitize';
 
 export default function InvestmentCalculatorModal({ project, onClose }) {
   const defaultMin = project?.minInvestment > 0 ? project.minInvestment : 100000;

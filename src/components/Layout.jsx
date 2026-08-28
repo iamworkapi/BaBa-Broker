@@ -9,17 +9,17 @@ const isStaffShell = (pathname) =>
 
 const Layout = () => {
     const { pathname } = useLocation();
-    const staffShell = isStaffShell(pathname);
+
     return (
         <ErrorBoundary>
         <div className="bg-dark text-white font-sans overflow-hidden min-h-screen flex flex-col">
-            {!staffShell && <Navbar />}
+            {!isStaffShell(pathname) && <Navbar />}
 
-            <main className="flex-grow">
+            <main className="flex-grow" key={pathname}>
                 <Outlet />
             </main>
 
-            {!staffShell && <Footer />}
+            {!isStaffShell(pathname) && <Footer />}
             <SharedModals />
         </div>
         </ErrorBoundary>

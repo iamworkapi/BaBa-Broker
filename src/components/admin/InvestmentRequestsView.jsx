@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { api } from '../../lib/api';
+import { api } from '../../services/api';
 import AdminPageHeader from './AdminPageHeader';
 
 const STATUS_STYLES = {

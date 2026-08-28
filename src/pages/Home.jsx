@@ -1,3 +1,4 @@
+import ScrollReveal from "../components/ScrollReveal";
 import HeroSection from "../components/home/HeroSection";
 import FeaturesSection from "../components/home/FeaturesSection";
 import BrowseByBudgetSection from "../components/home/BrowseByBudgetSection";
@@ -10,42 +11,30 @@ import WeHandleEverythingSection from "../components/home/WeHandleEverythingSect
 import FAQSection from "../components/home/FAQSection";
 
 const homeSections = [
-  { id: "hero", label: "Welcome", Component: HeroSection },
+  { id: "hero", label: "Welcome", Component: HeroSection, reveal: false },
   { id: "features", label: "Benefits", Component: FeaturesSection },
-  {
-    id: "investment-goals",
-    label: "Investment goals",
-    Component: BrowseByBudgetSection,
-  },
+  { id: "investment-goals", label: "Investment goals", Component: BrowseByBudgetSection },
   { id: "collections", label: "Collections", Component: CollectionSection },
-  {
-    id: "property-types",
-    label: "Property types",
-    Component: PropertyTypesSection,
-  },
-  {
-    id: "featured-properties",
-    label: "Featured properties",
-    Component: FeaturedPropertiesSection,
-  },
-  {
-    id: "property-investment",
-    label: "Property investment",
-    Component: PropertyTokenizationSection,
-  },
+  { id: "property-types", label: "Property types", Component: PropertyTypesSection },
+  { id: "featured-properties", label: "Featured properties", Component: FeaturedPropertiesSection },
+  { id: "property-investment", label: "Property investment", Component: PropertyTokenizationSection },
   { id: "security", label: "Security", Component: SecuritySection },
   { id: "services", label: "Services", Component: WeHandleEverythingSection },
   { id: "faq", label: "FAQs", Component: FAQSection },
 ];
 
-
-
 export default function Home() {
   return (
     <>
-      {homeSections.map(({ id, Component }) => (
+      {homeSections.map(({ id, Component, reveal = true }) => (
         <div id={id} key={id} className="scroll-mt-20">
-          <Component />
+          {reveal ? (
+            <ScrollReveal>
+              <Component />
+            </ScrollReveal>
+          ) : (
+            <Component />
+          )}
         </div>
       ))}
     </>

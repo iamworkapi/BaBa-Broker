@@ -1,4 +1,6 @@
 
+import ScrollReveal from "../ScrollReveal";
+
 const collectionsData = [
   {
     title: "Pre-Leased Commercial",
@@ -64,7 +66,7 @@ const CollectionSection = () => {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-b from-orange-500/[0.02] to-transparent rounded-full blur-[130px] pointer-events-none"></div>
 
       <div className="max-w-[95%] xl:max-w-7xl mx-auto px-4 lg:px-0 relative z-10">
-        {/* Centered Premium Header */}
+        <ScrollReveal>
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/20 px-4 py-1.5 rounded-full w-max mb-5 shadow-sm">
             <i className="fa-solid fa-gem text-orange-400 text-xs"></i>
@@ -140,6 +142,7 @@ const CollectionSection = () => {
             </div>
           ))}
         </div>
+        </ScrollReveal>
       </div>
     </section>
   );

@@ -51,45 +51,54 @@ export default function AdminSidebar({ view }) {
       icon: 'ri-user-settings-line',
       activeIcon: 'ri-user-settings-fill',
     },
+    {
+      id: 'excel',
+      path: '/admin/excel',
+      label: 'Excel Upload',
+      icon: 'ri-file-excel-2-line',
+      activeIcon: 'ri-file-excel-2-fill',
+    },
   ];
 
   return (
-    <aside className="w-full lg:w-52 h-full lg:h-screen bg-[#ea580c] text-white flex flex-col justify-between p-3.5 select-none shrink-0 overflow-y-auto font-['Inter',sans-serif] z-20 shadow-md">
+    <aside className="w-full lg:w-56 h-full lg:h-screen bg-[#ea580c] text-white flex flex-col justify-between pl-3.5 py-3.5 pr-0 select-none shrink-0 overflow-y-auto font-['Inter',sans-serif] z-20 shadow-md">
       <div className="space-y-4">
         {/* Original Clean Logo */}
-        <Link to="/" className="flex items-center px-1 py-1 group">
-          <img
-            src="/assets/img/logo.svg"
-            alt="Baba Broker"
-            className="h-8 sm:h-9 w-auto max-w-[170px] object-contain brightness-0 invert transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-md"
-          />
-        </Link>
+        <div className="pr-3.5">
+          <Link to="/" className="flex items-center px-1 py-1 group">
+            <img
+              src="/assets/img/logo.svg"
+              alt="Baba Broker"
+              className="h-8 sm:h-9 w-auto max-w-[170px] object-contain brightness-0 invert transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-md"
+            />
+          </Link>
+        </div>
 
         {/* Navigation Items with Premium Interactive Hover Effects */}
-        <nav className="space-y-1 pt-0.5">
+        <nav className="space-y-1.5 pt-0.5 pr-0">
           {navItems.map((item) => {
-            const isActive = view === item.id || (view === 'overview' && item.id === 'overview') || (view === 'create-project' && item.id === 'projects') || (view === 'add-investor' && item.id === 'investment-requests');
+            const isActive =
+              view === item.id ||
+              (view === 'overview' && item.id === 'overview') ||
+              (view === 'create-project' && item.id === 'projects') ||
+              (view === 'add-investor' && item.id === 'investment-requests');
 
             return (
               <Link
                 key={item.id}
                 to={item.path}
-                className={`group relative flex items-center justify-between px-3 py-2 rounded-xl sm:rounded-r-none transition-all duration-200 ease-out text-xs ${
-                  isActive
-                    ? 'bg-white text-[#ea580c] font-semibold shadow-sm sm:shadow-none sm:-mr-3.5 sm:pr-5 z-10'
-                    : 'text-white/80 hover:text-white hover:bg-white/20 hover:backdrop-blur-sm hover:translate-x-1.5 hover:shadow-xs font-normal'
+                className={`sidebar-nav-item w-full group relative flex items-center justify-between text-xs cursor-pointer text-left transition-all duration-300 ${
+                  isActive ? 'active' : ''
                 }`}
               >
-                {/* Active Indicator Notch Cutout */}
-                {isActive && (
-                  <>
-                    <span className="hidden sm:block absolute -top-3 right-0 w-3 h-3 bg-[#ea580c] pointer-events-none rounded-br-lg shadow-[3px_3px_0_3px_#ffffff]"></span>
-                    <span className="hidden sm:block absolute -bottom-3 right-0 w-3 h-3 bg-[#ea580c] pointer-events-none rounded-tr-lg shadow-[3px_-3px_0_3px_#ffffff]"></span>
-                  </>
-                )}
-
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <i className={`${isActive ? item.activeIcon : item.icon} text-sm shrink-0 transition-transform duration-200 group-hover:scale-115 ${isActive ? 'text-[#ea580c]' : 'text-white/90 group-hover:text-white'}`}></i>
+                  {isActive ? (
+                    <div className="icon-pop h-6 w-6 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center text-xs shadow-xs shrink-0 ring-2 ring-orange-100/90">
+                      <i className={item.activeIcon} />
+                    </div>
+                  ) : (
+                    <i className={`${item.icon} text-base shrink-0 text-white/90 transition-transform duration-200 group-hover:scale-115`} />
+                  )}
                   <span className="truncate">{item.label}</span>
                 </div>
               </Link>
@@ -99,7 +108,7 @@ export default function AdminSidebar({ view }) {
       </div>
 
       {/* Sidebar Bottom Footer: "Made with ❤️ by OrrishItSolutions" */}
-      <div className="pt-3 mt-auto border-t border-white/20 text-center select-none">
+      <div className="pt-3 pr-3.5 mt-auto border-t border-white/20 text-center select-none">
         <p className="text-[10px] text-white/85 font-normal leading-tight">
           Made with <span className="text-red-200">❤️</span> by{' '}
           <span className="font-semibold text-white tracking-wide">OrrishItSolutions</span>
@@ -108,3 +117,4 @@ export default function AdminSidebar({ view }) {
     </aside>
   );
 }
+

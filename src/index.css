@@ -4,19 +4,6 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --color-primary: #0b4e9d;
-  --color-primary-dark: #083a78;
-  --color-accent: #ea580c;
-  --color-accent-dark: #c2410c;
-  --color-dark: #0a0a0a;
-  --color-dark-2: #111827;
-  --color-dark-3: #1f2937;
-  --color-white: #ffffff;
-  --color-whatsapp: #25d366;
-  --color-whatsapp-dark: #1fb957;
-}
-
 /* Global Custom Slim Orange Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;

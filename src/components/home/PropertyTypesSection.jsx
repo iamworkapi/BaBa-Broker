@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { getInvestorProfile } from "../../lib/investorProfile";
+import { getInvestorProfile } from "../../utils/investorProfile";
+import ScrollReveal from "../ScrollReveal";
 
 const defaultSpecs = (type, bhk, area, baths, parking) => ({
   type: type === "Rent" ? "Rental Apartment" : "Premium Condominium",
@@ -353,7 +354,7 @@ const PropertyTypesSection = () => {
       <div className="absolute -bottom-24 bottom-1/4 h-[400px] w-[400px] rounded-full bg-amber-500/5 blur-[120px] mix-blend-screen pointer-events-none"></div>
 
       <div className="relative max-w-7xl mx-auto text-center z-10">
-        {/* Top badge pill */}
+        <ScrollReveal>
         <div className="inline-flex items-center gap-2 border border-slate-800 bg-slate-900/60 backdrop-blur-md rounded-full px-4 py-1.5 text-xs font-semibold tracking-wider text-orange-400 uppercase mb-5 shadow-inner">
           <i className="fa-solid fa-house text-[10px]"></i> Curated Portfolios
         </div>
@@ -489,6 +490,7 @@ const PropertyTypesSection = () => {
             );
           })}
         </div>
+          </ScrollReveal>
       </div>
 
       {/* Sidebar Layout Layer */}

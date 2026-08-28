@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
-import { getAuth } from './lib/auth';
+import { useAuth } from './hooks/useAuth';
 import LoadingFallback from './components/LoadingFallback';
 import ErrorBoundary from './components/ErrorBoundary';
+import Preloader from './components/Preloader';
 
 import Home from './pages/Home';
 import AboutUs from './pages/AboutUs';
@@ -18,13 +19,17 @@ const Partners      = lazy(() => import('./pages/Partners'));
 const Blank         = lazy(() => import('./pages/Blank'));
 const PropertyDetails = lazy(() => import('./pages/PropertyDetails'));
 const StaffLogin    = lazy(() => import('./pages/StaffLogin'));
+const AdminLogin    = lazy(() => import('./pages/AdminLogin'));
+const SalesLogin    = lazy(() => import('./pages/SalesLogin'));
+const EmployeeLogin = lazy(() => import('./pages/EmployeeLogin'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const SalesmanDashboard = lazy(() => import('./pages/SalesmanDashboard'));
 const EmployeeDashboard = lazy(() => import('./pages/EmployeeDashboard'));
 const BecomeInvestor   = lazy(() => import('./pages/BecomeInvestor'));
 
 function ProtectedRoute({ allowedRoles, children }) {
-  const auth = getAuth();
+  const { session } = useAuth();
+  const auth = session;
   if (!auth || !auth.token) {
     if (allowedRoles.includes('salesman')) return <Navigate to="/salesman/login" replace />;
     if (allowedRoles.includes('employee')) return <Navigate to="/employee/login" replace />;
@@ -39,6 +44,15 @@ function ProtectedRoute({ allowedRoles, children }) {
 }
 
 function App() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) return <Preloader />;
+
   return (
     <ErrorBoundary>
       <Router>
@@ -59,9 +73,9 @@ function App() {
               <Route path="property-details" element={<PropertyDetails />} />
 
               {/* Auth Login Routes */}
-              <Route path="admin/login" element={<StaffLogin role="admin" />} />
-              <Route path="salesman/login" element={<StaffLogin role="salesman" />} />
-              <Route path="employee/login" element={<StaffLogin role="employee" />} />
+              <Route path="admin/login" element={<AdminLogin />} />
+              <Route path="salesman/login" element={<SalesLogin />} />
+              <Route path="employee/login" element={<EmployeeLogin />} />
 
               {/* Protected Admin Routes */}
               <Route path="admin" element={<Navigate to="/admin/dashboard" replace />} />
@@ -76,6 +90,7 @@ function App() {
               <Route path="admin/add-investor" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="add-investor" /></ProtectedRoute>} />
               <Route path="admin/investment-requests" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="investment-requests" /></ProtectedRoute>} />
               <Route path="admin/whatsapp" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="whatsapp" /></ProtectedRoute>} />
+              <Route path="admin/excel" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="excel" /></ProtectedRoute>} />
 
               {/* Protected Staff Routes */}
               <Route path="salesman/dashboard" element={<ProtectedRoute allowedRoles={['salesman', 'admin']}><SalesmanDashboard /></ProtectedRoute>} />

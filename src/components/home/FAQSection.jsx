@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import ScrollReveal from "../ScrollReveal";
 
 const faqs = [
   {
@@ -43,7 +44,8 @@ const FAQSection = () => {
       <div className="pointer-events-none absolute top-1/2 left-1/4 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#f68122] opacity-[0.03] blur-[120px]"></div>
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="grid lg:grid-cols-[1fr_1.3fr] gap-12 lg:gap-20 items-start">
+        <ScrollReveal>
+          <div className="grid lg:grid-cols-[1fr_1.3fr] gap-12 lg:gap-20 items-start">
           {/* Left Column: Sticky VIP Concierge CTA */}
           <div className="lg:sticky lg:top-24 relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-[#161622]/80 backdrop-blur-xl p-8 sm:p-12 shadow-2xl">
             {/* Card internal glow */}
@@ -168,6 +170,7 @@ const FAQSection = () => {
             </div>
           </div>
         </div>
+        </ScrollReveal>
       </div>
     </section>
   );
