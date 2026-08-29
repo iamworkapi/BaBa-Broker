@@ -207,7 +207,7 @@ export default function InvestmentProjectCard({ project, onOpenDetails }) {
               Project Value
             </span>
             <span className="text-sm font-black text-white">
-              {formatCommaPrice(totalValuation || price)}
+              {formatCommaPrice(totalValuation)}
             </span>
           </div>
           <div className="text-right">
