@@ -1,10 +1,35 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Send, Phone, Mail, MapPin, Clock, ShieldCheck,
+  Phone, Mail, MapPin, Clock, ShieldCheck,
   Globe, Handshake, Briefcase, AlertTriangle, ChevronRight, Loader2, ArrowUpRight
 } from "lucide-react";
 import { api } from "../services/api";
+
+const NAV_LINKS = [
+  { name: "Home", path: "/" },
+  { name: "Properties", path: "/properties" },
+  { name: "About Us", path: "/about" },
+  { name: "Contact", path: "/contact" },
+];
+
+const SERVICES = [
+  "Residential Sales",
+  "Commercial Leasing",
+  "Asset Advisory",
+  "Legal Compliance",
+];
+
+const LEGAL_LINKS = ["Privacy Policy", "Terms of Service", "Compliance"];
+
+const FEATURES = [
+  { icon: Globe, title: "Global Reach", sub: "Cross-border deals" },
+  { icon: ShieldCheck, title: "Bank-Grade Legal", sub: "Fully verified assets" },
+  { icon: Handshake, title: "Zero Hidden Fees", sub: "100% transparent" },
+  { icon: Briefcase, title: "Private Wealth", sub: "Dedicated advisors" },
+];
+
+const accent = "#f68122";
 
 export default function Footer() {
   const [subEmail, setSubEmail] = useState("");
@@ -35,92 +60,102 @@ export default function Footer() {
   };
 
   return (
-    <footer className="relative bg-[#020611] text-slate-300 font-sans text-sm border-t border-slate-800/80 overflow-hidden select-none mt-12">
-      {/* Background Mesh Gradients */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(246,129,34,0.12),rgba(255,255,255,0))]" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
+    <footer className="relative bg-[#020611] text-slate-300 font-sans text-sm select-none mt-16 overflow-hidden">
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-8 space-y-8">
-
-        {/* Top Bar: Live Stats + Newsletter Banner */}
-        <div className="p-5 rounded-2xl bg-slate-900/60 border border-white/10 backdrop-blur-md flex flex-col lg:flex-row items-center justify-between gap-5 shadow-2xl">
-          <div className="flex items-center gap-4">
-            <div className="flex -space-x-2 overflow-hidden hidden sm:flex">
-              <span className="inline-block h-8 w-8 rounded-full ring-2 ring-slate-900 bg-slate-800 text-xs font-bold text-slate-300 text-center leading-8">15k+</span>
-              <span className="inline-block h-8 w-8 rounded-full ring-2 ring-slate-900 bg-[#f68122]/20 text-[#f68122] text-xs font-bold text-center leading-8">★</span>
-            </div>
-            <div>
-              <h4 className="text-white font-bold text-base tracking-wide flex items-center gap-2">
-                Join Exclusive Investor Club
-                <span className="flex h-2.5 w-2.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+      {/* ── Newsletter Banner ── */}
+      <div className="relative border-b border-slate-800/80">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-10%,rgba(246,129,34,0.10),transparent)]" />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="hidden sm:flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                 </span>
-              </h4>
-              <p className="text-xs sm:text-sm text-slate-400 mt-0.5">Get priority deal flow & high-yield listings.</p>
+                <span className="text-[10px] font-black tracking-widest text-emerald-400 uppercase">Live</span>
+              </div>
+              <div>
+                <h4 className="text-white font-bold text-base tracking-wide">
+                  Join the Exclusive Investor Club
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Priority deal flow &amp; high-yield listings, straight to your inbox.
+                </p>
+              </div>
             </div>
+
+            <form onSubmit={handleSubscribe} className="flex items-center w-full lg:w-auto">
+              <div className="flex items-center bg-slate-900/80 border border-slate-800 rounded-xl p-1 w-full lg:w-auto min-w-0 focus-within:border-orange-500/50 transition-colors">
+                <input
+                  type="email"
+                  value={subEmail}
+                  onChange={(e) => setSubEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  disabled={loading}
+                  className="flex-1 px-4 py-2.5 text-sm text-white placeholder-slate-500 bg-transparent focus:outline-none min-w-0"
+                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="rounded-lg px-5 py-2.5 text-sm font-bold text-slate-950 transition-all duration-200 shrink-0 flex items-center gap-2 shadow-lg"
+                  style={{ background: `linear-gradient(135deg, ${accent}, #f59e0b)` }}
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Subscribe"}
+                  <ArrowUpRight className="w-4 h-4" />
+                </button>
+              </div>
+            </form>
           </div>
 
-          {/* Inline Email Form */}
-          <form onSubmit={handleSubscribe} className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-1.5 w-full lg:w-auto min-w-[360px] focus-within:border-[#f68122]/50 transition-colors">
-            <input
-              type="email"
-              value={subEmail}
-              onChange={(e) => setSubEmail(e.target.value)}
-              placeholder="Enter your email"
-              disabled={loading}
-              className="flex-1 px-3 py-2 text-sm text-white placeholder-slate-500 bg-transparent focus:outline-none min-w-0"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-lg bg-[#f68122] hover:bg-[#e06d12] px-5 py-2 text-xs sm:text-sm font-bold text-white transition-all duration-200 shrink-0 flex items-center gap-2 shadow-md shadow-[#f68122]/20"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Join"}
-              <ArrowUpRight className="w-4 h-4" />
-            </button>
-          </form>
+          {subStatus && (
+            <p className={`mt-3 text-xs font-semibold ${subStatus.ok ? "text-emerald-400" : "text-red-400"}`}>
+              {subStatus.msg}
+            </p>
+          )}
         </div>
+      </div>
 
-        {/* Navigation & Brand Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-8 pt-2">
+      {/* ── Main Footer Grid ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 pt-12 pb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-10">
 
-          {/* Brand & Quick Connect */}
-          <div className="col-span-2 lg:col-span-4 space-y-4">
-            <div className="flex items-center gap-3">
-              <Link to="/" className="shrink-0">
-                <img src="assets/img/bb-logo.jpeg" alt="Baba Broker" className="h-10 rounded-lg object-contain border border-white/10 bg-slate-900 p-1" />
-              </Link>
-              <div className="h-5 w-px bg-slate-800" />
-              <span className="text-xs font-mono tracking-wider text-slate-400 uppercase font-semibold">Est. 2025</span>
-            </div>
-            <p className="text-slate-400 text-sm leading-relaxed pr-4">
+          {/* Brand Column */}
+          <div className="col-span-2 lg:col-span-4 space-y-5">
+            <Link to="/" className="inline-block">
+              <img
+                src="assets/img/logo.svg"
+                alt="Baba Broker"
+                className="h-10 w-auto object-contain"
+              />
+            </Link>
+            <p className="text-slate-400 text-sm leading-relaxed max-w-xs">
               Next-generation real estate marketplace simplifying high-ticket property acquisition, rentals, and portfolio management.
             </p>
-            <div className="flex items-center gap-3 pt-1">
-              <a href="tel:+919586505111" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:border-slate-700 transition-all text-xs sm:text-sm font-medium">
-                <Phone className="w-4 h-4 text-[#f68122]" /> Call Support
+            <div className="flex flex-wrap items-center gap-2.5">
+              <a href="tel:+919586505111" className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all text-xs font-semibold">
+                <Phone className="w-3.5 h-3.5" style={{ color: accent }} />
+                +91 95865 05111
               </a>
-              <a href="mailto:info@bababroker.com" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:border-slate-700 transition-all text-xs sm:text-sm font-medium">
-                <Mail className="w-4 h-4 text-[#f68122]" /> Email
+              <a href="mailto:info@bababroker.com" className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all text-xs font-semibold">
+                <Mail className="w-3.5 h-3.5" style={{ color: accent }} />
+                info@bababroker.com
               </a>
             </div>
           </div>
 
-          {/* Nav Links */}
-          <div className="col-span-1 lg:col-span-2 space-y-3">
-            <p className="font-bold text-white text-xs tracking-wider uppercase">Platform</p>
-            <ul className="space-y-2.5 text-sm">
-              {[
-                { name: "Home", path: "/" },
-                { name: "Properties", path: "/properties" },
-                { name: "About Us", path: "/about" },
-                { name: "Contact", path: "/contact" }
-              ].map((item, idx) => (
-                <li key={idx}>
-                  <Link to={item.path} className="hover:text-white transition-colors flex items-center gap-1.5 group">
-                    <ChevronRight className="w-3.5 h-3.5 text-[#f68122] opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                    <span>{item.name}</span>
+          {/* Quick Links */}
+          <div className="col-span-1 lg:col-span-2">
+            <p className="text-[10px] font-extrabold tracking-[0.18em] text-white/50 uppercase mb-4">Platform</p>
+            <ul className="space-y-3">
+              {NAV_LINKS.map((item) => (
+                <li key={item.name}>
+                  <Link
+                    to={item.path}
+                    className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"
+                  >
+                    <span className="h-[3px] w-0 group-hover:w-3 rounded-full transition-all duration-200" style={{ background: accent }} />
+                    {item.name}
                   </Link>
                 </li>
               ))}
@@ -128,12 +163,12 @@ export default function Footer() {
           </div>
 
           {/* Services */}
-          <div className="col-span-1 lg:col-span-3 space-y-3">
-            <p className="font-bold text-white text-xs tracking-wider uppercase">Core Services</p>
-            <ul className="space-y-2 text-sm text-slate-400">
-              {["Residential Sales", "Commercial Leasing", "Asset Advisory", "Legal Compliance"].map((service, idx) => (
-                <li key={idx} className="hover:text-slate-200 transition-colors flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#f68122]" />
+          <div className="col-span-1 lg:col-span-3">
+            <p className="text-[10px] font-extrabold tracking-[0.18em] text-white/50 uppercase mb-4">Core Services</p>
+            <ul className="space-y-3">
+              {SERVICES.map((service) => (
+                <li key={service} className="text-sm text-slate-400 flex items-center gap-2.5">
+                  <span className="h-1 w-1 rounded-full shrink-0" style={{ background: accent }} />
                   {service}
                 </li>
               ))}
@@ -141,56 +176,64 @@ export default function Footer() {
           </div>
 
           {/* HQ Address */}
-          <div className="col-span-2 lg:col-span-3 space-y-3">
-            <p className="font-bold text-white text-xs tracking-wider uppercase">Corporate HQ</p>
-            <p className="text-sm text-slate-400 flex items-start gap-2 leading-snug">
-              <MapPin className="w-4 h-4 text-[#f68122] shrink-0 mt-0.5" />
-              123 Property Lane, Financial District, New Delhi – 110059
-            </p>
-            <p className="text-sm text-slate-400 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[#f68122] shrink-0" /> Mon – Sat: 09:00 – 19:00 IST
-            </p>
+          <div className="col-span-2 lg:col-span-3">
+            <p className="text-[10px] font-extrabold tracking-[0.18em] text-white/50 uppercase mb-4">Corporate HQ</p>
+            <div className="space-y-3 text-sm text-slate-400">
+              <p className="flex items-start gap-2.5 leading-relaxed">
+                <MapPin className="w-4 h-4 shrink-0 mt-0.5" style={{ color: accent }} />
+                123 Property Lane, Financial District, New Delhi – 110059
+              </p>
+              <p className="flex items-center gap-2.5">
+                <Clock className="w-4 h-4 shrink-0" style={{ color: accent }} />
+                Mon – Sat: 09:00 – 19:00 IST
+              </p>
+            </div>
           </div>
-
         </div>
 
-        {/* Feature Cards Matrix */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 py-4 border-y border-slate-800/80">
-          {[
-            { icon: Globe, title: "Global Reach", sub: "Cross-border deals" },
-            { icon: ShieldCheck, title: "Bank-Grade Legal", sub: "Fully verified assets" },
-            { icon: Handshake, title: "Zero Hidden Fees", sub: "100% transparent" },
-            { icon: Briefcase, title: "Private Wealth", sub: "Dedicated advisors" }
-          ].map((card, idx) => (
-            <div key={idx} className="p-3 rounded-xl bg-slate-900/40 border border-slate-800/60 flex items-center gap-3 hover:border-slate-700 transition-colors">
-              <card.icon className="w-5 h-5 text-[#f68122] shrink-0" />
+        {/* Feature Divider */}
+        <div className="my-8 h-px bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
+
+        {/* Feature Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {FEATURES.map(({ icon: Icon, title, sub }) => (
+            <div
+              key={title}
+              className="group flex items-center gap-3.5 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.07] hover:border-white/15 transition-all duration-300"
+            >
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                style={{ background: `${accent}15` }}
+              >
+                <Icon className="w-5 h-5" style={{ color: accent }} />
+              </div>
               <div className="min-w-0">
-                <p className="text-white text-xs sm:text-sm font-bold truncate leading-tight">{card.title}</p>
-                <p className="text-slate-400 text-xs truncate mt-0.5">{card.sub}</p>
+                <p className="text-white text-sm font-bold leading-tight group-hover:text-orange-300 transition-colors">
+                  {title}
+                </p>
+                <p className="text-slate-500 text-xs mt-0.5">{sub}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Risk Disclaimer & Legal Footer */}
-        <div className="space-y-4 pt-1">
-          <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/10 flex items-center gap-3 text-xs sm:text-sm">
-            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-            <p className="text-slate-400 leading-normal">
-              <span className="text-amber-500 font-bold">Disclaimer:</span> Real estate transactions involve inherent risks. Past returns are not indicative of future market yield. Conduct independent legal verification before investing.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 text-xs sm:text-sm text-slate-400 pt-1">
-            <p>© 2026 Baba Broker Pvt Ltd. All rights reserved.</p>
-            <div className="flex gap-5 font-medium">
-              {["Privacy Policy", "Terms of Service", "Compliance"].map((link, idx) => (
-                <a key={idx} href="#" className="hover:text-white transition-colors">{link}</a>
-              ))}
-            </div>
-          </div>
+        {/* Disclaimer */}
+        <div className="mt-8 p-4 rounded-2xl bg-amber-500/[0.04] border border-amber-500/10 flex items-start gap-3">
+          <AlertTriangle className="w-4 h-4 text-amber-500/80 shrink-0 mt-0.5" />
+          <p className="text-xs text-slate-500 leading-relaxed">
+            <span className="text-amber-500/90 font-semibold">Disclaimer:</span> Real estate transactions involve inherent risks. Past returns are not indicative of future market yield. Conduct independent legal verification before investing.
+          </p>
         </div>
 
+        {/* Bottom Bar */}
+        <div className="mt-6 pt-5 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <p>© {new Date().getFullYear()} Baba Broker Pvt Ltd. All rights reserved.</p>
+          <div className="flex gap-6 font-medium">
+            {LEGAL_LINKS.map((link) => (
+              <a key={link} href="#" className="hover:text-white transition-colors">{link}</a>
+            ))}
+          </div>
+        </div>
       </div>
     </footer>
   );

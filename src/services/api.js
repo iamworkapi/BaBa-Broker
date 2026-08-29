@@ -1,5 +1,11 @@
 import { authHeaders, clearAuth, getAuth } from '../store/auth';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+
+function apiUrl(path) {
+  return API_BASE ? `${API_BASE}${path}` : path;
+}
+
 const TOAST_MESSAGES = {
   network: 'Network error. Please check your connection.',
   '401': 'Session expired. Please log in again.',
@@ -7,11 +13,14 @@ const TOAST_MESSAGES = {
   fallback: 'Something went wrong. Please try again.',
 };
 
-export const api = async (path, options = {}, toastFn) => {
+export async function api(path, options = {}, toastFn) {
   try {
-    const response = await fetch(path, {
+    const response = await fetch(apiUrl(path), {
       ...options,
-      headers: { ...authHeaders(), ...(options.headers || {}) },
+      headers: {
+        ...authHeaders(),
+        ...(options.headers || {}),
+      },
     });
 
     if (response.status === 401) {
@@ -36,12 +45,15 @@ export const api = async (path, options = {}, toastFn) => {
       const body = await response.text();
       let data = {};
       try { data = body ? JSON.parse(body) : {}; } catch { /* ignore */ }
-      throw new Error(data.error || msg);
+      throw new Error(data.error || data.message || msg);
     }
 
     const body = await response.text();
     let data = {};
-    try { data = body ? JSON.parse(body) : {}; } catch { /* ignore */ }
+    // Accept empty 200 responses (some endpoints return no body on success)
+    if (body && body.trim()) {
+      try { data = JSON.parse(body); } catch { /* ignore */ }
+    }
     return data;
   } catch (err) {
     if (err.message !== 'Session expired. Please log in again.') {
@@ -49,4 +61,4 @@ export const api = async (path, options = {}, toastFn) => {
     }
     throw err;
   }
-};
+}

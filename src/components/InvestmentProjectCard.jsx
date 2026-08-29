@@ -1,37 +1,42 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 
 function formatCommaPrice(val) {
-  if (val === null || val === undefined || val === '') return '₹0';
-  if (typeof val === 'number') {
-    return '₹' + val.toLocaleString('en-IN');
-  }
-  const str = String(val).trim();
-  const digits = str.replace(/[^\d]/g, '');
-  if (digits && Number(digits) > 0) {
-    return '₹' + Number(digits).toLocaleString('en-IN');
-  }
-  return str.startsWith('₹') ? str : `₹${str}`;
+  if (val === null || val === undefined || val === "") return "₹0";
+  if (typeof val === "number") return "₹" + val.toLocaleString("en-IN");
+  const digits = String(val).replace(/[^\d]/g, "");
+  if (digits && Number(digits) > 0) return "₹" + Number(digits).toLocaleString("en-IN");
+  return String(val).startsWith("₹") ? val : `₹${val}`;
+}
+
+const ROI_COLORS = {
+  high: "text-emerald-400",
+  mid: "text-amber-400",
+  low: "text-orange-400",
+};
+
+function getRoiTier(roi) {
+  if (roi >= 25) return "high";
+  if (roi >= 18) return "mid";
+  return "low";
 }
 
 export default function InvestmentProjectCard({ project, onOpenDetails }) {
   const navigate = useNavigate();
 
-  const handleCardClick = () => {
-    if (onOpenDetails) {
-      onOpenDetails(project);
-    }
-    navigate('/property-details', { state: { project } });
+  const handleClick = () => {
+    if (onOpenDetails) onOpenDetails(project);
+    navigate("/property-details", { state: { project } });
   };
+
   const {
-    title = '',
-    location = '',
-    price = '',
-    image = '',
-    status = 'running',
-    propertyType = 'residential',
-    bhk = '2bhk',
-    investmentModel = 'co_investment',
-    tag = '',
+    title = "",
+    location = "",
+    image = "",
+    status = "running",
+    propertyType = "residential",
+    bhk = "2bhk",
+    investmentModel = "co_investment",
+    tag = "",
     totalValuation = 0,
     fundedPercentage = 0,
     investorsCount = 0,
@@ -43,189 +48,191 @@ export default function InvestmentProjectCard({ project, onOpenDetails }) {
     holdingPeriodMonths = 6,
   } = project;
 
-  const remainingPercentage = Math.max(0, 100 - fundedPercentage);
-  const totalFlipOutlay = (purchasePrice || 0) + (renovationCost || 0);
-  const flipProfit = (expectedSalePrice || 0) - totalFlipOutlay;
-  const flipRoi = totalFlipOutlay > 0 ? ((flipProfit / totalFlipOutlay) * 100).toFixed(1) : 0;
+  const remainingPct = Math.max(0, 100 - fundedPercentage);
+  const roiTier = getRoiTier(expectedRoi);
+  const roiColorClass = ROI_COLORS[roiTier];
+  const isFlip = investmentModel === "renovate_flip";
+  const totalOutlay = (purchasePrice || 0) + (renovationCost || 0);
+  const netProfit = (expectedSalePrice || 0) - totalOutlay;
+
+  const statusConfig = {
+    running: {
+      label: "Live Now",
+      bg: "bg-orange-500",
+      text: "text-slate-950",
+      icon: "fa-circle-play",
+    },
+    upcoming: {
+      label: "Coming Soon",
+      bg: "bg-blue-600",
+      text: "text-white",
+      icon: "fa-rocket",
+    },
+    delivered: {
+      label: "Delivered",
+      bg: "bg-emerald-500",
+      text: "text-slate-950",
+      icon: "fa-circle-check",
+    },
+  };
+  const st = statusConfig[status] || statusConfig.running;
 
   const defaultImage =
     image ||
-    'https://housing-images.n7net.in/4f2250e8/233a502501247c905f9f712e15231459/v0/large/planner_lotus_residency-sewak_park-new+delhi-planner_n_maker.jpeg';
+    "https://housing-images.n7net.in/4f2250e8/233a502501247c905f9f712e15231459/v0/large/planner_lotus_residency-sewak_park-new+delhi-planner_n_maker.jpeg";
 
   return (
     <div
-      onClick={handleCardClick}
-      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60 shadow-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-orange-500/40 hover:bg-slate-900/90 hover:shadow-[0_20px_40px_rgba(249,115,22,0.12)] cursor-pointer"
+      onClick={handleClick}
+      className="group relative flex flex-col rounded-2xl border border-slate-800/80 bg-slate-900/50 backdrop-blur-md shadow-xl transition-all duration-500 hover:-translate-y-2 hover:border-orange-500/40 hover:shadow-[0_24px_64px_rgba(249,115,22,0.15)] cursor-pointer overflow-hidden"
     >
-      {/* Image & Badges */}
-      <div className="relative h-56 w-full overflow-hidden bg-slate-950">
+      {/* ── Image Block ── */}
+      <div className="relative h-52 w-full overflow-hidden bg-slate-950">
         <img
           src={defaultImage}
           alt={title}
-          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+          loading="lazy"
+          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
         />
 
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent"></div>
+        {/* Gradient overlays */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-        {/* Status Badge */}
-        <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-          <span
-            className={`rounded-lg px-2.5 py-1 text-[11px] font-black uppercase tracking-wider shadow-md backdrop-blur-md ${
-              status === 'delivered'
-                ? 'bg-emerald-500/90 text-white'
-                : status === 'upcoming'
-                ? 'bg-blue-600/90 text-white'
-                : 'bg-orange-500/90 text-white'
-            }`}
-          >
-            <i
-              className={`fa-solid ${
-                status === 'delivered'
-                  ? 'fa-circle-check'
-                  : status === 'upcoming'
-                  ? 'fa-clock'
-                  : 'fa-chart-line'
-              } mr-1.5 text-[10px]`}
-            ></i>
-            {status}
+        {/* Top badges */}
+        <div className="absolute left-3.5 top-3.5 flex flex-wrap items-center gap-2">
+          <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-black uppercase tracking-wider shadow-lg ${st.bg} ${st.text}`}>
+            <i className={`fa-solid ${st.icon} text-[10px]`} />
+            {st.label}
           </span>
-
-          <span className="rounded-lg border border-slate-700 bg-slate-900/90 px-2.5 py-1 text-[11px] font-bold capitalize text-slate-200 backdrop-blur-md">
-            {propertyType === 'residential' ? bhk.toUpperCase() : propertyType}
+          <span className="rounded-lg border border-white/20 bg-slate-950/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-200 backdrop-blur-sm">
+            {propertyType === "residential" ? bhk.toUpperCase() : propertyType}
           </span>
         </div>
 
-        {/* Tag Badge */}
-        <div className="absolute bottom-3 left-4 flex items-center gap-2">
-          {tag && (
-            <span className="rounded-md bg-slate-900/90 border border-slate-700 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-orange-400 backdrop-blur-sm">
+        {/* ROI Badge — top right */}
+        <div className="absolute right-3.5 top-3.5 flex flex-col items-end gap-1">
+          <div className="rounded-xl border border-amber-500/30 bg-slate-950/80 px-3 py-1.5 text-right backdrop-blur-md shadow-xl">
+            <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400">
+              Est. Returns
+            </span>
+            <span className={`text-lg font-black ${roiColorClass}`}>
+              +{isFlip ? ((netProfit / totalOutlay) * 100).toFixed(1) : expectedRoi}%
+            </span>
+            <span className="block text-[9px] font-bold text-slate-400">Annual ROI</span>
+          </div>
+        </div>
+
+        {/* Tag at bottom of image */}
+        {tag && (
+          <div className="absolute bottom-3 left-3.5">
+            <span className="rounded-md border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-orange-400 backdrop-blur-sm">
               {tag}
             </span>
-          )}
-          {project.images && project.images.length > 1 && (
-            <span className="rounded-md bg-slate-950/80 border border-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-300 backdrop-blur-sm flex items-center gap-1">
-              <i className="fa-solid fa-camera text-orange-400"></i> {project.images.length}
-            </span>
-          )}
-          {project.videoUrl && (
-            <span className="rounded-md bg-red-600/90 border border-red-500 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm flex items-center gap-1">
-              <i className="fa-solid fa-circle-play"></i> Video
-            </span>
-          )}
-        </div>
-
-        {/* Expected ROI Badge */}
-        <div className="absolute right-4 top-4">
-          <div className="rounded-xl border border-amber-500/30 bg-slate-950/80 px-3 py-1.5 text-right backdrop-blur-md shadow-lg">
-            <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400">
-              Est. Return
-            </span>
-            <span className="text-sm font-black text-amber-400">
-              +{investmentModel === 'renovate_flip' ? flipRoi : expectedRoi}% ROI
-            </span>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="flex flex-1 flex-col justify-between p-5">
+      {/* ── Card Body ── */}
+      <div className="flex flex-1 flex-col gap-4 p-5">
+        {/* Model badge + title */}
         <div>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-orange-500">
-              {investmentModel === 'renovate_flip' ? 'Renovate & Flip Deal' : 'Co-Investment Pool'}
-            </span>
-            <div className="text-right">
-              <span className="text-sm font-black text-amber-400 block">
-                {formatCommaPrice(totalValuation || price)}
-              </span>
-              <span className="text-[10px] font-normal text-slate-400 block -mt-0.5">
-                (Total Selling Price)
-              </span>
-            </div>
-          </div>
-
-          <h3 className="mt-2 text-base font-bold text-white tracking-tight group-hover:text-orange-400 transition-colors">
+          <span className="text-[10px] font-black uppercase tracking-widest text-orange-500">
+            {isFlip ? "Renovate & Flip Deal" : "Fractional Co-Investment"}
+          </span>
+          <h3 className="mt-1.5 text-[15px] font-bold text-white leading-snug group-hover:text-orange-400 transition-colors line-clamp-2">
             {title}
           </h3>
-
-          <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-400">
-            <i className="fa-solid fa-location-dot text-orange-500 text-xs shrink-0"></i>
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-400">
+            <i className="fa-solid fa-location-dot text-orange-500 text-[10px]" />
             <span className="truncate">{location}</span>
           </p>
         </div>
 
-        {/* Financial Highlights */}
-        <div className="mt-5 pt-4 border-t border-slate-800/80">
-          {investmentModel === 'renovate_flip' ? (
-            /* Scenario 2: Renovate & Flip Card View */
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-              <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div>
-                  <span className="block text-[10px] font-semibold text-slate-400">Purchase</span>
-                  <span className="font-bold text-slate-200">
-                    {formatCommaPrice(purchasePrice)}
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-[10px] font-semibold text-slate-400">Reno Cost</span>
-                  <span className="font-bold text-slate-200">
-                    {formatCommaPrice(renovationCost)}
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-[10px] font-semibold text-amber-400">Net Profit</span>
-                  <span className="font-black text-amber-400">
-                    +{formatCommaPrice(flipProfit)}
-                  </span>
-                </div>
+        {/* Divider */}
+        <div className="h-px bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
+
+        {/* Financial metrics */}
+        {isFlip ? (
+          /* Flip deal financial strip */
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "Purchase", value: formatCommaPrice(purchasePrice), color: "text-slate-200" },
+              { label: "Reno Cost", value: formatCommaPrice(renovationCost), color: "text-slate-200" },
+              {
+                label: "Net Profit",
+                value: `+${formatCommaPrice(netProfit)}`,
+                color: "text-emerald-400",
+              },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-2.5 text-center">
+                <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                  {item.label}
+                </span>
+                <span className={`mt-0.5 block text-xs font-black ${item.color}`}>{item.value}</span>
               </div>
-              <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-slate-300 border-t border-amber-500/10 pt-2">
-                <span>Sale Target: {formatCommaPrice(expectedSalePrice)}</span>
-                <span className="text-orange-400 font-bold">{holdingPeriodMonths} Months</span>
-              </div>
+            ))}
+          </div>
+        ) : (
+          /* Co-investment: funding bar */
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between text-[11px] font-bold">
+              <span className="text-slate-300">
+                {fundedPercentage}% Funded
+                <span className="text-slate-500 font-medium"> ({investorsCount} Investor{investorsCount !== 1 ? "s" : ""})</span>
+              </span>
+              <span className="text-orange-400">{remainingPct}% Left</span>
             </div>
-          ) : (
-            /* Scenario 1: Fractional Funding View */
-            <div className="space-y-3">
-              <div>
-                <div className="flex justify-between text-xs font-bold mb-1.5">
-                  <span className="text-slate-300">
-                    {fundedPercentage}% Funded ({investorsCount} Investors)
-                  </span>
-                  <span className="text-orange-400">{remainingPercentage}% Available</span>
-                </div>
-
-                {/* Progress bar */}
-                <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800 p-0.5">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all duration-500"
-                    style={{ width: `${Math.min(100, Math.max(5, fundedPercentage))}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between rounded-xl bg-slate-950/60 px-3 py-2 text-xs border border-slate-800">
-                <div>
-                  <span className="text-slate-400 block text-[11px]">Min. Investment</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-bold text-white block text-xs">
-                    {formatCommaPrice(minInvestment)}
-                  </span>
-                </div>
-              </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800/80 p-0.5">
+              <div
+                className="h-full rounded-full transition-all duration-700 ease-out"
+                style={{
+                  width: `${Math.min(100, Math.max(5, fundedPercentage))}%`,
+                  background:
+                    fundedPercentage >= 80
+                      ? "linear-gradient(90deg, #10b981, #34d399)"
+                      : fundedPercentage >= 50
+                      ? "linear-gradient(90deg, #f97316, #f59e0b)"
+                      : "linear-gradient(90deg, #f97316, #fbbf24)",
+                }}
+              />
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Action CTA Button */}
-          <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-950 border border-slate-800 group-hover:bg-gradient-to-r group-hover:from-orange-500 group-hover:to-amber-500 group-hover:border-transparent group-hover:text-slate-950 px-4 py-2.5 text-xs font-bold text-slate-200 transition-all duration-300 shadow-md">
-            <span className="flex items-center gap-1.5">
-              <i className="fa-solid fa-calculator text-orange-400 group-hover:text-slate-950 transition-colors"></i>
-              Calculate Return & Invest
+        {/* Valuation + Min investment row */}
+        <div className="flex items-end justify-between rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+              Project Value
             </span>
-            <i className="fa-solid fa-arrow-right text-[10px] transition-transform duration-300 group-hover:translate-x-1"></i>
+            <span className="text-sm font-black text-white">
+              {formatCommaPrice(totalValuation || price)}
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+              Min. Entry
+            </span>
+            <span className="text-sm font-black text-emerald-400">
+              {formatCommaPrice(minInvestment)}
+            </span>
           </div>
         </div>
+
+        {/* CTA Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleClick();
+          }}
+          className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-orange-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/40 hover:brightness-110 active:scale-[0.98]"
+        >
+          <i className="fa-solid fa-calculator text-sm" />
+          {isFlip ? "Analyze Flip Deal" : "Calculate Returns & Invest"}
+          <i className="fa-solid fa-arrow-right text-[10px] transition-transform group-hover:translate-x-1" />
+        </button>
       </div>
     </div>
   );

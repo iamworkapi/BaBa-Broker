@@ -8,7 +8,7 @@ const MotionNavLink = motion(NavLink);
 const NAV_LINKS = [
   { to: "/", label: "Home", id: "hero" },
   { to: "/about", label: "About Us", id: null },
-  { href: "/#our-projects", label: "Investment Plans", id: null },
+  { to: "/properties", label: "Investment Plans", id: null },
   { to: "/contact", label: "Contact Us", id: null },
 ];
 
@@ -119,16 +119,16 @@ export default function Navbar() {
 
       <div className="mx-auto max-w-7xl flex items-center justify-between px-5 py-2 lg:px-16">
         {/* ─── Animated Logo ─── */}
-        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={spring}>
+        <motion.div transition={spring}>
           <Link to="/" onClick={closeAll} className="block">
             <motion.img
-              src="assets/img/bb-logo.jpeg"
+              src="assets/img/logo.svg"
               alt="Baba Broker"
-              className="h-12 sm:h-14 lg:h-[4.5rem] w-auto object-contain"
-              initial={{ opacity: 0, filter: "blur(6px)", y: -4 }}
-              animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+              className="h-10 sm:h-12 lg:h-14 w-auto object-contain"
+              style={{ maxWidth: '170px' }}
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
-              whileHover={{ filter: "brightness(1.15) drop-shadow(0 0 12px rgba(249,115,22,0.45))" }}
               draggable={false}
             />
           </Link>

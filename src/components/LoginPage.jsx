@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { setAuth } from '../store/auth';
+import { api } from '../services/api';
 import { useToast } from '../hooks/useToast.jsx';
 
 const ROLES = {
@@ -216,30 +217,23 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
         return;
       }
 
-      const response = await fetch('/api/auth/login', {
+      const res = await api('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfRef.current },
+        headers: { 'X-CSRF-Token': csrfRef.current },
         body: JSON.stringify({
           email: emailVal,
           password,
           role: activeRole.id,
           csrfToken: csrfRef.current,
         }),
-      });
+      }, toast);
 
-      if (response.ok) {
-        const rawBody = await response.text();
-        const data = rawBody ? JSON.parse(rawBody) : {};
-
-        if (!data.token) {
-          throw new Error('Invalid response from server. Please try again.');
-        }
-
+      if (res && res.token) {
         setAuth({
-          token: data.token,
+          token: res.token,
           role: activeRole.id,
-          name: data.user?.name || `${activeRole.tabLabel} Executive`,
-          email: data.user?.email || emailVal,
+          name: res.user?.name || `${activeRole.tabLabel} Executive`,
+          email: res.user?.email || emailVal,
         });
 
         localStorage.setItem('rememberedRole', activeRole.id);
@@ -248,11 +242,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
         return;
       }
 
-      const errorBody = await response.text();
-      let errorData = {};
-      try { errorData = errorBody ? JSON.parse(errorBody) : {}; } catch { /* ignore */ }
-      setCooldownUntil(Date.now() + RATE_LIMIT_MS);
-      throw new Error(errorData.error || `Authentication failed (${response.status}). Please verify your credentials.`);
     } catch (err) {
       setCooldownUntil(Date.now() + RATE_LIMIT_MS);
       toast({
