@@ -14,7 +14,9 @@
     --color-light: #f9fafb;
     --color-white: #ffffff;
 
-    --font-sans: 'Open Sans', sans-serif;
+    --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+    --font-display: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
 
     --radius-sm: 4px;
     --radius-md: 8px;

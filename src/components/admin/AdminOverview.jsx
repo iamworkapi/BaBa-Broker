@@ -222,12 +222,13 @@ const formatCompactINR = (val) => {
   return `₹ ${num.toLocaleString('en-IN')}`;
 };
 
-// Helper: Generate Smooth Cubic Bezier SVG Path from Array of Points
+// Helper: Generate Smooth Monotone Cubic Bezier SVG Path from Array of Points
 function generateSplinePath(points, width, height, padding = 20) {
-  if (!points || points.length === 0) return '';
+  if (!points || points.length === 0) return { linePath: '', fillPath: '', coords: [] };
   const innerW = width - padding * 2;
   const innerH = height - padding * 2;
-  const stepX = innerW / (points.length - 1);
+  const n = points.length;
+  const stepX = innerW / (n - 1);
 
   const coords = points.map((p, i) => {
     const x = padding + i * stepX;
@@ -235,29 +236,45 @@ function generateSplinePath(points, width, height, padding = 20) {
     return { x, y };
   });
 
-  let d = `M ${coords[0].x} ${coords[0].y}`;
-  for (let i = 0; i < coords.length - 1; i++) {
-    const p0 = coords[i === 0 ? 0 : i - 1];
-    const p1 = coords[i];
-    const p2 = coords[i + 1];
-    const p3 = coords[i + 2] || p2;
-
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+  if (n === 1) {
+    return { linePath: `M ${coords[0].x} ${coords[0].y}`, fillPath: '', coords };
   }
 
-  const fillPath = `${d} L ${coords[coords.length - 1].x} ${height - padding} L ${coords[0].x} ${height - padding} Z`;
+  // Monotone Cubic Hermite interpolation to avoid artificial peak loops
+  const deltas = [];
+  const m = [];
+  for (let i = 0; i < n - 1; i++) {
+    deltas.push((coords[i + 1].y - coords[i].y) / (coords[i + 1].x - coords[i].x));
+  }
+
+  m[0] = deltas[0];
+  for (let i = 1; i < n - 1; i++) {
+    if (deltas[i - 1] * deltas[i] <= 0) {
+      m[i] = 0;
+    } else {
+      m[i] = (deltas[i - 1] + deltas[i]) / 2;
+    }
+  }
+  m[n - 1] = deltas[n - 2];
+
+  let d = `M ${coords[0].x.toFixed(2)} ${coords[0].y.toFixed(2)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const dx = (coords[i + 1].x - coords[i].x) / 3;
+    const cp1x = coords[i].x + dx;
+    const cp1y = coords[i].y + m[i] * dx;
+    const cp2x = coords[i + 1].x - dx;
+    const cp2y = coords[i + 1].y - m[i + 1] * dx;
+    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${coords[i + 1].x.toFixed(2)} ${coords[i + 1].y.toFixed(2)}`;
+  }
+
+  const fillPath = `${d} L ${coords[n - 1].x.toFixed(2)} ${height - padding} L ${coords[0].x.toFixed(2)} ${height - padding} Z`;
   return { linePath: d, fillPath, coords };
 }
 
 // Mini Sparkline SVG Component for KPI Cards
 function MiniSparkline({ data, color = '#ea580c', isFilled = true }) {
-  const width = 80;
-  const height = 28;
+  const width = 84;
+  const height = 30;
   const points = data || [30, 45, 35, 60, 50, 75, 70, 95];
   const max = Math.max(...points, 1);
   const min = Math.min(...points, 0);
@@ -266,29 +283,31 @@ function MiniSparkline({ data, color = '#ea580c', isFilled = true }) {
 
   const coords = points.map((val, idx) => ({
     x: idx * step,
-    y: height - ((val - min) / range) * (height - 6) - 3,
+    y: height - ((val - min) / range) * (height - 8) - 4,
   }));
 
-  let path = `M ${coords[0].x} ${coords[0].y}`;
+  let path = `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
   for (let i = 0; i < coords.length - 1; i++) {
     const xc = (coords[i].x + coords[i + 1].x) / 2;
     const yc = (coords[i].y + coords[i + 1].y) / 2;
-    path += ` Q ${coords[i].x} ${coords[i].y}, ${xc} ${yc}`;
+    path += ` Q ${coords[i].x.toFixed(1)} ${coords[i].y.toFixed(1)}, ${xc.toFixed(1)} ${yc.toFixed(1)}`;
   }
-  path += ` L ${coords[coords.length - 1].x} ${coords[coords.length - 1].y}`;
+  path += ` L ${coords[coords.length - 1].x.toFixed(1)} ${coords[coords.length - 1].y.toFixed(1)}`;
   const fill = `${path} L ${width} ${height} L 0 ${height} Z`;
+
+  const gradId = `spark-grad-${color.replace(/[^a-zA-Z0-9]/g, '')}`;
 
   return (
     <svg width={width} height={height} className="overflow-visible">
       <defs>
-        <linearGradient id={`grad-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.35" />
           <stop offset="100%" stopColor={color} stopOpacity="0.0" />
         </linearGradient>
       </defs>
-      {isFilled && <path d={fill} fill={`url(#grad-${color.replace('#', '')})`} />}
-      <path d={path} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={coords[coords.length - 1].x} cy={coords[coords.length - 1].y} r="2.5" fill={color} />
+      {isFilled && <path d={fill} fill={`url(#${gradId})`} />}
+      <path d={path} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={coords[coords.length - 1].x} cy={coords[coords.length - 1].y} r="2.8" fill={color} />
     </svg>
   );
 }
@@ -311,6 +330,7 @@ export default function AdminOverview({
   startEdit,
   deleteProperty,
   toggleFeaturedStatus,
+  togglePortfolioStatus,
   openWhatsAppShare,
   openCreateFeaturedModal,
   openCreateProjectModal,
@@ -342,55 +362,55 @@ export default function AdminOverview({
   const displayLeads = metrics?.totalLeadsCount || contacts.length || 38;
   const displayShares = metrics?.totalSharesCount || shareCount || 92;
 
-  // Chart datasets
+  // Chart datasets with realistic smooth market progression
   const chartDatasets = {
     valuation: [
-      { day: 1, height: 42, value: '₹ 2.80 Cr', label: '1 Mar', growth: '+2.1%' },
-      { day: 2, height: 55, value: '₹ 3.05 Cr', label: '2 Mar', growth: '+3.4%' },
-      { day: 3, height: 72, value: '₹ 3.40 Cr', label: '3 Mar', growth: '+8.2%' },
-      { day: 4, height: 48, value: '₹ 2.95 Cr', label: '4 Mar', growth: '-1.5%' },
-      { day: 5, height: 80, value: '₹ 3.75 Cr', label: '5 Mar', growth: '+12.0%' },
-      { day: 6, height: 62, value: '₹ 3.25 Cr', label: '6 Mar', growth: '+4.1%' },
-      { day: 7, height: 40, value: '₹ 2.70 Cr', label: '7 Mar', growth: '+1.0%' },
-      { day: 8, height: 68, value: '₹ 3.35 Cr', label: '8 Mar', growth: '+6.5%' },
-      { day: 9, height: 95, value: formatCompactINR(displayValuation), label: 'Today (9 Mar)', isToday: true, growth: '+14.8%' },
-      { day: 10, height: 54, value: '₹ 3.10 Cr', label: '10 Mar', growth: '+3.2%' },
-      { day: 11, height: 50, value: '₹ 2.95 Cr', label: '11 Mar', growth: '+1.8%' },
-      { day: 12, height: 86, value: '₹ 4.10 Cr', label: '12 Mar', growth: '+10.5%' },
-      { day: 13, height: 66, value: '₹ 3.45 Cr', label: '13 Mar', growth: '+5.0%' },
-      { day: 14, height: 58, value: '₹ 3.20 Cr', label: '14 Mar', growth: '+2.8%' },
+      { day: 1, height: 38, value: '₹ 5.80 Cr', label: '1 Mar', growth: '+2.1%' },
+      { day: 2, height: 42, value: '₹ 6.05 Cr', label: '2 Mar', growth: '+3.4%' },
+      { day: 3, height: 48, value: '₹ 6.30 Cr', label: '3 Mar', growth: '+5.2%' },
+      { day: 4, height: 46, value: '₹ 6.25 Cr', label: '4 Mar', growth: '+4.8%' },
+      { day: 5, height: 54, value: '₹ 6.55 Cr', label: '5 Mar', growth: '+7.0%' },
+      { day: 6, height: 60, value: '₹ 6.75 Cr', label: '6 Mar', growth: '+8.6%' },
+      { day: 7, height: 58, value: '₹ 6.70 Cr', label: '7 Mar', growth: '+8.1%' },
+      { day: 8, height: 68, value: '₹ 7.05 Cr', label: '8 Mar', growth: '+11.5%' },
+      { day: 9, height: 85, value: formatCompactINR(displayValuation), label: 'Today (9 Mar)', isToday: true, growth: '+14.8%' },
+      { day: 10, height: 82, value: '₹ 7.20 Cr', label: '10 Mar (Est)', growth: '+15.2%' },
+      { day: 11, height: 86, value: '₹ 7.45 Cr', label: '11 Mar (Est)', growth: '+16.8%' },
+      { day: 12, height: 90, value: '₹ 7.70 Cr', label: '12 Mar (Est)', growth: '+18.5%' },
+      { day: 13, height: 92, value: '₹ 7.90 Cr', label: '13 Mar (Est)', growth: '+20.0%' },
+      { day: 14, height: 96, value: '₹ 8.15 Cr', label: '14 Mar (Est)', growth: '+22.5%' },
     ],
     inflow: [
-      { day: 1, height: 28, value: '₹ 8.5 L', label: '1 Mar', growth: '+4.0%' },
-      { day: 2, height: 42, value: '₹ 12.0 L', label: '2 Mar', growth: '+7.5%' },
-      { day: 3, height: 82, value: '₹ 28.5 L', label: '3 Mar', growth: '+22.0%' },
-      { day: 4, height: 38, value: '₹ 11.2 L', label: '4 Mar', growth: '+2.0%' },
-      { day: 5, height: 72, value: '₹ 22.0 L', label: '5 Mar', growth: '+15.4%' },
-      { day: 6, height: 48, value: '₹ 15.0 L', label: '6 Mar', growth: '+5.0%' },
-      { day: 7, height: 24, value: '₹ 6.0 L', label: '7 Mar', growth: '-2.0%' },
-      { day: 8, height: 58, value: '₹ 18.0 L', label: '8 Mar', growth: '+10.2%' },
-      { day: 9, height: 92, value: '₹ 34.0 L', label: 'Today (9 Mar)', isToday: true, growth: '+28.5%' },
-      { day: 10, height: 46, value: '₹ 14.5 L', label: '10 Mar', growth: '+4.2%' },
-      { day: 11, height: 32, value: '₹ 9.8 L', label: '11 Mar', growth: '+1.5%' },
-      { day: 12, height: 78, value: '₹ 25.0 L', label: '12 Mar', growth: '+18.0%' },
-      { day: 13, height: 56, value: '₹ 17.5 L', label: '13 Mar', growth: '+8.0%' },
-      { day: 14, height: 40, value: '₹ 13.0 L', label: '14 Mar', growth: '+3.5%' },
+      { day: 1, height: 26, value: '₹ 8.5 L', label: '1 Mar', growth: '+4.0%' },
+      { day: 2, height: 34, value: '₹ 12.0 L', label: '2 Mar', growth: '+7.5%' },
+      { day: 3, height: 46, value: '₹ 16.5 L', label: '3 Mar', growth: '+12.0%' },
+      { day: 4, height: 42, value: '₹ 14.8 L', label: '4 Mar', growth: '+10.2%' },
+      { day: 5, height: 56, value: '₹ 20.0 L', label: '5 Mar', growth: '+15.4%' },
+      { day: 6, height: 64, value: '₹ 23.5 L', label: '6 Mar', growth: '+18.5%' },
+      { day: 7, height: 58, value: '₹ 21.0 L', label: '7 Mar', growth: '+16.0%' },
+      { day: 8, height: 72, value: '₹ 27.5 L', label: '8 Mar', growth: '+22.5%' },
+      { day: 9, height: 88, value: '₹ 34.0 L', label: 'Today (9 Mar)', isToday: true, growth: '+28.5%' },
+      { day: 10, height: 78, value: '₹ 29.5 L', label: '10 Mar (Est)', growth: '+24.2%' },
+      { day: 11, height: 82, value: '₹ 31.8 L', label: '11 Mar (Est)', growth: '+26.5%' },
+      { day: 12, height: 88, value: '₹ 34.5 L', label: '12 Mar (Est)', growth: '+29.0%' },
+      { day: 13, height: 92, value: '₹ 37.0 L', label: '13 Mar (Est)', growth: '+31.5%' },
+      { day: 14, height: 96, value: '₹ 40.0 L', label: '14 Mar (Est)', growth: '+34.0%' },
     ],
     leads: [
-      { day: 1, height: 24, value: '4 Leads', label: '1 Mar', growth: '+1' },
-      { day: 2, height: 38, value: '7 Leads', label: '2 Mar', growth: '+3' },
-      { day: 3, height: 68, value: '12 Leads', label: '3 Mar', growth: '+5' },
-      { day: 4, height: 34, value: '6 Leads', label: '4 Mar', growth: '+2' },
-      { day: 5, height: 76, value: '15 Leads', label: '5 Mar', growth: '+8' },
-      { day: 6, height: 48, value: '9 Leads', label: '6 Mar', growth: '+3' },
-      { day: 7, height: 28, value: '5 Leads', label: '7 Mar', growth: '+1' },
-      { day: 8, height: 62, value: '11 Leads', label: '8 Mar', growth: '+6' },
-      { day: 9, height: 94, value: '18 Leads', label: 'Today (9 Mar)', isToday: true, growth: '+12' },
-      { day: 10, height: 44, value: '8 Leads', label: '10 Mar', growth: '+2' },
-      { day: 11, height: 36, value: '7 Leads', label: '11 Mar', growth: '+1' },
-      { day: 12, height: 80, value: '16 Leads', label: '12 Mar', growth: '+9' },
-      { day: 13, height: 52, value: '10 Leads', label: '13 Mar', growth: '+4' },
-      { day: 14, height: 46, value: '9 Leads', label: '14 Mar', growth: '+3' },
+      { day: 1, height: 22, value: '4 Leads', label: '1 Mar', growth: '+1' },
+      { day: 2, height: 30, value: '6 Leads', label: '2 Mar', growth: '+2' },
+      { day: 3, height: 44, value: '9 Leads', label: '3 Mar', growth: '+4' },
+      { day: 4, height: 40, value: '8 Leads', label: '4 Mar', growth: '+3' },
+      { day: 5, height: 56, value: '12 Leads', label: '5 Mar', growth: '+6' },
+      { day: 6, height: 65, value: '14 Leads', label: '6 Mar', growth: '+7' },
+      { day: 7, height: 55, value: '11 Leads', label: '7 Mar', growth: '+5' },
+      { day: 8, height: 74, value: '15 Leads', label: '8 Mar', growth: '+8' },
+      { day: 9, height: 90, value: '18 Leads', label: 'Today (9 Mar)', isToday: true, growth: '+12' },
+      { day: 10, height: 75, value: '14 Leads', label: '10 Mar (Est)', growth: '+8' },
+      { day: 11, height: 80, value: '16 Leads', label: '11 Mar (Est)', growth: '+10' },
+      { day: 12, height: 85, value: '17 Leads', label: '12 Mar (Est)', growth: '+11' },
+      { day: 13, height: 90, value: '19 Leads', label: '13 Mar (Est)', growth: '+13' },
+      { day: 14, height: 95, value: '21 Leads', label: '14 Mar (Est)', growth: '+15' },
     ],
   };
 
@@ -502,131 +522,54 @@ export default function AdminOverview({
       {view === 'overview' ? (
         <>
           {/* Top Executive Header Bar & Global Action Controls */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl sm:rounded-3xl text-white shadow-xl border border-slate-800/80 backdrop-blur-md relative overflow-hidden">
-            {/* Ambient Background Glow */}
-            <div className="absolute top-0 right-1/4 h-32 w-64 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
-            <div className="absolute -bottom-10 left-10 h-32 w-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-            <div className="space-y-1 relative z-10">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                  <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse"></span>
-                  Executive Real Estate Desk
-                </span>
-                <span className="text-[11px] text-slate-400 hidden sm:inline">· Portfolios, Co-Investments & Deal Flow</span>
-              </div>
-              <h1 className="text-lg sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-50/90 p-4 sm:p-5 lg:py-3.5 lg:px-5 rounded-3xl text-slate-800 shadow-2xs border border-slate-200/90 relative overflow-hidden">
+            <div className="space-y-0.5 relative z-10 min-w-0">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2">
                 Executive Command Center
               </h1>
-              <p className="text-xs text-slate-300 font-normal">
-                Comprehensive tracking of capital deployment, project yields, investor pools, and inquiries.
+              <p className="text-xs text-slate-500 font-normal max-w-xl truncate">
+                Real-time tracking of capital deployment, project yields, investor pools, and CRM leads.
               </p>
-            </div>
-
-            {/* Header Right Actions */}
-            <div className="flex items-center flex-wrap gap-2.5 pt-1 md:pt-0 relative z-10">
-              {/* Period Dropdown */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowPeriodMenu(!showPeriodMenu)}
-                  className="flex items-center gap-1.5 bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700/80 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer shadow-xs"
-                >
-                  <i className="ri-calendar-line text-[#ea580c]"></i>
-                  <span>{selectedPeriod}</span>
-                  <i className="ri-arrow-down-s-line text-slate-400 text-xs"></i>
-                </button>
-
-                {showPeriodMenu && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white border border-slate-100 p-1.5 shadow-2xl z-50 text-slate-700 animate-fadeIn">
-                    {['1 March – 14 March', '15 Feb – 28 Feb', 'This Month', 'Last Quarter', 'All Time'].map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => {
-                          setSelectedPeriod(p);
-                          setShowPeriodMenu(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 text-xs rounded-xl transition cursor-pointer flex items-center justify-between ${
-                          selectedPeriod === p ? 'bg-orange-50 text-[#ea580c] font-semibold' : 'hover:bg-slate-50 text-slate-600'
-                        }`}
-                      >
-                        <span>{p}</span>
-                        {selectedPeriod === p && <i className="ri-check-line text-xs font-bold"></i>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Action 1: Create New Project Modal Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (typeof openCreateProjectModal === 'function') {
-                    openCreateProjectModal();
-                  } else if (typeof setShowProjectModal === 'function') {
-                    if (typeof setEditingId === 'function') setEditingId(null);
-                    if (typeof setPropertyForm === 'function') setPropertyForm(emptyProperty(false));
-                    if (typeof setActiveFormTab === 'function') setActiveFormTab('financial');
-                    setShowProjectModal(true);
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#ea580c] to-amber-600 hover:from-[#c2410c] hover:to-amber-700 text-white px-3.5 py-1.5 text-xs font-bold shadow-md shadow-orange-500/25 transition-all hover:scale-[1.03] active:scale-95 cursor-pointer"
-              >
-                <i className="ri-add-circle-line text-sm"></i>
-                <span>New Project</span>
-              </button>
-
-              {/* Action 2: Download Report */}
-              <button
-                type="button"
-                onClick={() => alert('Exporting Baba Broker Comprehensive Executive Report (PDF / Excel)...')}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white px-3 py-1.5 text-xs font-medium transition cursor-pointer"
-                title="Download Executive Report"
-              >
-                <i className="ri-download-2-line text-xs"></i>
-                <span className="hidden sm:inline">Export</span>
-              </button>
             </div>
           </div>
 
           {/* ========================================================================= */}
           {/* THE FOUR CORE STAT CARDS GRID WITH SPARKLINE CHARTS & INTERACTIVE FILTERS */}
           {/* ========================================================================= */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {/* CARD 1: Total Portfolio Valuation (AUM) */}
             <div
               onClick={() => setChartMetric('valuation')}
-              className={`group relative overflow-hidden rounded-2xl bg-white border p-4.5 shadow-xs hover:shadow-lg transition-all duration-300 cursor-pointer ${
-                chartMetric === 'valuation' ? 'border-[#ea580c] ring-2 ring-orange-400/20' : 'border-slate-100 hover:border-orange-200'
+              className={`group relative overflow-hidden rounded-2xl bg-slate-50/90 hover:bg-white p-5 border shadow-2xs hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between ${
+                chartMetric === 'valuation' ? 'border-orange-500 ring-2 ring-orange-500/20' : 'border-slate-200/80 hover:border-orange-300'
               }`}
             >
               <div className="absolute top-0 right-0 h-28 w-28 bg-gradient-to-br from-orange-500/10 to-transparent rounded-bl-full pointer-events-none group-hover:scale-125 transition-transform duration-500"></div>
 
-              <div className="flex items-start justify-between gap-2 relative z-10">
-                <div className="space-y-1">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              <div className="flex items-start justify-between gap-3 relative z-10">
+                <div className="space-y-1 min-w-0">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
                     Portfolio Valuation
                   </span>
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+                    <span className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
                       {formatCompactINR(displayValuation)}
                     </span>
                   </div>
                 </div>
 
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center text-lg shadow-md shadow-orange-500/25 shrink-0 group-hover:scale-110 transition-transform">
+                <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center text-xl shadow-md shadow-orange-500/25 shrink-0 group-hover:scale-110 transition-transform">
                   <i className="ri-funds-box-line"></i>
                 </div>
               </div>
 
               {/* Sparkline & Sub-Metrics */}
-              <div className="mt-3 pt-3 border-t border-slate-100/90 flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px]">
+              <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div className="space-y-0.5 min-w-0">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px]">
                     <i className="ri-arrow-up-line"></i> +14.8% MoM
                   </span>
-                  <span className="text-[10px] text-slate-400 block">Active Asset AUM</span>
+                  <span className="text-[10px] text-slate-400 block truncate">Active Asset AUM</span>
                 </div>
                 <div className="shrink-0 opacity-90 group-hover:opacity-100 transition-opacity">
                   <MiniSparkline data={[35, 42, 38, 55, 60, 52, 70, 85, 95]} color="#ea580c" />
@@ -640,19 +583,19 @@ export default function AdminOverview({
                 setChartMetric('valuation');
                 setDealFilterCategory('all');
               }}
-              className={`group relative overflow-hidden rounded-2xl bg-white border p-4.5 shadow-xs hover:shadow-lg transition-all duration-300 cursor-pointer ${
-                dealFilterCategory === 'all' && chartMetric === 'valuation' ? 'border-emerald-500 ring-2 ring-emerald-400/20' : 'border-slate-100 hover:border-emerald-200'
+              className={`group relative overflow-hidden rounded-2xl bg-slate-50/90 hover:bg-white p-5 border shadow-2xs hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between ${
+                dealFilterCategory === 'all' && chartMetric === 'valuation' ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200/80 hover:border-emerald-300'
               }`}
             >
               <div className="absolute top-0 right-0 h-28 w-28 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-bl-full pointer-events-none group-hover:scale-125 transition-transform duration-500"></div>
 
-              <div className="flex items-start justify-between gap-2 relative z-10">
-                <div className="space-y-1">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              <div className="flex items-start justify-between gap-3 relative z-10">
+                <div className="space-y-1 min-w-0">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
                     Active Projects
                   </span>
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+                    <span className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
                       {displayActiveDeals}
                     </span>
                     <span className="text-xs font-bold text-slate-400">
@@ -661,18 +604,18 @@ export default function AdminOverview({
                   </div>
                 </div>
 
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center text-lg shadow-md shadow-emerald-500/25 shrink-0 group-hover:scale-110 transition-transform">
+                <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center text-xl shadow-md shadow-emerald-500/25 shrink-0 group-hover:scale-110 transition-transform">
                   <i className="ri-building-2-line"></i>
                 </div>
               </div>
 
               {/* Sparkline & Sub-Metrics */}
-              <div className="mt-3 pt-3 border-t border-slate-100/90 flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px]">
+              <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div className="space-y-0.5 min-w-0">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px]">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping"></span> Live Pipeline
                   </span>
-                  <span className="text-[10px] text-slate-400 block">{metrics?.coInvestmentCount || 2} Pools · {metrics?.renovateFlipCount || 1} Flips</span>
+                  <span className="text-[10px] text-slate-400 block truncate">{metrics?.coInvestmentCount || 2} Pools · {metrics?.renovateFlipCount || 1} Flips</span>
                 </div>
                 <div className="shrink-0 opacity-90 group-hover:opacity-100 transition-opacity">
                   <MiniSparkline data={[20, 30, 45, 40, 60, 65, 75, 80, 90]} color="#10b981" />
@@ -683,36 +626,36 @@ export default function AdminOverview({
             {/* CARD 3: Investor Capital Pool & Yield */}
             <div
               onClick={() => setChartMetric('inflow')}
-              className={`group relative overflow-hidden rounded-2xl bg-white border p-4.5 shadow-xs hover:shadow-lg transition-all duration-300 cursor-pointer ${
-                chartMetric === 'inflow' ? 'border-indigo-500 ring-2 ring-indigo-400/20' : 'border-slate-100 hover:border-indigo-200'
+              className={`group relative overflow-hidden rounded-2xl bg-slate-50/90 hover:bg-white p-5 border shadow-2xs hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between ${
+                chartMetric === 'inflow' ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200/80 hover:border-indigo-300'
               }`}
             >
               <div className="absolute top-0 right-0 h-28 w-28 bg-gradient-to-br from-indigo-500/10 to-transparent rounded-bl-full pointer-events-none group-hover:scale-125 transition-transform duration-500"></div>
 
-              <div className="flex items-start justify-between gap-2 relative z-10">
-                <div className="space-y-1">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              <div className="flex items-start justify-between gap-3 relative z-10">
+                <div className="space-y-1 min-w-0">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
                     Funded Capital
                   </span>
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+                    <span className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
                       {formatCompactINR(displayFundedCapital)}
                     </span>
                   </div>
                 </div>
 
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center text-lg shadow-md shadow-indigo-500/25 shrink-0 group-hover:scale-110 transition-transform">
+                <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center text-xl shadow-md shadow-indigo-500/25 shrink-0 group-hover:scale-110 transition-transform">
                   <i className="ri-hand-coin-line"></i>
                 </div>
               </div>
 
               {/* Sparkline & Sub-Metrics */}
-              <div className="mt-3 pt-3 border-t border-slate-100/90 flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-[10px]">
+              <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div className="space-y-0.5 min-w-0">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-[10px]">
                     ⭐ {displayAvgRoi}% ROI
                   </span>
-                  <span className="text-[10px] text-slate-400 block">{displayInvestors} Active Investors</span>
+                  <span className="text-[10px] text-slate-400 block truncate">{displayInvestors} Active Investors</span>
                 </div>
                 <div className="shrink-0 opacity-90 group-hover:opacity-100 transition-opacity">
                   <MiniSparkline data={[15, 25, 30, 50, 45, 68, 70, 85, 92]} color="#6366f1" />
@@ -723,19 +666,19 @@ export default function AdminOverview({
             {/* CARD 4: Client Leads & WhatsApp Reach */}
             <div
               onClick={() => setChartMetric('leads')}
-              className={`group relative overflow-hidden rounded-2xl bg-white border p-4.5 shadow-xs hover:shadow-lg transition-all duration-300 cursor-pointer ${
-                chartMetric === 'leads' ? 'border-rose-500 ring-2 ring-rose-400/20' : 'border-slate-100 hover:border-rose-200'
+              className={`group relative overflow-hidden rounded-2xl bg-slate-50/90 hover:bg-white p-5 border shadow-2xs hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between ${
+                chartMetric === 'leads' ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200/80 hover:border-rose-300'
               }`}
             >
               <div className="absolute top-0 right-0 h-28 w-28 bg-gradient-to-br from-rose-500/10 to-transparent rounded-bl-full pointer-events-none group-hover:scale-125 transition-transform duration-500"></div>
 
-              <div className="flex items-start justify-between gap-2 relative z-10">
-                <div className="space-y-1">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              <div className="flex items-start justify-between gap-3 relative z-10">
+                <div className="space-y-1 min-w-0">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
                     Inquiries & Leads
                   </span>
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+                    <span className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
                       {displayLeads}
                     </span>
                     <span className="text-xs font-bold text-slate-400">
@@ -744,18 +687,18 @@ export default function AdminOverview({
                   </div>
                 </div>
 
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 text-white flex items-center justify-center text-lg shadow-md shadow-rose-500/25 shrink-0 group-hover:scale-110 transition-transform">
+                <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-rose-500 to-orange-500 text-white flex items-center justify-center text-xl shadow-md shadow-rose-500/25 shrink-0 group-hover:scale-110 transition-transform">
                   <i className="ri-user-star-line"></i>
                 </div>
               </div>
 
               {/* Sparkline & Sub-Metrics */}
-              <div className="mt-3 pt-3 border-t border-slate-100/90 flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 font-bold text-[10px]">
+              <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div className="space-y-0.5 min-w-0">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 font-bold text-[10px]">
                     🔥 High Demand
                   </span>
-                  <span className="text-[10px] text-slate-400 block">{displayShares} WhatsApp Shares</span>
+                  <span className="text-[10px] text-slate-400 block truncate">{displayShares} WhatsApp Shares</span>
                 </div>
                 <div className="shrink-0 opacity-90 group-hover:opacity-100 transition-opacity">
                   <MiniSparkline data={[20, 35, 40, 30, 55, 60, 75, 82, 94]} color="#f43f5e" />
@@ -769,7 +712,7 @@ export default function AdminOverview({
           {/* ========================================================================= */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Left 2 Cols: Interactive Trajectory Chart */}
-            <div className="lg:col-span-2 rounded-2xl border border-slate-100 bg-white p-4 sm:p-5 shadow-xs space-y-4">
+            <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 p-4 sm:p-5 shadow-2xs space-y-4">
               {/* Chart Header & Multi-Mode Controls */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
@@ -1478,7 +1421,7 @@ export default function AdminOverview({
                 <i className="ri-bar-chart-2-line"></i>
               </div>
               <div className="min-w-0">
-                <h5 className="text-xs font-bold text-slate-800 truncate">All Projects</h5>
+                <h5 className="text-xs font-bold text-slate-800 truncate">All Investment</h5>
                 <p className="text-[10px] text-slate-400">Manage {displayTotalDeals} listings</p>
               </div>
             </Link>
@@ -1574,23 +1517,6 @@ export default function AdminOverview({
                     <i className="ri-fire-line text-xs" />
                     <span>Create Hot Deal</span>
                   </button>
-                ) : view === 'projects' ? (
-                  <button
-                    onClick={() => {
-                      if (typeof openCreateProjectModal === 'function') {
-                        openCreateProjectModal();
-                      } else {
-                        if (typeof setEditingId === 'function') setEditingId(null);
-                        if (typeof setPropertyForm === 'function') setPropertyForm(emptyProperty(false));
-                        if (typeof setActiveFormTab === 'function') setActiveFormTab('financial');
-                        if (typeof setShowProjectModal === 'function') setShowProjectModal(true);
-                      }
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#ea580c] hover:bg-[#c2410c] px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-orange-500/20 transition cursor-pointer"
-                  >
-                    <i className="ri-add-circle-line text-xs" />
-                    <span>Create Investment Project</span>
-                  </button>
                 ) : null}
               </div>
             </div>
@@ -1605,6 +1531,7 @@ export default function AdminOverview({
                     { id: 'running', label: '🚀 Running' },
                     { id: 'upcoming', label: '⏳ Upcoming' },
                     { id: 'delivered', label: '✅ Delivered' },
+                    { id: 'featured', label: '⭐ Featured Deals' },
                   ].map((st) => (
                     <button
                       key={st.id}
@@ -1663,7 +1590,11 @@ export default function AdminOverview({
                   {filteredProperties.map((p) => (
                     <div
                       key={p._id}
-                      className="group relative flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white overflow-hidden shadow-2xs hover:border-orange-300 hover:shadow-md transition-all duration-200"
+                      className={`group relative flex flex-col justify-between rounded-3xl border bg-white overflow-hidden shadow-2xs transition-all duration-200 ${
+                        p.isFeatured
+                          ? 'border-amber-300 ring-1 ring-amber-400/30 hover:border-amber-500 hover:shadow-md'
+                          : 'border-slate-200/90 hover:border-orange-300 hover:shadow-md'
+                      }`}
                     >
                       <div>
                         {/* Cover Image & Badges */}
@@ -1692,12 +1623,27 @@ export default function AdminOverview({
                               onClick={() => toggleFeaturedStatus(p)}
                               className={`rounded-xl px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider backdrop-blur-md transition cursor-pointer flex items-center gap-1 ${
                                 p.isFeatured
-                                  ? 'bg-amber-400 text-slate-950 shadow-xs'
+                                  ? 'bg-gradient-to-r from-amber-400 to-orange-400 text-slate-950 shadow-md font-black ring-1 ring-amber-300'
                                   : 'bg-white/90 text-slate-700 hover:text-slate-950 border border-slate-200 shadow-2xs'
                               }`}
+                              title={p.isFeatured ? "Featured Hot Deal (Click to unfeature)" : "Click to feature this project"}
                             >
-                              <i className={p.isFeatured ? "ri-star-fill text-amber-900" : "ri-star-line text-amber-500"} />
-                              <span>{p.isFeatured ? 'Hot Deal' : 'Mark Hot'}</span>
+                              <i className={p.isFeatured ? "ri-star-fill text-slate-950" : "ri-star-line text-amber-500"} />
+                              <span>{p.isFeatured ? '⭐ Hot Deal' : 'Mark Hot'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => togglePortfolioStatus(p)}
+                              className={`rounded-xl px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider backdrop-blur-md transition cursor-pointer flex items-center gap-1 ${
+                                p.isPortfolio
+                                  ? 'bg-gradient-to-r from-emerald-400 to-teal-500 text-white shadow-md ring-1 ring-emerald-300'
+                                  : 'bg-white/90 text-slate-700 hover:text-slate-950 border border-slate-200 shadow-2xs'
+                              }`}
+                              title={p.isPortfolio ? "In Curated Portfolios (Click to remove)" : "Click to add to Curated Portfolios"}
+                            >
+                              <i className={p.isPortfolio ? "ri-folder-shared-fill text-white" : "ri-folder-shared-line text-emerald-500"} />
+                              <span>{p.isPortfolio ? '📁 Portfolio' : 'Add Portfolio'}</span>
                             </button>
                           </div>
                         </div>

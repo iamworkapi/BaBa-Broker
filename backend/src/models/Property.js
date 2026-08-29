@@ -9,7 +9,7 @@ const propertySchema = new mongoose.Schema(
     title: { type: String, trim: true, required: true },
     location: { type: String, trim: true, required: true },
     price: { type: String, trim: true, default: '' },
-    description: { type: String, trim: true, required: true },
+    description: { type: String, trim: true, default: '' },
     image: { type: String, default: '' },
     images: [{ type: String }],
     videoUrl: { type: String, default: '' },
@@ -33,6 +33,7 @@ const propertySchema = new mongoose.Schema(
     lift: { type: String, default: 'YES' },
     parking: { type: String, default: 'CAR + BIKE' },
     isFeatured: { type: Boolean, default: false },
+    isPortfolio: { type: Boolean, default: false },
     // Plot & Land Specific Details
     plotAreaSqft: { type: String, default: '5381.96 sqft' },
     plotAreaSqm: { type: String, default: '500 sq.m.' },

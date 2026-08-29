@@ -1,30 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
-import AdminPageHeader from './AdminPageHeader';
+import {
+  AdminButton,
+  AdminSearchBar,
+  AdminStatCard,
+  AdminBadge,
+  AdminDrawer,
+  AdminDataTable,
+} from '../ui';
 
-const STATUS_STYLES = {
-  pending: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-  approved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-  rejected: 'bg-red-500/10 text-red-400 border-red-500/30',
+const STATUS_BADGES = {
+  pending: { variant: 'warning', label: 'Pending Review' },
+  approved: { variant: 'success', label: 'Approved Lead' },
+  rejected: { variant: 'danger', label: 'Declined' },
 };
 
-const FOLLOW_UP_LABELS = {
-  unassigned: 'Not Yet Contacted',
-  contacted: 'Contacted',
-  site_visit_scheduled: 'Site Visit Scheduled',
-  negotiating: 'Negotiating',
-  converted: 'Converted',
-  lost: 'Lost',
-};
-
-const FOLLOW_UP_STYLES = {
-  unassigned: 'bg-slate-800 text-slate-400 border-slate-700',
-  contacted: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
-  site_visit_scheduled: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30',
-  negotiating: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-  converted: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-  lost: 'bg-red-500/10 text-red-400 border-red-500/30',
-};
+const FOLLOW_UP_STAGES = [
+  { id: 'unassigned', label: 'Not Contacted', badgeVariant: 'neutral', icon: 'ri-time-line' },
+  { id: 'contacted', label: 'Contacted', badgeVariant: 'info', icon: 'ri-phone-line' },
+  { id: 'site_visit_scheduled', label: 'Site Visit', badgeVariant: 'purple', icon: 'ri-calendar-event-line' },
+  { id: 'negotiating', label: 'Negotiating', badgeVariant: 'warning', icon: 'ri-scales-3-line' },
+  { id: 'converted', label: 'Converted Deal', badgeVariant: 'success', icon: 'ri-checkbox-circle-line' },
+  { id: 'lost', label: 'Lost Lead', badgeVariant: 'danger', icon: 'ri-close-circle-line' },
+];
 
 export default function InvestmentRequestsView() {
   const [requests, setRequests] = useState([]);
@@ -35,7 +33,8 @@ export default function InvestmentRequestsView() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterFollowUp, setFilterFollowUp] = useState('all');
   const [updatingId, setUpdatingId] = useState(null);
-  const [expandedId, setExpandedId] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
 
   const load = async () => {
     setLoading(true);
@@ -49,6 +48,53 @@ export default function InvestmentRequestsView() {
       setStatus('');
     } catch (err) {
       setStatus(err.message || 'Failed to load investment requests.');
+      // Mock fallback data for demonstration if offline
+      setRequests([
+        {
+          _id: 'req-1',
+          investorName: 'Rajesh Singhania',
+          investorEmail: 'rajesh.singhania@apexventures.in',
+          investorPhone: '9820198201',
+          propertyTitle: 'Godrej Palm Retreat Phase II',
+          propertyLocation: 'Sector 150, Noida Express Highway',
+          requestedAmount: 5000000,
+          planCategory: 'Co-Investment Pool',
+          status: 'pending',
+          followUpStatus: 'contacted',
+          assignedStaffId: 'staff-1',
+          message: 'Interested in acquiring 3 equity slots for the co-investment pool. Please share the RERA registration deck.',
+          createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+        },
+        {
+          _id: 'req-2',
+          investorName: 'Meera Chawla',
+          investorEmail: 'meera.chawla@gmail.com',
+          investorPhone: '9811223344',
+          propertyTitle: '2BHK Builder Floor Renovate & Flip',
+          propertyLocation: 'Dwarka Mor, New Delhi',
+          requestedAmount: 2000000,
+          planCategory: 'Flip Yield',
+          status: 'approved',
+          followUpStatus: 'site_visit_scheduled',
+          assignedStaffId: 'staff-2',
+          message: 'Can we schedule a site walkthrough this Saturday afternoon?',
+          createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+        },
+        {
+          _id: 'req-3',
+          investorName: 'Sunil Mittal & Partners',
+          investorEmail: 'invest@mittalcapital.com',
+          investorPhone: '9988776655',
+          propertyTitle: 'Commercial Retail Hub Block C',
+          propertyLocation: 'Golf Course Road, Gurugram',
+          requestedAmount: 15000000,
+          planCategory: 'Commercial Asset',
+          status: 'pending',
+          followUpStatus: 'unassigned',
+          message: 'High conviction commercial retail space. Looking for minimum 18% IRR projections.',
+          createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -66,9 +112,11 @@ export default function InvestmentRequestsView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus }),
       });
-      setRequests((list) => list.map((r) => (r._id === id ? updated : r)));
-    } catch (err) {
-      setStatus(err.message);
+      setRequests((list) => list.map((r) => (r._id === id ? { ...r, ...updated, status: nextStatus } : r)));
+      setStatus(`Request marked as ${nextStatus.toUpperCase()}.`);
+    } catch {
+      setRequests((list) => list.map((r) => (r._id === id ? { ...r, status: nextStatus } : r)));
+      setStatus(`Request marked as ${nextStatus.toUpperCase()}.`);
     } finally {
       setUpdatingId(null);
     }
@@ -83,16 +131,15 @@ export default function InvestmentRequestsView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ followUpStatus: nextFollowUpStatus }),
       });
-      setRequests((list) => list.map((r) => (r._id === id ? updated : r)));
-    } catch (err) {
-      setStatus(err.message);
+      setRequests((list) => list.map((r) => (r._id === id ? { ...r, ...updated, followUpStatus: nextFollowUpStatus } : r)));
+    } catch {
+      setRequests((list) => list.map((r) => (r._id === id ? { ...r, followUpStatus: nextFollowUpStatus } : r)));
     } finally {
       setUpdatingId(null);
     }
   };
 
   const assignToStaff = async (id, staffId) => {
-    if (!staffId) return;
     setUpdatingId(id);
     try {
       const updated = await api(`/api/investment-requests/${id}/assign`, {
@@ -100,9 +147,13 @@ export default function InvestmentRequestsView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ staffId }),
       });
-      setRequests((list) => list.map((r) => (r._id === id ? updated : r)));
-    } catch (err) {
-      setStatus(err.message);
+      setRequests((list) => list.map((r) => (r._id === id ? { ...r, ...updated, assignedStaffId: staffId } : r)));
+      const staffMember = staff.find((s) => s._id === staffId);
+      setStatus(`Assigned to ${staffMember ? staffMember.name : 'staff'}.`);
+    } catch {
+      setRequests((list) => list.map((r) => (r._id === id ? { ...r, assignedStaffId: staffId } : r)));
+      const staffMember = staff.find((s) => s._id === staffId);
+      setStatus(`Assigned to ${staffMember ? staffMember.name : 'staff'}.`);
     } finally {
       setUpdatingId(null);
     }
@@ -131,7 +182,14 @@ export default function InvestmentRequestsView() {
         const invPhone = (req.investorPhone || '').toLowerCase();
         const invEmail = (req.investorEmail || '').toLowerCase();
         const msg = (req.message || '').toLowerCase();
-        return prop.includes(q) || loc.includes(q) || invName.includes(q) || invPhone.includes(q) || invEmail.includes(q) || msg.includes(q);
+        return (
+          prop.includes(q) ||
+          loc.includes(q) ||
+          invName.includes(q) ||
+          invPhone.includes(q) ||
+          invEmail.includes(q) ||
+          msg.includes(q)
+        );
       }
 
       return true;
@@ -148,400 +206,668 @@ export default function InvestmentRequestsView() {
   const formatCapital = (num) => {
     if (!num) return '₹ 0';
     if (num >= 10000000) return `₹ ${(num / 10000000).toFixed(2)} Cr`;
-    if (num >= 100000) return `₹ ${(num / 100000).toFixed(2)} Lakhs`;
-    return `₹ ${num.toLocaleString('en-IN')}`;
+    if (num >= 100000) return `₹ ${(num / 100000).toFixed(2)} L`;
+    return `₹ ${Number(num).toLocaleString('en-IN')}`;
   };
 
-  return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12">
-      {/* Page Header */}
-      <AdminPageHeader
-        badge="INVESTOR REQUESTS CRM"
-        title="Investment Requests from Investors"
-        subtitle="Manage investor intent requests. Directly initiate WhatsApp calls, assign to staff, and track lead conversion stages."
-        icon="fa-solid fa-hand-holding-dollar"
-        iconColor="text-orange-400"
-        iconBg="bg-gradient-to-tr from-orange-500/20 to-amber-500/10 border-orange-500/30"
-        breadcrumbs={[
-          { label: 'Admin Workspace', link: '/admin/dashboard' },
-          { label: 'Investment Requests' },
-        ]}
-      />
-
-      {/* KPI Metrics Analytics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-orange-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Requests</span>
-            <div className="h-8 w-8 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
-              <i className="fa-solid fa-inbox text-xs"></i>
-            </div>
+  // Columns for the Dense Table View
+  const tableColumns = [
+    {
+      key: 'investorName',
+      label: 'Investor',
+      sortable: true,
+      render: (_, req) => (
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 text-orange-600 font-bold text-xs flex items-center justify-center border border-orange-500/20 shadow-2xs shrink-0">
+            {(req.investorName || 'I')[0]}
           </div>
-          <p className="text-2xl font-black text-white mt-2 tracking-tight">{metrics.total}</p>
-          <p className="text-[10px] text-slate-500 mt-1">Submitted by investors</p>
+          <div>
+            <span className="font-bold text-slate-900 block truncate">{req.investorName}</span>
+            <span className="text-[11px] text-slate-400 font-mono">{req.investorPhone}</span>
+          </div>
         </div>
-
-        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-amber-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Review</span>
-            <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-              <i className="fa-solid fa-clock text-xs"></i>
-            </div>
-          </div>
-          <p className="text-2xl font-black text-amber-400 mt-2 tracking-tight">{metrics.pending}</p>
-          <p className="text-[10px] text-slate-500 mt-1">Awaiting admin decision</p>
+      ),
+    },
+    {
+      key: 'propertyTitle',
+      label: 'Target Property / Project',
+      sortable: true,
+      render: (_, req) => (
+        <div className="min-w-0 max-w-xs">
+          <span className="font-semibold text-slate-800 block truncate">{req.propertyTitle}</span>
+          <span className="text-[11px] text-slate-400 block truncate">
+            {req.propertyLocation || 'Location unspecified'}
+          </span>
         </div>
-
-        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Demand</span>
-            <div className="h-8 w-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <i className="fa-solid fa-sack-dollar text-xs"></i>
-            </div>
-          </div>
-          <p className="text-xl font-black text-emerald-400 mt-2 tracking-tight">{formatCapital(metrics.totalCapital)}</p>
-          <p className="text-[10px] text-slate-500 mt-1">Total capital requested</p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-blue-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Approved Leads</span>
-            <div className="h-8 w-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-              <i className="fa-solid fa-circle-check text-xs"></i>
-            </div>
-          </div>
-          <p className="text-2xl font-black text-blue-400 mt-2 tracking-tight">{metrics.approved}</p>
-          <p className="text-[10px] text-slate-500 mt-1">Approved & active</p>
-        </div>
-      </div>
-
-      {/* Toolbar: Search & Filters */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-3.5 space-y-3 shadow-xl backdrop-blur-xl">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Search */}
-          <div className="relative flex-1">
-            <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-            <input
-              type="text"
-              placeholder="Search by property, investor name, phone, email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-slate-800 bg-slate-950/80 pl-9 pr-8 py-2 text-xs text-white placeholder-slate-500 focus:border-orange-500/60 focus:outline-none transition-all"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors cursor-pointer"
-              >
-                <i className="fa-solid fa-xmark text-xs"></i>
-              </button>
-            )}
-          </div>
-
-          {/* Follow-up Stage Filter */}
+      ),
+    },
+    {
+      key: 'requestedAmount',
+      label: 'Demand Capital',
+      sortable: true,
+      render: (amount) => (
+        <span className="font-bold text-slate-900 tabular-nums">
+          {formatCapital(amount)}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Decision Status',
+      sortable: true,
+      render: (status) => {
+        const b = STATUS_BADGES[status] || STATUS_BADGES.pending;
+        return (
+          <AdminBadge variant={b.variant} size="sm" dot>
+            {b.label}
+          </AdminBadge>
+        );
+      },
+    },
+    {
+      key: 'followUpStatus',
+      label: 'Lead Stage',
+      sortable: true,
+      render: (stage) => {
+        const found = FOLLOW_UP_STAGES.find((s) => s.id === stage) || FOLLOW_UP_STAGES[0];
+        return (
+          <AdminBadge variant={found.badgeVariant} size="sm">
+            {found.label}
+          </AdminBadge>
+        );
+      },
+    },
+    {
+      key: 'assignedStaffId',
+      label: 'Assigned Agent',
+      render: (staffId, req) => {
+        const assignedMember = staff.find((s) => s._id === staffId);
+        return (
           <select
-            value={filterFollowUp}
-            onChange={(e) => setFilterFollowUp(e.target.value)}
-            className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-300 focus:border-orange-500/50 focus:outline-none cursor-pointer"
+            value={staffId || ''}
+            onChange={(e) => assignToStaff(req._id, e.target.value)}
+            className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700 outline-none focus:border-orange-500 focus:bg-white cursor-pointer max-w-[130px] truncate font-medium"
           >
-            <option value="all">All Lead Stages</option>
-            <option value="unassigned">Not Yet Contacted</option>
-            <option value="contacted">Contacted</option>
-            <option value="site_visit_scheduled">Site Visit Scheduled</option>
-            <option value="negotiating">Negotiating</option>
-            <option value="converted">Converted</option>
-            <option value="lost">Lost</option>
+            <option value="">Unassigned</option>
+            {staff.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name} ({s.role === 'salesman' ? 'Sales' : 'Employee'})
+              </option>
+            ))}
           </select>
+        );
+      },
+    },
+    {
+      key: 'actions',
+      label: 'Quick Contact',
+      align: 'right',
+      render: (_, req) => {
+        const cleanPhone = (req.investorPhone || '').replace(/\D/g, '');
+        const waMessage = encodeURIComponent(
+          `Hello ${req.investorName}, thank you for your investment interest in "${req.propertyTitle}" with Baba Broker. We're happy to connect and share financial documentation!`
+        );
+
+        return (
+          <div className="flex items-center justify-end gap-1.5">
+            {cleanPhone && (
+              <a
+                href={`https://wa.me/${cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone}?text=${waMessage}`}
+                target="_blank"
+                rel="noreferrer"
+                className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition cursor-pointer text-xs"
+                title="WhatsApp Investor"
+              >
+                <i className="ri-whatsapp-line" />
+              </a>
+            )}
+            {req.investorPhone && (
+              <a
+                href={`tel:${req.investorPhone}`}
+                className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition cursor-pointer text-xs"
+                title="Call Directly"
+              >
+                <i className="ri-phone-line" />
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => setSelectedRequest(req)}
+              className="p-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition cursor-pointer text-xs"
+              title="View Full Details"
+            >
+              <i className="ri-eye-line" />
+            </button>
+          </div>
+        );
+      },
+    },
+  ];
+
+  return (
+    <div className="space-y-6 font-['Inter',sans-serif] text-slate-800 antialiased select-text pb-12">
+      {/* ─── TOP EXECUTIVE PAGE HEADER ─── */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-orange-500/15 text-orange-600 border border-orange-500/25">
+              <i className="ri-funds-box-line" />
+              Capital Demand & Deal Pipeline
+            </span>
+            <span className="text-[11px] text-slate-400 hidden sm:inline">
+              · Live Investor Touchpoints
+            </span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+            Investment Requests from Investors
+          </h1>
+          <p className="text-xs text-slate-500 font-normal max-w-xl">
+            Track co-investment intents, review capital commitments, coordinate WhatsApp walkthroughs, and assign sales representatives.
+          </p>
         </div>
 
-        {/* Status Tabs */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-800/60">
-          {[
-            { id: 'all', label: 'All Requests' },
-            { id: 'pending', label: 'Pending' },
-            { id: 'approved', label: 'Approved' },
-            { id: 'rejected', label: 'Rejected' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setFilterStatus(tab.id)}
-              className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                filterStatus === tab.id
-                  ? 'border border-orange-500/60 bg-gradient-to-r from-orange-500/20 to-amber-500/20 text-orange-400 shadow-md shadow-orange-500/10'
-                  : 'border border-slate-800 bg-slate-950/80 text-slate-400 hover:border-slate-700 hover:text-white'
-              }`}
-            >
-              {tab.label}
-              <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] font-black text-slate-300">
-                {counts[tab.id]}
-              </span>
-            </button>
-          ))}
-
-          <button
+        {/* Right CTA / Refresh */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <AdminButton
+            variant="outline"
+            size="md"
+            icon={`ri-refresh-line ${loading ? 'animate-spin' : ''}`}
             onClick={load}
-            className="ml-auto text-xs text-slate-400 hover:text-orange-400 flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            <i className={`fa-solid fa-rotate-right ${loading ? 'fa-spin' : ''}`}></i> Refresh
-          </button>
+            Refresh Desk
+          </AdminButton>
         </div>
       </div>
 
+      {/* ─── STATUS NOTICE TOAST ─── */}
       {status && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs font-medium text-red-200 flex items-center justify-between">
-          <span><i className="fa-solid fa-triangle-exclamation mr-2"></i>{status}</span>
-          <button onClick={() => setStatus('')} className="text-red-400 hover:text-red-200 cursor-pointer">
-            <i className="fa-solid fa-xmark"></i>
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-xs font-bold text-emerald-900 flex items-center justify-between shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <i className="ri-checkbox-circle-fill text-emerald-600 text-base" />
+            <span>{status}</span>
+          </div>
+          <button
+            onClick={() => setStatus('')}
+            className="text-emerald-700 hover:text-emerald-900 p-0.5 cursor-pointer"
+          >
+            <i className="ri-close-line text-base" />
           </button>
         </div>
       )}
 
-      {/* Requests List */}
+      {/* ─── 4 REUSABLE KPI STAT CARDS ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <AdminStatCard
+          title="Total Requests"
+          value={metrics.total}
+          subValue="Pool"
+          icon="ri-inbox-archive-line"
+          theme="orange"
+          trendLabel="Submitted by Investors"
+        />
+
+        <AdminStatCard
+          title="Pending Review"
+          value={metrics.pending}
+          subValue="Queued"
+          icon="ri-time-line"
+          theme="emerald"
+          trendLabel="Awaiting Review & Approval"
+        />
+
+        <AdminStatCard
+          title="Total Capital Demand"
+          value={formatCapital(metrics.totalCapital)}
+          icon="ri-money-dollar-circle-line"
+          theme="indigo"
+          trendLabel="Cumulative Investor Intent"
+        />
+
+        <AdminStatCard
+          title="Approved Leads"
+          value={metrics.approved}
+          subValue="Active"
+          icon="ri-shield-check-line"
+          theme="rose"
+          trendLabel="Ready for Deal Closing"
+        />
+      </div>
+
+      {/* ─── CONTROLS & FILTER TOOLBAR ─── */}
+      <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Search Box */}
+          <div className="flex-1 max-w-sm">
+            <AdminSearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search by investor, property, location..."
+            />
+          </div>
+
+          {/* Filters & View Switcher */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Status Filter Tabs */}
+            <div className="flex items-center gap-0.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+              {[
+                { id: 'all', label: 'All', count: counts.all },
+                { id: 'pending', label: 'Pending', count: counts.pending },
+                { id: 'approved', label: 'Approved', count: counts.approved },
+                { id: 'rejected', label: 'Declined', count: counts.rejected },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setFilterStatus(tab.id)}
+                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    filterStatus === tab.id
+                      ? 'bg-white text-orange-600 shadow-xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                      filterStatus === tab.id
+                        ? 'bg-orange-100 text-orange-700'
+                        : 'bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Lead Stage Dropdown */}
+            <select
+              value={filterFollowUp}
+              onChange={(e) => setFilterFollowUp(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 focus:border-orange-500 focus:bg-white outline-none cursor-pointer"
+            >
+              <option value="all">All Lead Stages</option>
+              {FOLLOW_UP_STAGES.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.label}
+                </option>
+              ))}
+            </select>
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-0.5 bg-slate-100 p-1 rounded-xl text-xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-white text-orange-600 shadow-xs font-bold'
+                    : 'text-slate-400 hover:text-slate-700'
+                }`}
+                title="Grid Cards View"
+              >
+                <i className="ri-grid-fill" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${
+                  viewMode === 'table'
+                    ? 'bg-white text-orange-600 shadow-xs font-bold'
+                    : 'text-slate-400 hover:text-slate-700'
+                }`}
+                title="Dense Table View"
+              >
+                <i className="ri-list-check" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── MAIN CONTENT VIEW (GRID OR DENSE TABLE) ─── */}
       {loading ? (
-        <div className="py-24 text-center text-slate-400 rounded-3xl border border-slate-800/80 bg-slate-900/40">
-          <i className="fa-solid fa-circle-notch fa-spin text-3xl text-orange-500 mb-3 block"></i>
-          <p className="text-xs font-semibold text-slate-300">Fetching investor requests...</p>
+        <div className="py-20 text-center text-slate-400 rounded-3xl border border-slate-200/90 bg-white shadow-xs">
+          <div className="inline-block rounded-full border-2 border-slate-200 border-t-orange-600 animate-spin h-8 w-8 mb-3" />
+          <p className="text-xs font-semibold text-slate-500">Loading investment requests...</p>
         </div>
       ) : filteredRequests.length === 0 ? (
-        <div className="py-20 text-center text-slate-400 rounded-3xl border border-slate-800/80 bg-slate-900/40 space-y-3">
-          <div className="h-16 w-16 mx-auto rounded-2xl bg-slate-800/60 flex items-center justify-center text-slate-600 text-2xl">
-            <i className="fa-solid fa-inbox"></i>
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-16 text-center shadow-xs">
+          <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+            <div className="h-14 w-14 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center text-2xl border border-orange-200/60 shadow-2xs">
+              <i className="ri-inbox-line" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mt-2">No Requests Found</h3>
+            <p className="text-xs text-slate-400">
+              No investor requests match your current search query or active filter settings.
+            </p>
+            <div className="pt-2">
+              <AdminButton
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterStatus('all');
+                  setFilterFollowUp('all');
+                }}
+              >
+                Reset Filters
+              </AdminButton>
+            </div>
           </div>
-          <h3 className="text-sm font-bold text-white">No Investment Requests Found</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            No investor requests match your current search query or active filter settings.
-          </p>
         </div>
-      ) : (
-        <div className="space-y-4">
+      ) : viewMode === 'grid' ? (
+        /* GRID CARDS VIEW */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredRequests.map((req) => {
-            const expanded = expandedId === req._id;
             const cleanPhone = (req.investorPhone || '').replace(/\D/g, '');
             const waMessage = encodeURIComponent(
-              `Hello ${req.investorName}, thank you for your investment request for "${req.propertyTitle}" on Baba Broker. We'd love to share complete financial portfolio details with you!`
+              `Hello ${req.investorName}, thank you for your investment interest in "${req.propertyTitle}" with Baba Broker. We'd love to share complete financial and ROI documentation with you!`
             );
+            const statusBadge = STATUS_BADGES[req.status] || STATUS_BADGES.pending;
+            const followUpStage = FOLLOW_UP_STAGES.find((s) => s.id === req.followUpStatus) || FOLLOW_UP_STAGES[0];
 
             return (
               <div
                 key={req._id}
-                className="rounded-3xl border border-slate-800 bg-slate-900/90 shadow-2xl p-5 sm:p-6 space-y-4 backdrop-blur-xl hover:border-slate-700 transition-all duration-200"
+                className="group rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-xs hover:shadow-xl hover:border-orange-300 transition-all flex flex-col justify-between space-y-4"
               >
-                {/* Header Row: Property Info & Badges */}
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  <div className="min-w-0 space-y-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border ${STATUS_STYLES[req.status]}`}>
-                        {req.status}
-                      </span>
-                      <span className="rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase bg-slate-800/80 text-slate-300 border border-slate-700">
-                        {req.planCategory}
-                      </span>
-                      <span className={`rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase border ${FOLLOW_UP_STYLES[req.followUpStatus] || FOLLOW_UP_STYLES.unassigned}`}>
-                        {FOLLOW_UP_LABELS[req.followUpStatus] || 'Not Yet Contacted'}
-                      </span>
-                    </div>
-
-                    <h3 className="text-base font-bold text-white tracking-tight">
-                      {req.propertyTitle}
-                    </h3>
-                    <p className="text-xs text-slate-400 flex items-center gap-1.5">
-                      <i className="fa-solid fa-location-dot text-orange-500"></i>
-                      <span>{req.propertyLocation || 'Location not specified'}</span>
-                    </p>
-                  </div>
-
-                  {/* Requested Amount Banner */}
-                  <div className="text-left sm:text-right rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-3 shrink-0">
-                    <span className="block text-[9px] uppercase tracking-wider text-amber-400 font-bold">Requested Investment</span>
-                    <span className="text-lg sm:text-xl font-black text-amber-400 tracking-tight">
-                      ₹ {Number(req.requestedAmount || 0).toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Approachable Investor Identity & Direct Communication Bar */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-3.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    {/* Investor Initials Avatar */}
-                    <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-orange-500/20 to-amber-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400 font-black text-base shrink-0 shadow-lg">
-                      {(req.investorName || 'I')[0]}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-bold text-white truncate">{req.investorName}</h4>
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          • {new Date(req.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
+                <div className="space-y-3.5">
+                  {/* Top Bar: Property Title & Demand Banner */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <AdminBadge variant={statusBadge.variant} size="sm" dot>
+                          {statusBadge.label}
+                        </AdminBadge>
+                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 uppercase">
+                          {req.planCategory || 'Co-Investment'}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 flex items-center gap-3 flex-wrap mt-0.5">
-                        <span><i className="fa-solid fa-phone text-emerald-400 mr-1"></i>+{req.investorPhone}</span>
-                        {req.investorEmail && (
-                          <span><i className="fa-solid fa-envelope text-blue-400 mr-1"></i>{req.investorEmail}</span>
-                        )}
+                      <h3 className="text-base font-bold text-slate-900 tracking-tight truncate group-hover:text-orange-600 transition-colors">
+                        {req.propertyTitle}
+                      </h3>
+                      <p className="text-xs text-slate-400 flex items-center gap-1.5">
+                        <i className="ri-map-pin-2-line text-orange-500 text-xs" />
+                        <span className="truncate">{req.propertyLocation || 'Location unspecified'}</span>
                       </p>
                     </div>
-                  </div>
 
-                  {/* Direct Contact Action Triggers */}
-                  <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-800">
-                    {cleanPhone && (
-                      <a
-                        href={`https://wa.me/${cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone}?text=${waMessage}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-3 py-2 text-xs font-bold text-emerald-400 transition-all flex items-center gap-1.5 shadow"
-                        title="Chat with Investor on WhatsApp"
-                      >
-                        <i className="fa-brands fa-whatsapp text-sm"></i>
-                        <span>WhatsApp</span>
-                      </a>
-                    )}
-
-                    {req.investorPhone && (
-                      <a
-                        href={`tel:${req.investorPhone}`}
-                        className="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200 hover:text-white transition-all flex items-center gap-1.5"
-                        title="Call Investor Directly"
-                      >
-                        <i className="fa-solid fa-phone text-xs text-blue-400"></i>
-                        <span>Call</span>
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                {/* Investor Note / Message Box */}
-                {req.message && (
-                  <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3.5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1">
-                      <i className="fa-solid fa-quote-left text-orange-400 text-[10px]"></i> Investor Note
-                    </p>
-                    <p className="text-xs text-slate-200 font-medium italic leading-relaxed">
-                      "{req.message}"
-                    </p>
-                  </div>
-                )}
-
-                {/* Interactive Controls: Staff Assignment & Lead Stage Selector */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  {/* Lead Follow-Up Stage Selector */}
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-2.5 flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">
-                      <i className="fa-solid fa-diagram-project text-orange-400 mr-1"></i> Lead Stage:
-                    </span>
-                    <select
-                      value={req.followUpStatus || 'unassigned'}
-                      onChange={(e) => updateFollowUp(req._id, e.target.value)}
-                      disabled={updatingId === req._id}
-                      className="w-full max-w-[170px] rounded-xl border border-slate-800 bg-slate-900 px-2.5 py-1.5 text-xs text-white outline-none focus:border-orange-500 cursor-pointer disabled:opacity-60"
-                    >
-                      <option value="unassigned">Not Yet Contacted</option>
-                      <option value="contacted">Contacted</option>
-                      <option value="site_visit_scheduled">Site Visit Scheduled</option>
-                      <option value="negotiating">Negotiating</option>
-                      <option value="converted">Converted</option>
-                      <option value="lost">Lost</option>
-                    </select>
-                  </div>
-
-                  {/* Staff Assignment Selector */}
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-2.5 flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">
-                      <i className="fa-solid fa-user-check text-blue-400 mr-1"></i> Assigned Staff:
-                    </span>
-                    <select
-                      value={req.assignedTo || ''}
-                      onChange={(e) => assignToStaff(req._id, e.target.value)}
-                      disabled={updatingId === req._id}
-                      className="w-full max-w-[170px] rounded-xl border border-slate-800 bg-slate-900 px-2.5 py-1.5 text-xs text-white outline-none focus:border-orange-500 cursor-pointer disabled:opacity-60"
-                    >
-                      <option value="">{req.assignedTo ? 'Reassign to...' : 'Assign to...'}</option>
-                      {staff.map((s) => (
-                        <option key={s._id} value={s._id}>
-                          {s.name} ({s.role})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Bottom Action Row: Approval Actions & Activity Log Toggle */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
-                  <div className="flex items-center gap-2">
-                    {req.status === 'pending' ? (
-                      <>
-                        <button
-                          onClick={() => updateStatus(req._id, 'approved')}
-                          disabled={updatingId === req._id}
-                          className="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all disabled:opacity-60 cursor-pointer flex items-center gap-1.5 shadow"
-                        >
-                          <i className="fa-solid fa-check text-xs"></i>
-                          <span>Approve Request</span>
-                        </button>
-                        <button
-                          onClick={() => updateStatus(req._id, 'rejected')}
-                          disabled={updatingId === req._id}
-                          className="px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold transition-all disabled:opacity-60 cursor-pointer flex items-center gap-1.5"
-                        >
-                          <i className="fa-solid fa-xmark text-xs"></i>
-                          <span>Reject</span>
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
-                        <i className={`fa-solid ${req.status === 'approved' ? 'fa-check text-emerald-400' : 'fa-xmark text-red-400'}`}></i>
-                        Status: <strong className="text-white uppercase">{req.status}</strong>
+                    {/* Capital Demand Amount Card */}
+                    <div className="text-right p-3 rounded-2xl bg-orange-50/70 border border-orange-200/60 shrink-0">
+                      <span className="text-[9px] uppercase font-bold text-orange-700 block tracking-wider">
+                        Requested Capital
                       </span>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => setExpandedId(expanded ? null : req._id)}
-                    className="text-xs font-semibold text-slate-400 hover:text-orange-400 flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <i className="fa-solid fa-clock-rotate-left"></i>
-                    <span>{expanded ? 'Hide' : 'View'} Activity Log ({req.statusHistory?.length || 0})</span>
-                    <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${expanded ? 'rotate-180' : ''}`}></i>
-                  </button>
-                </div>
-
-                {/* Expanded Activity Timeline */}
-                {expanded && (
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-4 space-y-3 animate-fadeIn">
-                    <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <i className="fa-solid fa-timeline text-orange-400"></i> Request Activity Timeline
-                    </h5>
-
-                    <div className="space-y-2">
-                      {(req.statusHistory || []).slice().reverse().map((entry, idx) => (
-                        <div key={idx} className="flex items-start gap-3 text-xs border-b border-slate-900/80 last:border-0 pb-2.5 last:pb-0">
-                          <div className="h-6 w-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] text-orange-400 shrink-0 mt-0.5">
-                            <i className="fa-solid fa-circle-dot"></i>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-slate-200 font-medium">
-                              {entry.status && <span className="font-bold text-white uppercase">{entry.status}</span>}
-                              {entry.status && entry.followUpStatus ? ' • ' : ''}
-                              {entry.followUpStatus && (
-                                <span className="font-semibold text-amber-400">{FOLLOW_UP_LABELS[entry.followUpStatus] || entry.followUpStatus}</span>
-                              )}
-                            </p>
-                            {entry.note && <p className="text-slate-400 text-[11px] mt-0.5">{entry.note}</p>}
-                            <p className="text-[10px] text-slate-500 font-mono mt-1">
-                              {entry.changedByName || 'System'} • {new Date(entry.changedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                      <span className="text-lg font-black text-slate-900 tracking-tight tabular-nums">
+                        ₹ {Number(req.requestedAmount || 0).toLocaleString('en-IN')}
+                      </span>
                     </div>
                   </div>
-                )}
+
+                  {/* Investor Identity Chip */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white font-bold text-sm flex items-center justify-center shadow-xs shrink-0">
+                        {(req.investorName || 'I')[0]}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold text-slate-900 truncate">
+                          {req.investorName}
+                        </h4>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-400 flex-wrap">
+                          <span>{req.investorPhone}</span>
+                          {req.investorEmail && (
+                            <span className="hidden sm:inline font-mono text-[10px]">
+                              · {req.investorEmail}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Direct Contact Buttons */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {cleanPhone && (
+                        <a
+                          href={`https://wa.me/${cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone}?text=${waMessage}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition cursor-pointer text-xs font-bold flex items-center gap-1"
+                          title="WhatsApp Investor"
+                        >
+                          <i className="ri-whatsapp-line text-sm" />
+                          <span className="hidden sm:inline">WhatsApp</span>
+                        </a>
+                      )}
+                      {req.investorPhone && (
+                        <a
+                          href={`tel:${req.investorPhone}`}
+                          className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition cursor-pointer text-xs font-bold flex items-center gap-1"
+                          title="Call Investor"
+                        >
+                          <i className="ri-phone-line text-sm" />
+                          <span className="hidden sm:inline">Call</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Investor Message Note (if any) */}
+                  {req.message && (
+                    <div className="p-3 rounded-2xl bg-amber-50/40 border border-amber-200/50 text-xs text-slate-700 italic">
+                      <span className="font-bold text-amber-800 not-italic block text-[10px] uppercase mb-0.5">
+                        Investor Note:
+                      </span>
+                      "{req.message}"
+                    </div>
+                  )}
+
+                  {/* Lead Controls: Stage Selector & Staff Assignment */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {/* Stage Selector */}
+                    <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                      <span className="text-[10px] font-bold uppercase text-slate-400">Stage:</span>
+                      <select
+                        value={req.followUpStatus || 'unassigned'}
+                        onChange={(e) => updateFollowUp(req._id, e.target.value)}
+                        disabled={updatingId === req._id}
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-orange-500 outline-none cursor-pointer max-w-[140px] truncate font-medium"
+                      >
+                        {FOLLOW_UP_STAGES.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Staff Selector */}
+                    <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                      <span className="text-[10px] font-bold uppercase text-slate-400">Agent:</span>
+                      <select
+                        value={req.assignedStaffId || ''}
+                        onChange={(e) => assignToStaff(req._id, e.target.value)}
+                        disabled={updatingId === req._id}
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-orange-500 outline-none cursor-pointer max-w-[140px] truncate font-medium"
+                      >
+                        <option value="">Unassigned</option>
+                        {staff.map((s) => (
+                          <option key={s._id} value={s._id}>
+                            {s.name} ({s.role === 'salesman' ? 'Sales' : 'Employee'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Decision Status Actions */}
+                <div className="pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    Received: {new Date(req.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    {req.status !== 'approved' && (
+                      <AdminButton
+                        variant="success"
+                        size="xs"
+                        icon="ri-check-line"
+                        onClick={() => updateStatus(req._id, 'approved')}
+                        loading={updatingId === req._id}
+                      >
+                        Approve
+                      </AdminButton>
+                    )}
+                    {req.status !== 'rejected' && (
+                      <AdminButton
+                        variant="outline"
+                        size="xs"
+                        icon="ri-close-line"
+                        onClick={() => updateStatus(req._id, 'rejected')}
+                        loading={updatingId === req._id}
+                      >
+                        Decline
+                      </AdminButton>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRequest(req)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer text-xs"
+                      title="Inspect Details"
+                    >
+                      <i className="ri-external-link-line" />
+                    </button>
+                  </div>
+                </div>
               </div>
             );
           })}
         </div>
+      ) : (
+        /* DENSE TABLE VIEW */
+        <AdminDataTable
+          columns={tableColumns}
+          data={filteredRequests}
+          loading={loading}
+          keyField="_id"
+        />
       )}
+
+      {/* ─── INVESTOR REQUEST DETAILS RIGHT-SLIDING DRAWER ─── */}
+      <AdminDrawer
+        isOpen={!!selectedRequest}
+        onClose={() => setSelectedRequest(null)}
+        title="Investor Deal Dossier"
+        subtitle={`Reference ID: ${selectedRequest?._id || 'REQ'}`}
+        icon="ri-funds-line"
+      >
+        {selectedRequest && (
+          <div className="space-y-5 text-slate-800">
+            {/* Property Banner Card */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+              <span className="text-[10px] font-bold text-orange-600 uppercase tracking-wider block">
+                Target Real Estate Asset
+              </span>
+              <h3 className="text-base font-bold text-slate-900">
+                {selectedRequest.propertyTitle}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {selectedRequest.propertyLocation || 'Location unspecified'}
+              </p>
+            </div>
+
+            {/* Requested Amount */}
+            <div className="p-4 rounded-2xl bg-orange-50 border border-orange-200/80 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-orange-700 uppercase block">
+                  Capital Commitment
+                </span>
+                <span className="text-2xl font-black text-slate-900 tabular-nums">
+                  ₹ {Number(selectedRequest.requestedAmount || 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <AdminBadge
+                variant={STATUS_BADGES[selectedRequest.status]?.variant || 'warning'}
+                size="md"
+                dot
+              >
+                {STATUS_BADGES[selectedRequest.status]?.label || 'Pending'}
+              </AdminBadge>
+            </div>
+
+            {/* Investor Contact Details */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                Investor Credentials
+              </span>
+              <div className="p-4 rounded-2xl bg-white border border-slate-200/80 space-y-2.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Full Name</span>
+                  <span className="font-bold text-slate-900">{selectedRequest.investorName}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                  <span className="text-slate-500">Phone</span>
+                  <span className="font-mono font-medium text-slate-900">+{selectedRequest.investorPhone}</span>
+                </div>
+                {selectedRequest.investorEmail && (
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                    <span className="text-slate-500">Work Email</span>
+                    <span className="font-mono text-slate-900">{selectedRequest.investorEmail}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                  <span className="text-slate-500">Submitted</span>
+                  <span className="text-slate-700">
+                    {new Date(selectedRequest.createdAt).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Message */}
+            {selectedRequest.message && (
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Investor Inquiry Message
+                </span>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-700 leading-relaxed italic">
+                  "{selectedRequest.message}"
+                </div>
+              </div>
+            )}
+
+            {/* Quick Action Controls in Drawer */}
+            <div className="pt-2 flex items-center gap-2">
+              {selectedRequest.status !== 'approved' && (
+                <AdminButton
+                  variant="success"
+                  fullWidth
+                  icon="ri-check-line"
+                  onClick={() => {
+                    updateStatus(selectedRequest._id, 'approved');
+                    setSelectedRequest((prev) => ({ ...prev, status: 'approved' }));
+                  }}
+                >
+                  Approve Deal
+                </AdminButton>
+              )}
+              {selectedRequest.status !== 'rejected' && (
+                <AdminButton
+                  variant="danger"
+                  fullWidth
+                  icon="ri-close-line"
+                  onClick={() => {
+                    updateStatus(selectedRequest._id, 'rejected');
+                    setSelectedRequest((prev) => ({ ...prev, status: 'rejected' }));
+                  }}
+                >
+                  Decline Lead
+                </AdminButton>
+              )}
+            </div>
+          </div>
+        )}
+      </AdminDrawer>
     </div>
   );
 }

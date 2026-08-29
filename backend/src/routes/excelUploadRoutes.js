@@ -15,6 +15,7 @@ const router = Router();
 router.use(requireAuth, requireDb);
 
 router.post('/bulk-upload', requireRole('admin'), upload.single('file'), asyncHandler(uploadExcelFlatListings));
+router.post('/upload', requireRole('admin'), upload.single('file'), asyncHandler(uploadExcelFlatListings));
 router.get('/flat-listings', requireRole('admin'), asyncHandler(getExcelUploadHistory));
 
 export default router;

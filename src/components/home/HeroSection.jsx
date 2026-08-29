@@ -1,58 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
-const slides = [
-  "/assets/img/banner1.png",
-  "/assets/img/banner2.png",
-  "/assets/img/banner3.png",
-];
-
-const POPULAR_FLAT_PICKS = [
-  {
-    id: "flat-pick-1",
-    label: "Luxury 3 BHK Apartment in South Delhi",
-    sub: "Okhla, New Delhi • ₹1.5 Cr",
-    propertyType: "residential",
-    badge: "12% IRR",
-  },
-  {
-    id: "flat-pick-2",
-    label: "Executive Studio Suite in Noida Sector 62",
-    sub: "Sector 62, Noida • ₹45 Lakhs",
-    propertyType: "residential",
-    badge: "Pre-Leased",
-  },
-  {
-    id: "flat-pick-3",
-    label: "2 BHK Smart Residence in Greater Noida West",
-    sub: "Gaur City, Greater Noida • ₹65 Lakhs",
-    propertyType: "residential",
-    badge: "High Growth",
-  },
-  {
-    id: "flat-pick-4",
-    label: "Penthouse Suite on Golf Course Road",
-    sub: "DLF Phase 5, Gurugram • ₹2.8 Cr",
-    propertyType: "residential",
-    badge: "Premium Flat",
-  },
-  {
-    id: "flat-pick-5",
-    label: "2 BHK Residential Flat near Vrindavan Temple",
-    sub: "Raman Reti, Vrindavan • ₹38 Lakhs",
-    propertyType: "residential",
-    badge: "High Appreciation",
-  },
-];
-
-const fallbackSuggestions = [
-  "Luxury 3 BHK Apartment in South Delhi",
-  "Executive Studio Suite in Noida Sector 62",
-  "2 BHK Smart Residence in Greater Noida West",
-  "Residential Plots in Vrindavan (High Growth)",
-  "Pre-Leased Commercial Shops with 14% Yield",
-  "Fractional Tokens from ₹2.5 Lakhs",
-];
+const slides = ["/assets/img/banner1.png", "/assets/img/banner2.png", "/assets/img/banner3.png"];
 
 const CATEGORIES = [
   { id: "all", label: "All Deals", icon: "fa-layer-group" },
@@ -61,11 +11,55 @@ const CATEGORIES = [
   { id: "residential", label: "Flats & Suites", icon: "fa-building" },
 ];
 
-const RECENT_INVESTMENTS_TICKER = [
-  "🔥 Over ₹12.4 Cr invested by 1,200+ HNI investors this quarter",
-  "⚡ 4 Fractional Shares remaining in Noida Commercial Hub (13.5% Rent Yield)",
-  "📈 Vrindavan Cultural Corridor Land Values appreciated +18.4% YoY",
-];
+const LOCATIONS = ["Delhi NCR", "Vrindavan", "Noida", "Gurugram", "Greater Noida", "Sector 62"];
+
+const PHRASES = ["14.2% Fixed Returns", "Fractional Land Shares", "Bank-Verified Plots", "High-Yield Commercial"];
+
+const spring = { type: "spring", stiffness: 260, damping: 22, mass: 0.8 };
+
+/* ─── inline mini-card for a search hit ─── */
+function MiniCard({ item, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative flex w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-slate-800/40 p-3 text-left transition hover:border-orange-500/40 hover:bg-slate-800/70"
+    >
+      <div className="h-10 w-12 rounded-lg bg-slate-700/60 shrink-0 overflow-hidden">
+        {item.image ? (
+          <img src={item.image} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-orange-400">
+            <i className="fa-solid fa-building text-xs" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-bold text-slate-200 truncate group-hover:text-orange-300 transition-colors">
+          {item.title}
+        </p>
+        <p className="text-[10px] text-slate-400 truncate">{item.location}</p>
+        <span className="text-[10px] font-black text-emerald-400 mt-0.5 block">
+          {item.price}
+          {item.expectedRoi ? `  •  ${item.expectedRoi}% IRR` : ""}
+        </span>
+      </div>
+      <span
+        className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${
+          item.status === "upcoming"
+            ? "bg-blue-500/15 text-blue-400"
+            : item.status === "delivered"
+            ? "bg-emerald-500/15 text-emerald-400"
+            : "bg-orange-500/15 text-orange-400"
+        }`}
+      >
+        {item.status === "running" ? "Live" : item.status}
+      </span>
+    </button>
+  );
+}
+
+
 
 export default function HeroSection() {
   const [activeSlide, setActiveSlide] = useState(0);
@@ -79,190 +73,102 @@ export default function HeroSection() {
   const [query, setQuery] = useState("");
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [properties, setProperties] = useState([]);
-  const [tickerIndex, setTickerIndex] = useState(0);
+  const [featured, setFeatured] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
 
-  const searchContainerRef = useRef(null);
+  const searchRef = useRef(null);
   const navigate = useNavigate();
 
-  // Equal-length phrases (19-22 characters) to ensure rock-solid stability without vertical jerking
-  const phrases = useMemo(
-    () => [
-      "14.2% Fixed Returns",
-      "Fractional Land Shares",
-      "Bank-Verified Plots",
-      "High-Yield Commercial",
-    ],
-    []
-  );
-
-  // Fetch properties from backend
+  /* ── Backend sync ── */
   useEffect(() => {
-    fetch("/api/properties")
-      .then((res) => {
-        if (!res.ok) throw new Error("API Error");
-        return res.json();
-      })
-      .then((data) => {
-        if (Array.isArray(data)) setProperties(data);
-      })
-      .catch(() => { });
+    let cancelled = false;
+    Promise.all([
+      fetch("/api/properties").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/properties/featured").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([all, feat]) => {
+      if (!cancelled) {
+        if (Array.isArray(all)) setProperties(all);
+        if (Array.isArray(feat)) setFeatured(feat);
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
   }, []);
 
-  // Background banner slides slideshow with pause on hover
+  /* ── Slide carousel ── */
   useEffect(() => {
     if (isPaused) return;
-    const timer = window.setInterval(
-      () => setActiveSlide((current) => (current + 1) % slides.length),
-      6000,
-    );
-    return () => window.clearInterval(timer);
+    const t = setInterval(() => setActiveSlide((c) => (c + 1) % slides.length), 6000);
+    return () => clearInterval(t);
   }, [isPaused]);
 
-  // Live Investor Ticker auto-switch
+  /* ── Typing effect ── */
   useEffect(() => {
-    const tickerTimer = window.setInterval(() => {
-      setTickerIndex((prev) => (prev + 1) % RECENT_INVESTMENTS_TICKER.length);
-    }, 4500);
-    return () => window.clearInterval(tickerTimer);
-  }, []);
-
-  // Typing animation effect with smooth stability
-  useEffect(() => {
-    const phrase = phrases[phraseIndex];
+    const phrase = PHRASES[phraseIndex];
     const delay = deleting ? 35 : 70;
-    const timer = window.setTimeout(
-      () => {
-        if (!deleting && typedText === phrase) {
-          setDeleting(true);
-          return;
-        }
-        if (deleting && typedText === "") {
-          setDeleting(false);
-          setPhraseIndex((index) => (index + 1) % phrases.length);
-          return;
-        }
-        setTypedText((text) =>
-          deleting ? text.slice(0, -1) : phrase.slice(0, text.length + 1),
-        );
-      },
-      !deleting && typedText === phrase ? 2000 : delay,
-    );
-    return () => window.clearTimeout(timer);
-  }, [typedText, deleting, phraseIndex, phrases]);
+    const timer = setTimeout(() => {
+      if (!deleting && typedText === phrase) { setDeleting(true); return; }
+      if (deleting && typedText === "") { setDeleting(false); setPhraseIndex((i) => (i + 1) % PHRASES.length); return; }
+      setTypedText((t) => (deleting ? t.slice(0, -1) : phrase.slice(0, t.length + 1)));
+    }, !deleting && typedText === phrase ? 2200 : delay);
+    return () => clearTimeout(timer);
+  }, [typedText, deleting, phraseIndex]);
 
-  // Close dropdowns on outside click UX
+  /* ── Click outside ── */
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        searchContainerRef.current &&
-        !searchContainerRef.current.contains(event.target)
-      ) {
-        setCityOpen(false);
-        setSuggestionsOpen(false);
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setCityOpen(false); setSuggestionsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Live-matched properties for active category
+  /* ── Search matching ── */
   const categoryPool = useMemo(
-    () =>
-      activeCategory === "all"
-        ? properties
-        : properties.filter((p) => p.propertyType === activeCategory),
+    () => activeCategory === "all" ? properties : properties.filter((p) => p.propertyType === activeCategory),
     [properties, activeCategory],
   );
 
-  // Check if current search or selected tab targets Flats
   const isFlatSearch = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (
-      activeCategory === "residential" ||
-      q.includes("flat") ||
-      q.includes("bhk") ||
-      q.includes("apartment") ||
-      q.includes("suite") ||
-      q.includes("residence")
-    );
+    return activeCategory === "residential" || q.includes("flat") || q.includes("bhk") || q.includes("apartment") || q.includes("suite");
   }, [query, activeCategory]);
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
+    if (!q) return [];
 
-    if (!q) {
-      if (activeCategory === "residential") {
-        const liveFlats = properties.filter((p) => p.propertyType === "residential");
-        if (liveFlats.length > 0) {
-          return liveFlats.slice(0, 6).map((p) => ({
-            id: p._id,
-            label: p.title,
-            sub: p.location || "Prime Location",
-            propertyType: "residential",
-            raw: p,
-          }));
-        }
-        return POPULAR_FLAT_PICKS;
-      }
-
-      return categoryPool.slice(0, 5).map((p) => ({
-        id: p._id,
-        label: p.title,
-        sub: p.location,
-        propertyType: p.propertyType,
-        raw: p,
-      }));
-    }
-
-    const live = categoryPool
+    const hits = categoryPool
       .filter(
         (p) =>
           (p.title || "").toLowerCase().includes(q) ||
           (p.location || "").toLowerCase().includes(q) ||
-          (p.propertyType || "").toLowerCase().includes(q)
+          (p.tag || "").toLowerCase().includes(q),
       )
-      .slice(0, 6)
-      .map((p) => ({
-        id: p._id,
-        label: p.title,
-        sub: p.location,
-        propertyType: p.propertyType,
-        raw: p,
-      }));
+      .slice(0, 8);
 
-    if (live.length > 0) return live;
+    if (hits.length > 0) return hits;
 
     if (isFlatSearch) {
-      const filteredFlats = POPULAR_FLAT_PICKS.filter(
-        (item) =>
-          item.label.toLowerCase().includes(q) ||
-          item.sub.toLowerCase().includes(q) ||
-          q.includes("flat") ||
-          q.includes("bhk")
-      );
-      if (filteredFlats.length > 0) return filteredFlats;
-      return POPULAR_FLAT_PICKS;
+      const flatHits = categoryPool
+        .filter((p) => p.propertyType === "residential")
+        .slice(0, 6);
+      return flatHits;
     }
+    return [];
+  }, [query, categoryPool, activeCategory, isFlatSearch]);
 
-    return fallbackSuggestions
-      .filter((s) => s.toLowerCase().includes(q))
-      .map((s) => ({
-        id: s,
-        label: s,
-        sub: "",
-        propertyType: null,
-        raw: null,
-      }));
-  }, [query, categoryPool, activeCategory, properties, isFlatSearch]);
+  /* ── Featured latest deals (fallback to running properties if no featured set) ── */
+  const latestDeals = useMemo(() => {
+    if (featured.length > 0) return featured.slice(0, 8);
+    return properties.filter((p) => p.status === "running").slice(0, 8);
+  }, [featured, properties]);
 
-  const categoryLabel = (type) => {
-    if (type === "residential") return "Flat";
-    if (type === "plot") return "Plot";
-    if (type === "commercial") return "Shop";
-    return "Investment";
-  };
-
-  const search = (term = query) => {
+  /* ── Search action ── */
+  const search = useCallback((term = query) => {
     const value = term.trim();
     const params = new URLSearchParams();
     if (value) params.set("search", value);
@@ -270,16 +176,24 @@ export default function HeroSection() {
     if (city) params.set("city", city);
     const qs = params.toString();
     navigate(qs ? `/properties?${qs}` : "/properties");
-  };
-
-  const selectMatch = (match) => {
-    setQuery(match.label);
     setSuggestionsOpen(false);
-    if (match.raw) {
-      navigate("/property-details", { state: { project: match.raw } });
-    } else {
-      search(match.label);
-    }
+  }, [query, activeCategory, city, navigate]);
+
+  const selectMatch = useCallback((item) => {
+    setQuery(item.title || item.label);
+    setSuggestionsOpen(false);
+    navigate("/property-details", { state: { project: item } });
+  }, [navigate]);
+
+  const handleMouseMove = useCallback((e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({ x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height });
+  }, []);
+
+  const typeLabel = (t) => {
+    if (t === "residential") return "Flat";
+    if (t === "commercial") return "Shop";
+    return "Plot";
   };
 
   return (
@@ -287,335 +201,482 @@ export default function HeroSection() {
       id="home"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden bg-slate-950 pt-28 sm:pt-36 lg:pt-40 pb-16 lg:pb-24"
+      onMouseMove={handleMouseMove}
+      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-slate-950 pt-20 sm:pt-24 lg:pt-28 pb-10 lg:pb-16"
     >
-      {/* Background Carousel Images */}
+      {/* Background Carousel */}
       {slides.map((image, index) => (
         <img
           key={image}
           src={image}
           alt=""
-          className={`absolute inset-0 h-full w-full object-cover transition-all duration-[1800ms] ease-in-out ${
-            index === activeSlide ? "scale-100 opacity-60" : "scale-[1.05] opacity-0"
+          aria-hidden="true"
+          className={`absolute inset-0 h-full w-full object-cover transition-all duration-[2000ms] ease-in-out ${
+            index === activeSlide ? "scale-100 opacity-45" : "scale-[1.08] opacity-0"
           }`}
         />
       ))}
 
-      {/* Modern High-Contrast Gradient Backdrop Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/85 to-slate-950/70"></div>
+      {/* Gradient overlays */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/90 to-slate-950/70" />
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/40" />
 
-      {/* Slide Navigation Dots */}
-      <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-2 rounded-full bg-slate-900/80 px-3.5 py-1.5 backdrop-blur-md border border-white/10">
-        {slides.map((_, idx) => (
-          <button
-            key={idx}
-            type="button"
-            aria-label={`Go to slide ${idx + 1}`}
-            onClick={() => setActiveSlide(idx)}
-            className={`h-2 rounded-full transition-all ${
-              activeSlide === idx ? "w-8 bg-orange-500" : "w-2 bg-white/30 hover:bg-white/60"
-            }`}
-          />
-        ))}
-      </div>
+      {/* Animated gradient orbs */}
+      <motion.div
+        className="absolute top-1/4 -left-32 h-[500px] w-[500px] rounded-full opacity-20 blur-[120px] pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, #f97316 0%, transparent 70%)",
+          x: (mousePos.x - 0.5) * -40,
+          y: (mousePos.y - 0.5) * -40,
+        }}
+      />
+      <motion.div
+        className="absolute bottom-1/4 -right-32 h-[400px] w-[400px] rounded-full opacity-15 blur-[100px] pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, #10b981 0%, transparent 70%)",
+          x: (mousePos.x - 0.5) * 30,
+          y: (mousePos.y - 0.5) * 30,
+        }}
+      />
+      <motion.div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[300px] w-[300px] rounded-full opacity-10 blur-[80px] pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, #f59e0b 0%, transparent 70%)",
+          x: (mousePos.x - 0.5) * 20,
+          y: (mousePos.y - 0.5) * 20,
+        }}
+      />
 
-      {/* Hero Content Grid */}
+      {/* Grid pattern */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+          backgroundSize: "60px 60px",
+        }}
+      />
+
+      {/* Top accent bar */}
+      <motion.div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-[2px]"
+        style={{ background: "linear-gradient(90deg, #f97316, #f59e0b, #10b981)" }}
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+      />
+
+
+
+      {/* Main Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center pt-6">
 
-          {/* Left Column: Executive Headline & Value Proposition (lg:col-span-7) */}
-          <div className="lg:col-span-7 space-y-6 text-left">
+          {/* Left Column */}
+          <motion.div
+            className="lg:col-span-7 space-y-5"
+            initial="hidden"
+            animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.1, delayChildren: 0.2 } } }}
+          >
 
-            {/* Headline + Typing Phrase Block with Perfect Line Height & Zero Overlap */}
-            <div className="min-h-[170px] sm:min-h-[190px] lg:min-h-[210px] flex flex-col justify-start space-y-3">
-              <h1 className="text-3xl sm:text-4xl lg:text-[2.85rem] font-extrabold text-white tracking-tight leading-[1.4] m-0">
-                Invest Smarter in High-Yield Real Estate Offering
+
+            {/* Headline */}
+            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: spring } }}>
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-extrabold text-white tracking-tight leading-[1.1]">
+                Invest in Premium
+                <br />
+                <span className="relative">
+                  <span className="relative z-10 bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 bg-clip-text text-transparent">
+                    Real Estate
+                  </span>
+                  <motion.span
+                    aria-hidden="true"
+                    className="absolute bottom-1 left-0 right-0 h-3 bg-orange-500/15 -z-0 rounded-full"
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ duration: 0.8, delay: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  />
+                </span>
+                <br />
+                Starting{" "}
+                <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">&#8377;2.5 Lakhs</span>
               </h1>
-              <div className="text-2xl sm:text-3xl lg:text-[2.7rem] font-black text-orange-400 leading-9 tracking-tight">
+            </motion.div>
+
+            {/* Typing phrase */}
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0, transition: spring } }}
+              className="h-12 sm:h-14 flex items-center"
+            >
+              <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-300">
                 {typedText}
-                <span className="ml-1 inline-block h-[.75em] w-[3px] animate-pulse bg-orange-400 align-[-.05em]" />
-              </div>
-            </div>
+                <motion.span
+                  aria-hidden="true"
+                  className="ml-1 inline-block h-[0.7em] w-[3px] rounded-full bg-orange-400 align-[-0.05em]"
+                  animate={{ opacity: [1, 0] }}
+                  transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </span>
+            </motion.div>
 
-            {/* Subheadline Description Paragraph */}
-            <p className="text-slate-300 text-sm sm:text-base font-normal leading-[1.75] max-w-xl">
-              Access verified RERA & Bank-approved residential flats, commercial shops, and high-growth land starting from just ₹2.5 Lakhs.
-            </p>
+            {/* Subheadline */}
+            <motion.p
+              variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0, transition: spring } }}
+              className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-lg"
+            >
+              Bank-verified properties with <span className="text-emerald-400 font-semibold">RERA clearance</span>, managed by experts.
+              Earn{" "}
+              <span className="text-orange-400 font-semibold">14.2% fixed returns</span>{" "}
+              with fractional ownership — no lock-in, zero management fees.
+            </motion.p>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-4 pt-1">
-              <button
+            {/* CTA Buttons */}
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0, transition: spring } }}
+              className="flex flex-wrap items-center gap-4"
+            >
+              <motion.button
                 type="button"
                 onClick={() => navigate("/properties")}
-                className="flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-7 py-3.5 text-xs font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-orange-500/25 transition hover:scale-[1.02] hover:brightness-110 active:scale-95 cursor-pointer"
+                className="group relative flex items-center gap-2.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-7 py-3.5 text-xs font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-orange-500/30"
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                transition={spring}
               >
-                <i className="fa-solid fa-fire text-slate-950"></i>
-                <span>Explore Investment Deals</span>
-                <i className="fa-solid fa-arrow-right text-[10px]"></i>
-              </button>
+                <i className="fa-solid fa-fire text-sm" />
+                <span>Explore Deals</span>
+                <motion.span aria-hidden="true" className="inline-block" animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                  <i className="fa-solid fa-arrow-right text-[10px]" />
+                </motion.span>
+              </motion.button>
 
-              <button
+              <motion.button
                 type="button"
                 onClick={() => navigate("/become-investor")}
-                className="flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3.5 text-xs font-bold text-white backdrop-blur-md transition hover:bg-white/10 hover:border-white/40 cursor-pointer"
+                className="flex items-center gap-2.5 rounded-full border border-white/20 bg-white/5 px-6 py-3.5 text-xs font-bold text-white backdrop-blur-md hover:bg-white/10 hover:border-white/40 transition-colors"
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                transition={spring}
               >
-                <i className="fa-solid fa-user-shield text-emerald-400"></i>
-                <span>Become an Investor</span>
-              </button>
-            </div>
+                <i className="fa-solid fa-user-shield text-emerald-400" />
+                <span>Start Investing</span>
+              </motion.button>
+            </motion.div>
 
-            {/* Social Proof Rating */}
-            <div className="flex items-center gap-3 pt-1">
-              <div className="flex -space-x-2">
-                <div className="h-7 w-7 rounded-full bg-orange-500 text-slate-950 font-bold text-[10px] flex items-center justify-center border-2 border-slate-950">RS</div>
-                <div className="h-7 w-7 rounded-full bg-blue-500 text-white font-bold text-[10px] flex items-center justify-center border-2 border-slate-950">AK</div>
-                <div className="h-7 w-7 rounded-full bg-emerald-500 text-white font-bold text-[10px] flex items-center justify-center border-2 border-slate-950">PM</div>
-              </div>
-              <div className="text-xs">
-                <div className="flex items-center gap-1 text-amber-400 text-[11px]">
-                  <i className="fa-solid fa-star"></i>
-                  <i className="fa-solid fa-star"></i>
-                  <i className="fa-solid fa-star"></i>
-                  <i className="fa-solid fa-star"></i>
-                  <i className="fa-solid fa-star"></i>
-                  <span className="font-bold text-white ml-1">4.9 / 5</span>
-                </div>
-                <p className="text-[11px] text-slate-400">Trusted by 1,400+ Active Investors</p>
-              </div>
-            </div>
-
-            {/* Trust Assurance Strip */}
-            <div className="flex flex-wrap items-center gap-6 pt-3 text-xs font-medium text-slate-300 border-t border-white/10">
-              <span className="flex items-center gap-1.5 text-emerald-400">
-                <i className="fa-solid fa-circle-check"></i> <span className="text-slate-300">RERA Title Clear</span>
-              </span>
-              <span className="flex items-center gap-1.5 text-emerald-400">
-                <i className="fa-solid fa-circle-check"></i> <span className="text-slate-300">Zero Management Fees</span>
-              </span>
-            </div>
-
-          </div>
-
-          {/* Right Column: Floating Glass Search Card (lg:col-span-5) */}
-          <div className="lg:col-span-5 w-full">
-            <div
-              ref={searchContainerRef}
-              className="w-full rounded-3xl border border-white/15 bg-slate-900/90 p-6 sm:p-7 shadow-2xl backdrop-blur-xl text-left space-y-5"
+            {/* Social Proof */}
+            <motion.div
+              variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { delay: 0.5 } } }}
+              className="flex items-center gap-4"
             >
-              {/* Form Title & Desk Active Badge */}
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <div>
-                  <h3 className="text-lg font-bold text-white">Search Property Deals</h3>
-                  <p className="text-xs text-slate-400">Filter by category, city, or locality</p>
+              <div className="flex -space-x-2.5">
+                {[
+                  { initials: "RS", bg: "bg-orange-500" },
+                  { initials: "AK", bg: "bg-blue-500" },
+                  { initials: "PM", bg: "bg-emerald-500" },
+                  { initials: "VD", bg: "bg-purple-500" },
+                ].map((avatar, i) => (
+                  <motion.div
+                    key={avatar.initials}
+                    className={`h-8 w-8 rounded-full ${avatar.bg} text-white font-bold text-[10px] flex items-center justify-center border-2 border-slate-950 shadow-md`}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ ...spring, delay: 0.6 + i * 0.08 }}
+                    whileHover={{ scale: 1.15, zIndex: 10 }}
+                  >
+                    {avatar.initials}
+                  </motion.div>
+                ))}
+              </div>
+              <div>
+                <div className="flex items-center gap-1 text-amber-400 text-xs">
+                  {[...Array(5)].map((_, i) => (
+                    <motion.i
+                      key={i}
+                      className="fa-solid fa-star text-[10px]"
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ ...spring, delay: 0.8 + i * 0.06 }}
+                    />
+                  ))}
+                  <span className="font-bold text-white ml-1 text-sm">4.9 / 5</span>
                 </div>
-                <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 text-[10px] font-bold text-emerald-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>Live Desk</span>
+                <p className="text-[11px] text-slate-400 font-medium">Trusted by 8,500+ investors across India</p>
+              </div>
+            </motion.div>
+
+            {/* Trust badges */}
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { ...spring, delay: 0.5 } } }}
+              className="flex flex-wrap items-center gap-x-5 gap-y-2"
+            >
+              {[
+                { icon: "fa-circle-check", text: "RERA Title Clear", color: "text-emerald-400" },
+                { icon: "fa-circle-check", text: "Zero Management Fees", color: "text-emerald-400" },
+                { icon: "fa-circle-check", text: "100% Bank-Verified", color: "text-emerald-400" },
+              ].map((badge, i) => (
+                <motion.span
+                  key={badge.text}
+                  className={`flex items-center gap-1.5 text-[11px] font-semibold ${badge.color}`}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ ...spring, delay: 0.6 + i * 0.08 }}
+                >
+                  <i className={`fa-solid ${badge.icon} text-xs`} />
+                  <span className="text-slate-300">{badge.text}</span>
+                </motion.span>
+              ))}
+            </motion.div>
+
+
+          </motion.div>
+
+          {/* Right Column — Search Card */}
+          <motion.div
+            className="lg:col-span-5 w-full"
+            initial={{ opacity: 0, y: 40, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", stiffness: 120, damping: 20, delay: 0.3 }}
+          >
+            <div
+              ref={searchRef}
+              className="relative w-full rounded-3xl border border-white/[0.12] bg-slate-900/80 p-6 sm:p-7 shadow-2xl shadow-black/30 backdrop-blur-2xl space-y-5 overflow-hidden"
+            >
+              {/* Card inner glow */}
+              <div aria-hidden="true" className="absolute -top-20 -right-20 h-40 w-40 rounded-full bg-orange-500/10 blur-[60px] pointer-events-none" />
+              <div aria-hidden="true" className="absolute -bottom-16 -left-16 h-32 w-32 rounded-full bg-emerald-500/8 blur-[50px] pointer-events-none" />
+
+              {/* Header */}
+              <div className="relative flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Find Investment Deals</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {loading ? "Loading live deals…" : `${properties.filter(p => p.status === "running").length} live deals available now`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">Live</span>
                 </div>
               </div>
 
-              {/* Category Segmented Tabs */}
+              {/* Category tabs */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                  Asset Category
-                </label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Asset Category</label>
                 <div className="grid grid-cols-2 gap-2">
                   {CATEGORIES.map((cat) => (
-                    <button
+                    <motion.button
                       key={cat.id}
                       type="button"
-                      onClick={() => {
-                        setActiveCategory(cat.id);
-                        setSuggestionsOpen(true);
-                      }}
-                      className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition border ${activeCategory === cat.id
-                        ? "bg-orange-500 text-slate-950 border-orange-400 shadow-md"
-                        : "bg-slate-950/80 text-slate-300 border-white/10 hover:bg-slate-800"
-                        }`}
+                      onClick={() => { setActiveCategory(cat.id); setSuggestionsOpen(true); }}
+                      className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition border ${
+                        activeCategory === cat.id
+                          ? "bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 border-orange-400 shadow-lg shadow-orange-500/25"
+                          : "bg-slate-950/60 text-slate-300 border-white/[0.08] hover:border-orange-500/30 hover:bg-slate-800/40"
+                      }`}
+                      whileTap={{ scale: 0.97 }}
+                      transition={spring}
                     >
-                      <i className={`fa-solid ${cat.icon} text-xs ${activeCategory === cat.id ? 'text-slate-950' : 'text-orange-400'}`}></i>
+                      <i className={`fa-solid ${cat.icon} text-xs ${activeCategory === cat.id ? "text-slate-950" : "text-orange-400"}`} />
                       <span className="truncate">{cat.label}</span>
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
 
-              {/* Location Select */}
+              {/* Location selector */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                  Target Location
-                </label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Target Location</label>
                 <div className="relative">
-                  <button
+                  <motion.button
                     type="button"
-                    onClick={() => setCityOpen((open) => !open)}
-                    className="flex w-full items-center justify-between rounded-xl border border-white/15 bg-slate-950 px-3.5 py-2.5 text-xs font-semibold text-white outline-none hover:border-orange-500/50 transition"
+                    onClick={() => setCityOpen((o) => !o)}
+                    className="flex w-full items-center justify-between rounded-xl border border-white/[0.12] bg-slate-950/60 px-3.5 py-2.5 text-xs font-semibold text-white hover:border-orange-500/40 transition"
+                    whileTap={{ scale: 0.99 }}
                   >
                     <div className="flex items-center gap-2">
-                      <i className="fa-solid fa-location-dot text-orange-400 text-xs"></i>
+                      <i className="fa-solid fa-location-dot text-orange-400 text-xs" />
                       <span>{city}</span>
                     </div>
-                    <i className={`fa-solid fa-chevron-down text-[10px] text-slate-400 transition ${cityOpen ? "rotate-180" : ""}`}></i>
-                  </button>
+                    <motion.i
+                      className="fa-solid fa-chevron-down text-[10px] text-slate-400"
+                      animate={{ rotate: cityOpen ? 180 : 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    />
+                  </motion.button>
 
-                  {cityOpen && (
-                    <div className="absolute left-0 top-[calc(100%+6px)] z-30 w-full rounded-xl border border-white/15 bg-slate-900 p-1.5 shadow-2xl backdrop-blur-2xl">
-                      {["Delhi NCR", "Vrindavan", "Noida", "Gurugram"].map((item) => (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => {
-                            setCity(item);
-                            setCityOpen(false);
-                          }}
-                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-medium transition ${city === item ? "bg-orange-500/20 text-orange-300 font-bold" : "text-slate-200 hover:bg-white/5"
+                  <AnimatePresence>
+                    {cityOpen && (
+                      <motion.div
+                        className="absolute left-0 top-[calc(100%+6px)] z-30 w-full rounded-xl border border-white/[0.12] bg-slate-900/95 p-1.5 shadow-2xl backdrop-blur-2xl overflow-hidden"
+                        initial={{ opacity: 0, y: -8, scaleY: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scaleY: 1 }}
+                        exit={{ opacity: 0, y: -6, scaleY: 0.95 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                      >
+                        {LOCATIONS.map((item, i) => (
+                          <motion.button
+                            key={item}
+                            type="button"
+                            onClick={() => { setCity(item); setCityOpen(false); }}
+                            className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs font-medium transition ${
+                              city === item ? "bg-orange-500/20 text-orange-300 font-bold" : "text-slate-200 hover:bg-white/5"
                             }`}
-                        >
-                          <span>{item}</span>
-                          {city === item && <i className="fa-solid fa-check text-xs text-orange-400"></i>}
-                        </button>
-                      ))}
-                    </div>
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ ...spring, delay: i * 0.04 }}
+                          >
+                            <span>{item}</span>
+                            {city === item && <motion.i className="fa-solid fa-check text-xs text-orange-400" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={spring} />}
+                          </motion.button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* Search input with live results */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                  Search Properties
+                  {query && matches.length > 0 && (
+                    <span className="ml-2 normal-case text-emerald-400 font-bold">
+                      {matches.length} result{matches.length !== 1 ? "s" : ""} found
+                    </span>
+                  )}
+                </label>
+                <div className="relative">
+                  <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+                  <input
+                    value={query}
+                    onChange={(e) => { setQuery(e.target.value); setSuggestionsOpen(true); }}
+                    onFocus={() => setSuggestionsOpen(true)}
+                    placeholder="Flats, plots, shops, locality…"
+                    className="w-full rounded-xl border border-white/[0.12] bg-slate-950/60 pl-9 pr-8 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-orange-500/60 transition-colors"
+                  />
+                  {query && (
+                    <motion.button
+                      type="button"
+                      onClick={() => { setQuery(""); setSuggestionsOpen(false); }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-slate-700 text-white hover:bg-slate-600 transition"
+                      whileTap={{ scale: 0.85 }}
+                    >
+                      <i className="fa-solid fa-xmark text-[10px]" />
+                    </motion.button>
                   )}
                 </div>
               </div>
 
-              {/* Keyword Search Input Form */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  search();
-                }}
-                className="space-y-3.5"
-              >
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                    Keyword Search
-                  </label>
-                  <div className="relative">
-                    <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input
-                      value={query}
-                      onChange={(e) => {
-                        setQuery(e.target.value);
-                        setSuggestionsOpen(true);
-                      }}
-                      onFocus={() => setSuggestionsOpen(true)}
-                      placeholder="Search flats, plots, shops, locality..."
-                      className="w-full rounded-xl border border-white/15 bg-slate-950 pl-9 pr-8 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-orange-500 transition"
-                    />
-                    {query && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setQuery("");
-                          setSuggestionsOpen(false);
-                        }}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full bg-slate-700 text-[10px] text-white hover:bg-slate-600"
-                      >
-                        <i className="fa-solid fa-xmark"></i>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Dropdown Suggestions */}
-                {suggestionsOpen && matches.length > 0 && (
-                  <div className="relative z-20 max-h-52 overflow-y-auto rounded-xl border border-white/15 bg-slate-950 p-1.5 shadow-2xl">
-                    <div className="px-2.5 py-1 text-[10px] font-bold uppercase text-orange-400 border-b border-white/10 mb-1">
-                      {isFlatSearch ? "Popular Flat Picks" : "Suggested Deals"}
+              {/* Live results list (inline, always visible when query has results) */}
+              <AnimatePresence>
+                {(suggestionsOpen && matches.length > 0) && (
+                  <motion.div
+                    className="max-h-60 overflow-y-auto space-y-1.5 rounded-xl border border-white/[0.08] bg-slate-900/90 p-2 shadow-2xl"
+                    initial={{ opacity: 0, y: -8, scaleY: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scaleY: 1 }}
+                    exit={{ opacity: 0, y: -6, scaleY: 0.95 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                  >
+                    <div className="px-2 py-1 text-[10px] font-bold uppercase text-orange-400 border-b border-white/[0.06] mb-1 flex items-center justify-between">
+                      <span>{isFlatSearch ? "Residential Flats" : "Matching Deals"}</span>
+                      <span className="text-slate-500 normal-case">{matches.length} {matches.length === 1 ? "result" : "results"}</span>
                     </div>
-                    {matches.map((item) => (
-                      <button
-                        key={item.id || item.label}
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => selectMatch(item)}
-                        className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-xs text-slate-200 hover:bg-white/10 text-left transition"
+                    {matches.map((item, i) => (
+                      <motion.div
+                        key={item._id || item.id || item.label}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ ...spring, delay: i * 0.03 }}
                       >
-                        <span className="truncate font-medium">{item.label}</span>
-                        <span className="text-[10px] bg-orange-500/20 text-orange-300 font-bold px-2 py-0.5 rounded-full shrink-0 ml-2">
-                          {item.badge || categoryLabel(item.propertyType)}
-                        </span>
-                      </button>
+                        <MiniCard
+                          item={{
+                            title: item.title,
+                            location: item.location,
+                            price: item.price,
+                            expectedRoi: item.expectedRoi,
+                            status: item.status,
+                            image: item.image,
+                            propertyType: item.propertyType,
+                          }}
+                          onClick={() => selectMatch(item)}
+                        />
+                      </motion.div>
                     ))}
-                  </div>
+                  </motion.div>
                 )}
+              </AnimatePresence>
 
-                {/* Submit Search Button */}
-                <button
-                  type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 py-3.5 text-xs font-black uppercase tracking-wider text-slate-950 shadow-xl transition hover:brightness-110 active:scale-95 cursor-pointer"
-                >
-                  <span>Search Matched Deals</span>
-                  <i className="fa-solid fa-arrow-right text-xs"></i>
-                </button>
-              </form>
+              {/* Submit button */}
+              <motion.button
+                type="button"
+                onClick={() => search()}
+                disabled={!query.trim()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 py-3.5 text-xs font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                whileHover={{ scale: query.trim() ? 1.01 : 1 }}
+                whileTap={{ scale: query.trim() ? 0.97 : 1 }}
+                transition={spring}
+              >
+                <i className="fa-solid fa-magnifying-glass text-[11px]" />
+                <span>Search All Deals</span>
+                <i className="fa-solid fa-arrow-right text-[11px]" />
+              </motion.button>
 
-              {/* Quick Tags */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Quick Tags:</span>
-                {["Luxury 3 BHK", "Vrindavan Plot", "Commercial Shop"].map((tag) => (
-                  <button
+              {/* Quick tags */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase">Quick:</span>
+                {["Luxury 3 BHK", "Vrindavan Plot", "Commercial Shop", "Noida Flat"].map((tag) => (
+                  <motion.button
                     key={tag}
                     type="button"
                     onClick={() => search(tag)}
-                    className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] text-slate-300 hover:border-orange-500/50 hover:text-white transition"
+                    className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] text-slate-400 hover:border-orange-500/40 hover:text-white transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={spring}
                   >
                     {tag}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
 
+              {/* Loading indicator */}
+              {loading && (
+                <div className="flex items-center gap-2 text-slate-500 text-[10px]">
+                  <motion.i className="fa-solid fa-spinner animate-spin" />
+                  <span>Syncing latest properties…</span>
+                </div>
+              )}
             </div>
-          </div>
-
+          </motion.div>
         </div>
-
-        {/* Bottom Trust & Performance Stats Strip */}
-        <div className="mx-auto mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4 sm:p-5 backdrop-blur-lg">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
-              <i className="fa-solid fa-vault text-base"></i>
-            </div>
-            <div className="text-left">
-              <p className="text-base font-extrabold text-white">₹120+ Cr</p>
-              <p className="text-[10px] font-medium text-slate-400">Asset Portfolio</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <i className="fa-solid fa-chart-line text-base"></i>
-            </div>
-            <div className="text-left">
-              <p className="text-base font-extrabold text-white">14.2%</p>
-              <p className="text-[10px] font-medium text-slate-400">Target Annual IRR</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-              <i className="fa-solid fa-shield-check text-base"></i>
-            </div>
-            <div className="text-left">
-              <p className="text-base font-extrabold text-white">100%</p>
-              <p className="text-[10px] font-medium text-slate-400">RERA Compliant</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-              <i className="fa-solid fa-users text-base"></i>
-            </div>
-            <div className="text-left">
-              <p className="text-base font-extrabold text-white">8,500+</p>
-              <p className="text-[10px] font-medium text-slate-400">Active Investors</p>
-            </div>
-          </div>
-        </div>
-
       </div>
+
+      {/* Slide dots */}
+      <motion.div
+        className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2 rounded-full bg-slate-900/70 px-3 py-1.5 backdrop-blur-lg border border-white/[0.08]"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2 }}
+      >
+        {slides.map((_, idx) => (
+          <motion.button
+            key={idx}
+            type="button"
+            aria-label={`Slide ${idx + 1}`}
+            onClick={() => setActiveSlide(idx)}
+            className="rounded-full transition-colors"
+            animate={{
+              width: activeSlide === idx ? 32 : 8,
+              backgroundColor: activeSlide === idx ? "#f97316" : "rgba(255,255,255,0.2)",
+            }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          >
+            <span className="block h-2 w-2 sm:w-3" />
+          </motion.button>
+        ))}
+      </motion.div>
     </section>
   );
 }

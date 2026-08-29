@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/AuthContext';
 
 export function useAuth() {
-  const { session, login, logout, refresh, isLoggedIn, getAuth, setAuth, clearAuth, authHeaders } = useAuthStore();
+  const { session, login, logout, refresh, isLoggedIn, getAuth, setAuth, clearAuth, authHeaders, toast } = useAuthStore();
   const navigate = useNavigate();
 
   const doLogin = useCallback((credentials) => {
@@ -16,8 +16,9 @@ export function useAuth() {
   }, [logout, navigate]);
 
   return {
+    session,
     user: session,
-    isLoggedIn: isLoggedIn(),
+    isLoggedIn: Boolean(session),
     login: doLogin,
     logout: doLogout,
     refresh,
@@ -25,5 +26,6 @@ export function useAuth() {
     setAuth,
     clearAuth,
     authHeaders,
+    toast,
   };
 }

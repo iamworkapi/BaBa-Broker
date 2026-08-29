@@ -35,6 +35,7 @@ export const emptyProperty = (isFeaturedDefault = true) => ({
   lift: 'YES',
   parking: 'CAR + BIKE',
   isFeatured: isFeaturedDefault,
+  isPortfolio: false,
   estimatedNetProfit: '',
   // Plot & Land Specs
   plotAreaSqft: '',
@@ -511,6 +512,7 @@ export function useAdminDashboard(routeView) {
         ...propertyForm,
         price: effectivePrice,
         isFeatured: view === 'featured' ? true : Boolean(propertyForm.isFeatured),
+        isPortfolio: Boolean(propertyForm.isPortfolio),
         totalValuation: Number(propertyForm.totalValuation) || 0,
         fundedPercentage: Number(propertyForm.fundedPercentage) || 0,
         investorsCount: (propertyForm.investorsList || []).length,
@@ -680,6 +682,29 @@ export function useAdminDashboard(routeView) {
     );
   };
 
+  const togglePortfolioStatus = async (p) => {
+    const next = !(p.isPortfolio === true);
+    try {
+      await api(`/api/properties/${p._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...p, isPortfolio: next }),
+      });
+    } catch (err) {
+      console.warn('API error toggling portfolio:', err.message);
+    }
+    setProperties((list) =>
+      list.map((item) => (item._id === p._id ? { ...item, isPortfolio: next } : item))
+    );
+    triggerToast(
+      next
+        ? '📁 Property published to Curated Portfolios section!'
+        : 'Removed property from Curated Portfolios.',
+      next ? 'success' : 'warning',
+      next ? 'Portfolio Live' : 'Unpublished'
+    );
+  };
+
   const openWhatsAppShare = (project) => {
     setShareTargetProject(project);
     setShareClientName('');
@@ -732,7 +757,12 @@ export function useAdminDashboard(routeView) {
         !searchQuery.trim() ||
         (p.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (p.location || '').toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = filterStatus === 'all' || p.status === filterStatus;
+      const matchesStatus =
+        filterStatus === 'all'
+          ? true
+          : filterStatus === 'featured'
+          ? p.isFeatured === true
+          : p.status === filterStatus;
       const matchesType = filterType === 'all' || p.propertyType === filterType;
       return matchesSearch && matchesStatus && matchesType;
     });
@@ -889,6 +919,7 @@ export function useAdminDashboard(routeView) {
     startEdit,
     deleteProperty,
     toggleFeaturedStatus,
+    togglePortfolioStatus,
     openWhatsAppShare,
     executeWhatsAppShare,
     filteredProperties,

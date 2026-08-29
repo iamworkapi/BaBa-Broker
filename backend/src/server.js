@@ -17,7 +17,6 @@ const upload = multer({
   },
 });
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load backend/.env explicitly so this server behaves the same regardless of
 // the working directory it's spawned from (root `npm run dev` vs `cd backend`).
 dotenv.config({ path: join(__dirname, "..", ".env") });
@@ -56,6 +55,7 @@ app.use(express.json({ limit: "15mb" }));
 // API routes
 app.use("/api", apiRoutes);
 app.use("/api/admin/excel-upload", excelUploadRoutes);
+app.use("/api/excel", excelUploadRoutes);
 
 // Serve the built frontend (Vite build output in /dist)
 if (existsSync(distDirectory)) {

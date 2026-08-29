@@ -18,8 +18,10 @@ export default {
         'dark-3': 'var(--color-dark-3)',
       },
       fontFamily: {
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['Outfit', '"Plus Jakarta Sans"', 'sans-serif'],
         inter: ['Inter', 'sans-serif'],
-        sans: ['Inter', '"Open Sans"', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
     },
   },

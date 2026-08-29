@@ -8,6 +8,7 @@ import WhatsAppShareDrawer from '../components/admin/WhatsAppShareDrawer';
 import ProjectWorkspaceModal from '../components/admin/ProjectWorkspaceModal';
 import AdminOverview from '../components/admin/AdminOverview';
 import AdminExcelView from '../components/admin/AdminExcelView';
+import CreateInvestmentProjectView from '../components/admin/CreateInvestmentProjectView';
 
 export default function AdminDashboard({ view: routeView }) {
   const dash = useAdminDashboard(routeView);
@@ -67,6 +68,7 @@ export default function AdminDashboard({ view: routeView }) {
     startEdit,
     deleteProperty,
     toggleFeaturedStatus,
+    togglePortfolioStatus,
     openWhatsAppShare,
     executeWhatsAppShare,
     filteredProperties,
@@ -77,23 +79,23 @@ export default function AdminDashboard({ view: routeView }) {
   const isContacts = view === 'contacts' || view === 'add-investor';
 
   return (
-    <div className="h-screen w-screen bg-[#070e1c] p-2 sm:p-3.5 md:p-4 font-['Inter',sans-serif] text-slate-800 antialiased flex flex-col justify-center overflow-hidden">
+    <div className="h-screen w-screen bg-[#070e1c] p-2 sm:p-3 md:p-3.5 font-['Inter',sans-serif] text-slate-800 antialiased flex flex-col justify-center overflow-hidden">
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl border ${
+          className={`fixed top-5 right-5 z-50 flex items-center gap-3 rounded-2xl border ${
             toast.type === 'error'
               ? 'border-red-200 bg-white text-red-700 shadow-xl shadow-red-500/10'
               : toast.type === 'warning'
               ? 'border-amber-200 bg-white text-amber-800 shadow-xl shadow-amber-500/10'
               : 'border-emerald-200 bg-white text-emerald-800 shadow-xl shadow-emerald-500/10'
-          } p-4 max-w-md w-[calc(100vw-2rem)] sm:w-auto transition-all`}
+          } p-4 max-w-md w-[calc(100vw-2rem)] sm:w-auto transition-all backdrop-blur-md animate-fadeIn`}
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600 text-lg">
             {toast.type === 'error' ? '⚠️' : toast.type === 'warning' ? '🔔' : '✨'}
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-medium">
+            <h4 className="text-sm font-semibold">
               {toast.title || (toast.type === 'error' ? 'Validation Notice' : toast.type === 'warning' ? 'Attention' : 'Success')}
             </h4>
             <p className="text-xs text-slate-500 mt-0.5 font-normal">
@@ -102,7 +104,7 @@ export default function AdminDashboard({ view: routeView }) {
           </div>
           <button
             onClick={() => setToast(null)}
-            className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+            className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer transition-colors"
           >
             <i className="ri-close-line text-lg"></i>
           </button>
@@ -110,26 +112,29 @@ export default function AdminDashboard({ view: routeView }) {
       )}
 
       {/* Master Curved Card Container (Fixed Viewport with Rounded Border Radius Frame) */}
-      <div className="w-full h-full rounded-[28px] sm:rounded-[36px] md:rounded-[40px] shadow-2xl shadow-slate-950/70 overflow-hidden bg-white flex flex-col lg:flex-row border border-slate-800/30">
-        {/* Left Solid Orange Sidebar with Signature Curved Active Tab */}
+      <div className="w-full h-full rounded-[28px] sm:rounded-[36px] md:rounded-[40px] shadow-2xl shadow-slate-950/70 overflow-hidden bg-white flex flex-col lg:flex-row border border-slate-800/40">
+        {/* Left Sleek Executive Dark Slate Sidebar */}
         <AdminSidebar view={view} />
 
         {/* Right Canvas Column (Header, Scrollable Main, and Fixed Bottom Footer) */}
         <div className="flex-1 h-full flex flex-col min-w-0 overflow-hidden bg-white">
-          {/* Top Sticky Navigation Bar Header */}
-          <AdminHeader auth={auth} />
+          {/* Top Navigation Bar Header */}
+          <AdminHeader auth={auth} onSearch={setSearchQuery} />
 
-          {/* Scrollable Main Dashboard Workspace */}
-          <main className="flex-1 p-5 sm:p-7 lg:p-9 space-y-7 overflow-y-auto bg-white">
-            {view === 'staff' ? (
-              <StaffManagementView />
-            ) : view === 'flats' ? (
-              <FlatListingsAuditView />
-            ) : view === 'investment-requests' ? (
-              <InvestmentRequestsView />
-            ) : view === 'excel' ? (
-              <AdminExcelView />
-            ) : showProjectModal ? (
+          {/* Scrollable Main Dashboard Workspace with Generous Bottom Padding */}
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 overflow-y-auto pb-16 bg-white">
+            <div key={view} className="animate-fadeIn">
+              {view === 'staff' ? (
+                <StaffManagementView />
+              ) : view === 'flats' ? (
+                <FlatListingsAuditView />
+              ) : view === 'investment-requests' ? (
+                <InvestmentRequestsView />
+              ) : view === 'excel' ? (
+                <AdminExcelView />
+              ) : view === 'create-project' || view === 'create-investment' ? (
+                <CreateInvestmentProjectView />
+              ) : showProjectModal ? (
               <ProjectWorkspaceModal
                 view={view}
                 editingId={editingId}
@@ -176,6 +181,7 @@ export default function AdminDashboard({ view: routeView }) {
                 startEdit={startEdit}
                 deleteProperty={deleteProperty}
                 toggleFeaturedStatus={toggleFeaturedStatus}
+                togglePortfolioStatus={togglePortfolioStatus}
                 openWhatsAppShare={openWhatsAppShare}
                 openCreateFeaturedModal={openCreateFeaturedModal}
                 openCreateProjectModal={openCreateProjectModal}
@@ -187,17 +193,24 @@ export default function AdminDashboard({ view: routeView }) {
                 formatINR={formatINR}
               />
             )}
+            </div>
           </main>
 
-          {/* Fixed Bottom Footer Inside Master Card */}
-          <footer className="px-6 py-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 shrink-0 select-none">
+          {/* Integrated Sleek Status Footer */}
+          <footer className="px-6 py-2.5 bg-white/95 backdrop-blur-md border-t border-slate-200/80 flex items-center justify-between text-xs text-slate-500 shrink-0 select-none z-10 shadow-xs">
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-              <span>Baba Broker Executive Portal · v2.4</span>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="font-medium text-slate-700">Baba Broker Executive Desk</span>
+              <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">v2.4 (Enterprise)</span>
             </div>
             <div className="flex items-center gap-4 text-slate-400">
-              <span className="hidden sm:inline">Direct Support: <a href="mailto:support@bababroker.com" className="text-[#ea580c] hover:underline font-medium">support@bababroker.com</a></span>
-              <span>© {new Date().getFullYear()} Baba Broker. All rights reserved.</span>
+              <span className="hidden md:inline">
+                Direct Support: <a href="mailto:support@bababroker.com" className="text-orange-600 hover:text-orange-700 hover:underline font-semibold">support@bababroker.com</a>
+              </span>
+              <span className="text-slate-400">© {new Date().getFullYear()} Baba Broker. All rights reserved.</span>
             </div>
           </footer>
         </div>

@@ -4,8 +4,7 @@ import Property from '../models/Property.js';
 const validProperty = (property) =>
   property &&
   property.title?.trim() &&
-  property.location?.trim() &&
-  property.description?.trim();
+  property.location?.trim();
 
 const propertyData = (input) => ({
   status: ['running', 'upcoming', 'delivered'].includes(input.status) ? input.status : 'running',
@@ -15,7 +14,7 @@ const propertyData = (input) => ({
   title: input.title.trim(),
   location: input.location.trim(),
   price: input.price?.trim() || '',
-  description: input.description.trim(),
+  description: input.description?.trim() || `Prime ${input.title.trim()} in ${input.location.trim()}.`,
   tag: input.tag?.trim() || '',
   ...(input.image !== undefined && { image: input.image }),
   images: Array.isArray(input.images) ? input.images : (input.image ? [input.image] : []),
@@ -39,6 +38,7 @@ const propertyData = (input) => ({
   lift: input.lift?.trim() || 'YES',
   parking: input.parking?.trim() || 'CAR + BIKE',
   isFeatured: Boolean(input.isFeatured),
+  isPortfolio: Boolean(input.isPortfolio),
   // Plot & Land Specific Fields
   plotAreaSqft: input.plotAreaSqft?.trim() || '5381.96 sqft',
   plotAreaSqm: input.plotAreaSqm?.trim() || '500 sq.m.',
@@ -75,6 +75,16 @@ const propertyData = (input) => ({
 export const getProperties = async (req, res) => {
   const properties = await Property.find().sort({ createdAt: -1 }).lean();
   res.status(200).json(properties);
+};
+
+export const getFeaturedProperties = async (req, res) => {
+  const properties = await Property.find({ isFeatured: true }).sort({ createdAt: -1 }).lean();
+  res.status(200).json(properties);
+};
+
+export const getPortfolios = async (req, res) => {
+  const portfolios = await Property.find({ isPortfolio: true }).sort({ createdAt: -1 }).lean();
+  res.status(200).json(portfolios);
 };
 
 export const createProperty = async (req, res) => {

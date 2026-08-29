@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { setAuth } from '../store/auth';
+import { useToast } from '../hooks/useToast.jsx';
 
 const ROLES = {
   admin: {
@@ -47,11 +48,36 @@ const ROLES = {
   },
 };
 
+const RATE_LIMIT_MS = 3000;
+const MIN_PASSWORD_LEN = 6;
+
+function generateCsrfToken() {
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const arr = new Uint8Array(24);
+    crypto.getRandomValues(arr);
+    return Array.from(arr, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getPasswordStrength(pw) {
+  if (!pw) return { score: 0, label: 'Empty', color: 'bg-gray-200' };
+  let score = 0;
+  if (pw.length >= 8) score += 1;
+  if (pw.length >= 12) score += 1;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score += 1;
+  if (/\d/.test(pw)) score += 1;
+  if (/[^A-Za-z0-9]/.test(pw)) score += 1;
+  if (score <= 1) return { score, label: 'Weak', color: 'bg-red-500' };
+  if (score <= 3) return { score, label: 'Fair', color: 'bg-amber-500' };
+  return { score, label: 'Strong', color: 'bg-emerald-500' };
+}
+
 export default function LoginPage({ initialRole = 'admin', onSubmit }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
 
-  // Detect role from URL path if applicable
   const detectRoleFromPath = () => {
     const p = location.pathname.toLowerCase();
     if (p.includes('/employee')) return 'employee';
@@ -60,36 +86,45 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
     return initialRole || 'admin';
   };
 
+  const csrfRef = useRef(null);
+  if (csrfRef.current === null) {
+    csrfRef.current = generateCsrfToken();
+  }
+
   const [activeRoleKey, setActiveRoleKey] = useState(detectRoleFromPath());
   const [email, setEmail] = useState(ROLES[detectRoleFromPath()]?.defaultEmail || 'admin@bababroker.com');
-  const [password, setPassword] = useState('Baba@123');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [apiError, setApiError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [now, setNow] = useState(Date.now());
 
   const activeRole = ROLES[activeRoleKey] || ROLES.admin;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
+  const passwordValid = password.length >= MIN_PASSWORD_LEN && (/[A-Z]/.test(password) || /\d/.test(password) || /[^A-Za-z0-9]/.test(password));
+  const inCooldown = now < cooldownUntil;
 
-  // Sync role when URL pathname changes
   useEffect(() => {
     const r = detectRoleFromPath();
     setActiveRoleKey(r);
     setEmail(ROLES[r].defaultEmail);
-    setApiError('');
   }, [location.pathname]);
 
-  // When clicking a role pill: switch active role AND update browser URL dynamically
+  useEffect(() => {
+    if (!cooldownUntil) return;
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, [cooldownUntil]);
+
   const handleRoleChange = (roleKey) => {
     if (activeRoleKey === roleKey) return;
     setActiveRoleKey(roleKey);
     setEmail(ROLES[roleKey].defaultEmail);
-    setApiError('');
-    setSuccessMsg('');
     const targetPath = ROLES[roleKey].loginPath;
     if (location.pathname !== targetPath) {
       navigate(targetPath, { replace: true });
@@ -104,8 +139,17 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setApiError('');
-    setSuccessMsg('');
+
+    if (inCooldown) {
+      const secondsLeft = Math.ceil((cooldownUntil - Date.now()) / 1000);
+      toast({
+        type: 'error',
+        message: `Please wait ${secondsLeft}s before trying again.`,
+        duration: 2000,
+      });
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -119,11 +163,18 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
         throw new Error('Please enter a valid email address.');
       }
 
-      if (!password || password.length < 4) {
-        throw new Error('Please enter a valid password (minimum 4 characters).');
+      if (!password) {
+        throw new Error('Please enter your password.');
       }
 
-      // ─── STRICT ROLE CREDENTIAL AUTHORIZATION ───
+      if (password.length < MIN_PASSWORD_LEN) {
+        throw new Error(`Password must be at least ${MIN_PASSWORD_LEN} characters.`);
+      }
+
+      if (!passwordValid) {
+        throw new Error('Password must include at least one number or special character.');
+      }
+
       if (activeRoleKey === 'admin') {
         const isSales = emailVal.includes('sales');
         const isEmp = emailVal.includes('employee') || emailVal.includes('staff') || emailVal.includes('audit');
@@ -153,71 +204,62 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
         }
       }
 
-      // If custom onSubmit was provided
       if (onSubmit) {
         const res = await onSubmit({
           email: emailVal,
           password,
           role: activeRole.id,
+          csrfToken: csrfRef.current,
         });
         const redirect = location.state?.from?.pathname || res?.redirectTo || activeRole.dashboard;
         navigate(redirect, { replace: true });
         return;
       }
 
-      // API Login Request
-      let response = null;
-      try {
-        response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: emailVal,
-            password,
-            role: activeRole.id,
-          }),
-        });
-      } catch {
-        response = null;
-      }
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfRef.current },
+        body: JSON.stringify({
+          email: emailVal,
+          password,
+          role: activeRole.id,
+          csrfToken: csrfRef.current,
+        }),
+      });
 
-      if (response && response.ok) {
+      if (response.ok) {
         const rawBody = await response.text();
         const data = rawBody ? JSON.parse(rawBody) : {};
 
+        if (!data.token) {
+          throw new Error('Invalid response from server. Please try again.');
+        }
+
         setAuth({
-          token: data.token || `jwt-${activeRole.id}-${Date.now()}`,
+          token: data.token,
           role: activeRole.id,
           name: data.user?.name || `${activeRole.tabLabel} Executive`,
           email: data.user?.email || emailVal,
         });
 
         localStorage.setItem('rememberedRole', activeRole.id);
-
-        setSuccessMsg(`Authenticated as ${activeRole.tabLabel}! Launching workspace...`);
+        toast({ type: 'success', message: `Authenticated as ${activeRole.tabLabel}! Redirecting...`, duration: 2500 });
         navigate(activeRole.dashboard, { replace: true });
         return;
       }
 
-      // Default demo login for seamless access
-      if (password === 'Baba@123' || password.length >= 4) {
-        setAuth({
-          token: `demo-${activeRole.id}-token-${Date.now()}`,
-          role: activeRole.id,
-          name: `${activeRole.tabLabel} Member`,
-          email: emailVal,
-        });
-
-        localStorage.setItem('rememberedRole', activeRole.id);
-
-        setSuccessMsg(`Welcome! Opening ${activeRole.tabLabel} Dashboard...`);
-        navigate(activeRole.dashboard, { replace: true });
-        return;
-      }
-
-      throw new Error('Invalid password. Use demo password Baba@123.');
+      const errorBody = await response.text();
+      let errorData = {};
+      try { errorData = errorBody ? JSON.parse(errorBody) : {}; } catch { /* ignore */ }
+      setCooldownUntil(Date.now() + RATE_LIMIT_MS);
+      throw new Error(errorData.error || `Authentication failed (${response.status}). Please verify your credentials.`);
     } catch (err) {
-      setApiError(err.message || 'Unable to sign in. Please check your credentials.');
+      setCooldownUntil(Date.now() + RATE_LIMIT_MS);
+      toast({
+        type: 'error',
+        message: err.message || 'Unable to sign in. Please check your credentials.',
+        duration: 5000,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -225,23 +267,19 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#7c2d12] via-[#9a3412] to-[#431407] p-4 sm:p-6 lg:p-8 font-['Inter',sans-serif] relative overflow-hidden select-text">
-      
-      {/* Background Ambient Glow Spheres & Geometric Grid */}
+
       <div className="pointer-events-none absolute -top-40 -left-40 h-[650px] w-[650px] rounded-full bg-gradient-to-br from-orange-500/30 via-amber-500/15 to-transparent blur-[160px] animate-pulse" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-[650px] w-[650px] rounded-full bg-gradient-to-tl from-amber-600/25 via-orange-600/15 to-transparent blur-[160px] animate-pulse" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:28px_28px] opacity-[0.04]" />
 
-      {/* Main Split Card with 3D Depth & Glassmorphic Rim */}
       <div className="flex w-full max-w-4xl min-h-[530px] overflow-hidden rounded-[36px] sm:rounded-[44px] shadow-[0_40px_120px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.2)] bg-white relative z-10 select-text">
 
-        {/* ─── LEFT PANEL: Folded Geometric Ribbons with 3D Role Pill Switcher ─── */}
         <div
           className="relative hidden w-[42%] flex-col items-center justify-between py-8 md:flex overflow-hidden"
           style={{
             background: `linear-gradient(145deg, #c2410c 0%, #ea580c 45%, #9a3412 100%)`,
           }}
         >
-          {/* Layered Ribbon Geometry */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
             <div
               className="absolute -top-14 -right-14 h-[420px] w-[420px] bg-gradient-to-br from-orange-300/40 via-amber-300/30 to-transparent"
@@ -268,7 +306,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
             />
           </div>
 
-          {/* Top Branding Section */}
           <div className="relative z-20 w-full px-7 flex items-center justify-between pb-2">
             <Link to="/" className="flex items-center gap-2 group transition-all duration-300 hover:scale-105">
               <img src="/assets/img/logo.svg" alt="Baba Broker" className="h-7 w-auto brightness-0 invert opacity-95" />
@@ -278,7 +315,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
             </span>
           </div>
 
-          {/* 3D ROLE PILL TABS: Admin, Sales Team, Employee with Dynamic Seamless Notch */}
           <div className="relative z-20 w-full flex flex-col items-end space-y-4 my-auto pr-0">
             {Object.values(ROLES).map((role) => {
               const isActive = activeRoleKey === role.id;
@@ -290,7 +326,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
                       className="relative z-30 w-[88%] py-3.5 pl-6 pr-5 bg-white rounded-l-full shadow-[-8px_10px_30px_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.9)] flex items-center gap-3 cursor-pointer transition-all duration-300 animate-fadeIn -mr-[1px]"
                       onClick={() => handleRoleChange(role.id)}
                     >
-                      {/* Top Reverse Concave Fillet Notch (Mathematically pure SVG, 0 extra orange) */}
                       <svg
                         className="absolute -top-4 right-0 w-4 h-4 pointer-events-none fill-white"
                         viewBox="0 0 16 16"
@@ -298,7 +333,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
                         <path d="M0,16 Q16,16 16,0 L16,16 Z" />
                       </svg>
 
-                      {/* Bottom Reverse Concave Fillet Notch (Mathematically pure SVG, 0 extra orange) */}
                       <svg
                         className="absolute -bottom-4 right-0 w-4 h-4 pointer-events-none fill-white"
                         viewBox="0 0 16 16"
@@ -306,7 +340,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
                         <path d="M0,0 Q16,0 16,16 L16,0 Z" />
                       </svg>
 
-                      {/* 3D Tactile Icon Sphere */}
                       <div className="h-7 w-7 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white shrink-0 font-bold shadow-[0_3px_10px_rgba(234,88,12,0.4)] ring-2 ring-orange-100">
                         <i className={`${role.icon} text-sm drop-shadow-xs`} />
                       </div>
@@ -330,7 +363,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
             })}
           </div>
 
-          {/* Bottom Security Footer */}
           <div className="relative z-20 w-full px-7 pt-2 flex items-center justify-between text-[10px] text-white/85 font-bold tracking-wider uppercase">
             <span className="flex items-center gap-1.5">
               <i className="ri-shield-check-fill text-amber-300 text-sm" /> 256-Bit SSL Secured
@@ -340,10 +372,8 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
 
         </div>
 
-        {/* ─── RIGHT PANEL: Clean Minimalist Form with Underline Inputs & Avatar ─── */}
         <div className="flex w-full flex-col justify-center bg-white px-7 sm:px-12 py-10 md:w-[58%]">
-          
-          {/* Mobile 3D Segmented Switcher */}
+
           <div className="flex md:hidden mb-6 p-1 rounded-2xl bg-slate-100 border border-slate-200 gap-1 shadow-inner">
             {Object.values(ROLES).map((role) => (
               <button
@@ -361,10 +391,8 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
             ))}
           </div>
 
-          {/* Top Center: 3D Avatar Badge & Role Heading */}
           <div className="flex flex-col items-center justify-center mb-6">
-            
-            {/* Circular Avatar Icon Badge with 3D Glow */}
+
             <div
               className="mb-3 flex h-20 w-20 items-center justify-center rounded-full shadow-[0_12px_30px_rgba(234,88,12,0.35)] border-2 border-white/90 transition-transform duration-300 hover:scale-105"
               style={{
@@ -374,7 +402,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
               <i className={`${activeRole.icon} text-3xl text-white drop-shadow-md`} />
             </div>
 
-            {/* Bold Title */}
             <h2 className="text-xl sm:text-2xl font-black tracking-wider text-slate-900 uppercase text-center">
               {activeRole.heading}
             </h2>
@@ -384,25 +411,8 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
             </p>
           </div>
 
-          {/* Form Area */}
           <form onSubmit={handleSubmit} className="w-full max-w-sm mx-auto space-y-6">
-            
-            {/* Status Alert Notifications */}
-            {apiError && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs text-red-600 font-semibold text-center animate-fadeIn flex items-center justify-center gap-2">
-                <i className="ri-error-warning-line text-sm shrink-0" />
-                <span>{apiError}</span>
-              </div>
-            )}
 
-            {successMsg && (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-700 font-semibold text-center animate-fadeIn flex items-center justify-center gap-2">
-                <i className="ri-checkbox-circle-line text-sm text-emerald-600 shrink-0" />
-                <span>{successMsg}</span>
-              </div>
-            )}
-
-            {/* Input 1: Minimalist Underline Field for Email with Live Validation Icon */}
             <div className="relative">
               <div
                 className={`relative flex items-center border-b transition-all duration-200 pb-2 ${
@@ -442,7 +452,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
               </div>
             </div>
 
-            {/* Input 2: Minimalist Underline Field for Password with CapsLock & Toggle */}
             <div className="relative">
               <div
                 className={`relative flex items-center border-b transition-all duration-200 pb-2 ${
@@ -474,6 +483,20 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
                 </button>
               </div>
 
+              {password && (
+                <div className="mt-2 flex items-center gap-2 animate-fadeIn">
+                  <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${passwordStrength.color} transition-all duration-300`}
+                      style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">
+                    {passwordStrength.label}
+                  </span>
+                </div>
+              )}
+
               {isCapsLockOn && (
                 <span className="text-[10px] text-amber-600 font-bold block mt-1 px-1 flex items-center gap-1 animate-fadeIn">
                   <i className="ri-alert-line" /> Caps Lock is ON
@@ -481,7 +504,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
               )}
             </div>
 
-            {/* Actions Row: Forgot Password & Pill Submit Button */}
             <div className="flex items-center justify-between pt-2">
               <button
                 type="button"
@@ -493,19 +515,26 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
 
               <button
                 type="submit"
-                disabled={submitting}
-                className="px-9 py-2.5 rounded-full text-xs font-black uppercase tracking-wider text-white shadow-[0_4px_20px_rgba(234,88,12,0.4)] hover:shadow-[0_6px_25px_rgba(234,88,12,0.6)] hover:brightness-110 active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-60 flex items-center gap-2 bg-gradient-to-r from-orange-500 via-[#ea580c] to-amber-600"
+                disabled={submitting || inCooldown}
+                className="px-9 py-2.5 rounded-full text-xs font-black uppercase tracking-wider text-white shadow-[0_4px_20px_rgba(234,88,12,0.4)] hover:shadow-[0_6px_25px_rgba(234,88,12,0.6)] hover:brightness-110 active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 bg-gradient-to-r from-orange-500 via-[#ea580c] to-amber-600"
               >
                 {submitting ? (
                   <>
                     <i className="ri-loader-4-line animate-spin text-xs" />
                     <span>Signing In...</span>
                   </>
+                ) : inCooldown ? (
+                  <span>Wait {Math.ceil((cooldownUntil - now) / 1000)}s</span>
                 ) : (
                   <span>LOGIN</span>
                 )}
               </button>
             </div>
+
+            <p className="text-[10px] text-center text-slate-400 font-medium pt-1">
+              <i className="ri-time-line mr-1" />
+              Session expires after 4 hours of inactivity
+            </p>
 
           </form>
 
@@ -513,7 +542,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
 
       </div>
 
-      {/* Forgot Password Modal */}
       {showForgotModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl space-y-4 text-slate-800 border border-slate-100">
@@ -530,21 +558,10 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
             </div>
 
             <p className="text-xs text-gray-600 leading-relaxed">
-              Staff credentials for <strong>{activeRole.tabLabel}</strong> are centrally maintained. Use demo password <strong>Baba@123</strong> or contact your administrator.
+              Staff credentials for <strong>{activeRole.tabLabel}</strong> are centrally maintained. Contact your administrator or use the secure channel below to request a reset.
             </p>
 
             <div className="space-y-2 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setPassword('Baba@123');
-                  setShowForgotModal(false);
-                }}
-                className="w-full rounded-xl bg-[#ea580c] hover:bg-[#c2410c] text-white py-2.5 px-4 text-xs font-bold transition cursor-pointer"
-              >
-                Use Demo Password (Baba@123)
-              </button>
-
               <a
                 href={`https://wa.me/919891140379?text=Hi%20Admin%2C%20I%20need%20a%20password%20reset%20for%20my%20${encodeURIComponent(activeRole.tabLabel)}%20Baba%20Broker%20account.`}
                 target="_blank"
@@ -562,5 +579,3 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
     </div>
   );
 }
-
-

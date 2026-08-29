@@ -38,3 +38,5 @@ export const authHeaders = () => {
   const auth = getAuth();
   return auth?.token ? { Authorization: `Bearer ${auth.token}` } : {};
 };
+
+export { api } from '../services/api';

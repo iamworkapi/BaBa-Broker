@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
 import { safeEmbedUrl } from '../../utils/sanitize';
-import AdminPageHeader from './AdminPageHeader';
+import {
+  AdminButton,
+  AdminSearchBar,
+  AdminStatCard,
+  AdminBadge,
+  AdminDrawer,
+  AdminDataTable,
+} from '../ui';
 
 const formatFlatPrice = (listing) => {
   const num = listing.listingType === 'rent' ? listing.monthlyRent : listing.salePrice;
@@ -16,22 +23,15 @@ const formatFlatPrice = (listing) => {
   return `₹ ${Number(num).toLocaleString('en-IN')} ${label}`.trim();
 };
 
-const formatFullPrice = (listing) => {
-  const num = listing.listingType === 'rent' ? listing.monthlyRent : listing.salePrice;
-  const label = listing.listingType === 'rent' ? '/ month' : '';
-  if (!num) return '—';
-  return `₹ ${Number(num).toLocaleString('en-IN')} ${label}`.trim();
-};
-
 // Sub-component: Card Media Image Slider with Prev/Next
 function CardImageSlider({ images, title, onOpenLightbox }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   if (!images || images.length === 0) {
     return (
-      <div className="h-52 w-full bg-slate-950 flex flex-col items-center justify-center text-slate-700">
-        <i className="fa-solid fa-city text-3xl mb-1"></i>
-        <span className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">No Image</span>
+      <div className="h-52 w-full bg-slate-100 flex flex-col items-center justify-center text-slate-400">
+        <i className="ri-building-line text-3xl mb-1" />
+        <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">No Photos</span>
       </div>
     );
   }
@@ -47,50 +47,52 @@ function CardImageSlider({ images, title, onOpenLightbox }) {
   };
 
   return (
-    <div className="relative h-56 w-full bg-slate-950 overflow-hidden group select-none">
+    <div className="relative h-56 w-full bg-slate-900 overflow-hidden group select-none">
       <img
         src={images[currentIndex]}
         alt={`${title} - Photo ${currentIndex + 1}`}
-        className="h-full w-full object-cover transition-transform duration-300 cursor-pointer"
+        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer"
         onClick={() => onOpenLightbox(images, currentIndex)}
       />
 
-      {/* Prev / Next Arrows (Visible on hover if multiple images) */}
+      {/* Prev / Next Arrows */}
       {images.length > 1 && (
         <>
           <button
+            type="button"
             onClick={handlePrev}
-            className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-slate-950/80 hover:bg-orange-500 text-white flex items-center justify-center text-xs backdrop-blur-md opacity-80 hover:opacity-100 transition-all cursor-pointer shadow-lg z-10"
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-slate-950/70 hover:bg-orange-600 text-white flex items-center justify-center text-xs backdrop-blur-md opacity-80 hover:opacity-100 transition-all cursor-pointer shadow-lg z-10"
             title="Previous Image"
           >
-            <i className="fa-solid fa-chevron-left"></i>
+            <i className="ri-arrow-left-s-line text-base" />
           </button>
           <button
+            type="button"
             onClick={handleNext}
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-slate-950/80 hover:bg-orange-500 text-white flex items-center justify-center text-xs backdrop-blur-md opacity-80 hover:opacity-100 transition-all cursor-pointer shadow-lg z-10"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-slate-950/70 hover:bg-orange-600 text-white flex items-center justify-center text-xs backdrop-blur-md opacity-80 hover:opacity-100 transition-all cursor-pointer shadow-lg z-10"
             title="Next Image"
           >
-            <i className="fa-solid fa-chevron-right"></i>
+            <i className="ri-arrow-right-s-line text-base" />
           </button>
         </>
       )}
 
       {/* Image Counter Badge */}
       <div className="absolute top-3 right-3 rounded-lg bg-slate-950/80 border border-slate-700/80 px-2 py-0.5 text-[10px] font-bold text-slate-200 backdrop-blur-md z-10 flex items-center gap-1">
-        <i className="fa-solid fa-camera text-orange-400"></i>
+        <i className="ri-camera-lens-line text-orange-400" />
         <span>{currentIndex + 1} / {images.length}</span>
       </div>
 
       {/* Pagination Dots */}
       {images.length > 1 && (
-        <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-1.5 z-10 pointer-events-none">
+        <div className="absolute bottom-3 inset-x-0 flex items-center justify-center gap-1.5 z-10 pointer-events-none">
           {images.map((_, idx) => (
             <span
               key={idx}
               className={`h-1.5 rounded-full transition-all ${
-                idx === currentIndex ? 'w-4 bg-orange-400' : 'w-1.5 bg-white/50'
+                idx === currentIndex ? 'w-4 bg-orange-500' : 'w-1.5 bg-white/60'
               }`}
-            ></span>
+            />
           ))}
         </div>
       )}
@@ -111,12 +113,12 @@ export default function FlatListingsAuditView() {
   const [filterSalesman, setFilterSalesman] = useState('all');
   const [sortBy, setSortBy] = useState('newest'); // newest, oldest, price-low, price-high, shares
 
-  // View Mode: 'grid' | 'rows'
+  // View Mode: 'grid' | 'table'
   const [viewMode, setViewMode] = useState('grid');
-  const [expandedRowId, setExpandedRowId] = useState(null);
+  const [selectedUnit, setSelectedUnit] = useState(null);
 
   // Lightbox Slider state
-  const [lightbox, setLightbox] = useState(null); // { images: [], index: 0, title: '' }
+  const [lightbox, setLightbox] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -192,8 +194,8 @@ export default function FlatListingsAuditView() {
         if (sortBy === 'newest') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
         if (sortBy === 'oldest') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
 
-        const priceA = a.listingType === 'rent' ? (a.monthlyRent || 0) : (a.salePrice || 0);
-        const priceB = b.listingType === 'rent' ? (b.monthlyRent || 0) : (b.salePrice || 0);
+        const priceA = a.listingType === 'rent' ? a.monthlyRent || 0 : a.salePrice || 0;
+        const priceB = b.listingType === 'rent' ? b.monthlyRent || 0 : b.salePrice || 0;
 
         if (sortBy === 'price-low') return priceA - priceB;
         if (sortBy === 'price-high') return priceB - priceA;
@@ -233,118 +235,233 @@ export default function FlatListingsAuditView() {
     }));
   };
 
+  // Columns for the Dense Table View
+  const tableColumns = [
+    {
+      key: 'title',
+      label: 'Apartment / Property',
+      sortable: true,
+      render: (_, listing) => (
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200/80">
+            {listing.coverImage ? (
+              <img src={listing.coverImage} alt={listing.title} className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-slate-400">
+                <i className="ri-building-line" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 max-w-xs">
+            <span className="font-bold text-slate-900 block truncate">{listing.title || listing.configuration}</span>
+            <span className="text-[11px] text-slate-400 block truncate">{listing.location}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'listingType',
+      label: 'Type & Price',
+      sortable: true,
+      render: (type, listing) => (
+        <div>
+          <span className="font-bold text-slate-900 block tabular-nums">
+            {formatFlatPrice(listing)}
+          </span>
+          <AdminBadge variant={type === 'rent' ? 'info' : 'orange'} size="sm">
+            {type === 'rent' ? 'Rental' : 'Ownership'}
+          </AdminBadge>
+        </div>
+      ),
+    },
+    {
+      key: 'configuration',
+      label: 'Config',
+      render: (config, listing) => (
+        <div>
+          <span className="font-semibold text-slate-800 block">{config}</span>
+          {listing.sizeSqft && (
+            <span className="text-[11px] text-slate-400">{listing.sizeSqft} sqft</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'dealStatus',
+      label: 'Deal Status',
+      sortable: true,
+      render: (status) => {
+        const variant =
+          status === 'available' ? 'success' : status === 'rented' ? 'purple' : 'danger';
+        return (
+          <AdminBadge variant={variant} size="sm" dot>
+            {status}
+          </AdminBadge>
+        );
+      },
+    },
+    {
+      key: 'submittedBy',
+      label: 'Submitting Salesman',
+      render: (submittedBy) => (
+        <span className="font-medium text-slate-700 text-xs">
+          {submittedBy?.name || 'Sales Desk'}
+        </span>
+      ),
+    },
+    {
+      key: 'shares',
+      label: 'WhatsApp Shares',
+      sortable: true,
+      align: 'center',
+      render: (_, listing) => {
+        const count = sharesForListing(listing._id).length;
+        return (
+          <span className={`font-bold tabular-nums ${count > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+            {count}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      align: 'right',
+      render: (_, listing) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <button
+            type="button"
+            onClick={() => setSelectedUnit(listing)}
+            className="p-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition cursor-pointer text-xs font-bold flex items-center gap-1"
+            title="Inspect Full Specifications"
+          >
+            <i className="ri-file-list-3-line" />
+            <span>Audit</span>
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* Header */}
-      <AdminPageHeader
-        badge="SALESMEN SUBMISSIONS & WHATSAPP AUDIT"
-        title="Flat Listings Audit & Distribution"
-        subtitle="Track all flat properties, browse photos with back/next slider, inspect full specifications, and monitor live WhatsApp share status."
-        icon="fa-solid fa-building-user"
-        iconColor="text-orange-400"
-        iconBg="bg-gradient-to-tr from-orange-500/20 to-amber-500/10 border-orange-500/30"
-        breadcrumbs={[
-          { label: 'Admin Workspace', link: '/admin/dashboard' },
-          { label: 'Flat Listings Audit' },
-        ]}
-      />
-
-      {/* KPI Metrics Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
-        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-orange-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Submissions</span>
-            <div className="h-8 w-8 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
-              <i className="fa-solid fa-city text-xs"></i>
-            </div>
+    <div className="space-y-6 font-['Inter',sans-serif] text-slate-800 antialiased select-text pb-12">
+      {/* ─── TOP EXECUTIVE PAGE HEADER ─── */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-orange-500/15 text-orange-600 border border-orange-500/25">
+              <i className="ri-community-line" />
+              Salesmen Submissions & WhatsApp Audit
+            </span>
+            <span className="text-[11px] text-slate-400 hidden sm:inline">
+              · Verified Inventory Pipeline
+            </span>
           </div>
-          <p className="text-2xl font-black text-white mt-2 tracking-tight">{metrics.total}</p>
-          <p className="text-[10px] text-slate-500 mt-1">Total listings registered</p>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+            Flat Listings Audit & Distribution
+          </h1>
+          <p className="text-xs text-slate-500 font-normal max-w-xl">
+            Audit salesmen flat registrations, inspect full property specifications, preview video walkthroughs, and monitor live WhatsApp broadcast touchpoints.
+          </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-blue-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">For Rent</span>
-            <div className="h-8 w-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-              <i className="fa-solid fa-key text-xs"></i>
-            </div>
-          </div>
-          <p className="text-2xl font-black text-blue-400 mt-2 tracking-tight">{metrics.rentCount}</p>
-          <p className="text-[10px] text-slate-500 mt-1">Rental apartments</p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-amber-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">For Sale</span>
-            <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-              <i className="fa-solid fa-tag text-xs"></i>
-            </div>
-          </div>
-          <p className="text-2xl font-black text-amber-400 mt-2 tracking-tight">{metrics.buyCount}</p>
-          <p className="text-[10px] text-slate-500 mt-1">Ownership properties</p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-purple-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Deals Closed</span>
-            <div className="h-8 w-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-              <i className="fa-solid fa-handshake-check text-xs"></i>
-            </div>
-          </div>
-          <p className="text-2xl font-black text-purple-300 mt-2 tracking-tight">{metrics.closedCount}</p>
-          <p className="text-[10px] text-slate-500 mt-1">Rented or Sold</p>
-        </div>
-
-        <div className="col-span-2 sm:col-span-1 rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">WhatsApp Shares</span>
-            <div className="h-8 w-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <i className="fa-brands fa-whatsapp text-sm"></i>
-            </div>
-          </div>
-          <p className="text-2xl font-black text-emerald-400 mt-2 tracking-tight">{metrics.totalSharesCount}</p>
-          <p className="text-[10px] text-slate-500 mt-1">Total client touchpoints</p>
+        {/* Right Action */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <AdminButton
+            variant="outline"
+            size="md"
+            icon={`ri-refresh-line ${loading ? 'animate-spin' : ''}`}
+            onClick={fetchData}
+          >
+            Refresh Inventory
+          </AdminButton>
         </div>
       </div>
 
-      {/* Control Toolbar */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-3.5 space-y-3 shadow-xl backdrop-blur-xl">
+      {/* ─── STATUS NOTICE TOAST ─── */}
+      {status && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-xs font-bold text-rose-900 flex items-center justify-between shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <i className="ri-error-warning-fill text-rose-600 text-base" />
+            <span>{status}</span>
+          </div>
+          <button
+            onClick={() => setStatus('')}
+            className="text-rose-700 hover:text-rose-900 p-0.5 cursor-pointer"
+          >
+            <i className="ri-close-line text-base" />
+          </button>
+        </div>
+      )}
+
+      {/* ─── 4 REUSABLE KPI STAT CARDS ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <AdminStatCard
+          title="Total Units"
+          value={metrics.total}
+          subValue="Listings"
+          icon="ri-building-line"
+          theme="orange"
+          trendLabel="Registered Properties"
+        />
+
+        <AdminStatCard
+          title="For Rent"
+          value={metrics.rentCount}
+          subValue="Units"
+          icon="ri-key-2-line"
+          theme="emerald"
+          trendLabel="Active Rental Inventory"
+        />
+
+        <AdminStatCard
+          title="For Sale"
+          value={metrics.buyCount}
+          subValue="Units"
+          icon="ri-price-tag-3-line"
+          theme="indigo"
+          trendLabel="Resale & Builder Floors"
+        />
+
+        <AdminStatCard
+          title="WhatsApp Shares"
+          value={metrics.totalSharesCount}
+          subValue="Sent"
+          icon="ri-whatsapp-line"
+          theme="rose"
+          trendLabel="Client WhatsApp Touchpoints"
+        />
+      </div>
+
+      {/* ─── CONTROLS & FILTER TOOLBAR ─── */}
+      <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-3">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           {/* Search Box */}
-          <div className="relative flex-1">
-            <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-            <input
-              type="text"
-              placeholder="Search by title, location, configuration, salesman..."
+          <div className="flex-1 max-w-sm">
+            <AdminSearchBar
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-slate-800 bg-slate-950/80 pl-9 pr-8 py-2 text-xs text-white placeholder-slate-500 focus:border-orange-500/60 focus:outline-none transition-all"
+              onChange={setSearchQuery}
+              placeholder="Search by title, location, configuration..."
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors cursor-pointer"
-              >
-                <i className="fa-solid fa-xmark text-xs"></i>
-              </button>
-            )}
           </div>
 
-          {/* Filters & Sorting */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center rounded-xl bg-slate-950 p-1 border border-slate-800">
+          {/* Filters & View Switcher */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Type Filter Tabs */}
+            <div className="flex items-center gap-0.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
               {[
-                { id: 'all', label: 'All Types' },
+                { id: 'all', label: 'All' },
                 { id: 'rent', label: 'Rent' },
                 { id: 'buy', label: 'Buy' },
               ].map((tab) => (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => setFilterType(tab.id)}
-                  className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                     filterType === tab.id
-                      ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-white text-orange-600 shadow-xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {tab.label}
@@ -352,22 +469,24 @@ export default function FlatListingsAuditView() {
               ))}
             </div>
 
+            {/* Status Dropdown */}
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="rounded-xl border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-300 focus:border-orange-500/50 focus:outline-none cursor-pointer"
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 focus:border-orange-500 focus:bg-white outline-none cursor-pointer"
             >
               <option value="all">All Statuses</option>
-              <option value="available">Available Only</option>
-              <option value="rented">Rented Only</option>
-              <option value="sold">Sold Only</option>
+              <option value="available">Available</option>
+              <option value="rented">Rented</option>
+              <option value="sold">Sold</option>
             </select>
 
+            {/* Salesmen Filter */}
             {salesmenList.length > 0 && (
               <select
                 value={filterSalesman}
                 onChange={(e) => setFilterSalesman(e.target.value)}
-                className="rounded-xl border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-300 focus:border-orange-500/50 focus:outline-none cursor-pointer max-w-[140px] truncate"
+                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 focus:border-orange-500 focus:bg-white outline-none cursor-pointer max-w-[140px] truncate"
               >
                 <option value="all">All Salesmen</option>
                 {salesmenList.map((s) => (
@@ -378,94 +497,96 @@ export default function FlatListingsAuditView() {
               </select>
             )}
 
+            {/* Sort Dropdown */}
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="rounded-xl border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-300 focus:border-orange-500/50 focus:outline-none cursor-pointer"
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 focus:border-orange-500 focus:bg-white outline-none cursor-pointer"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
               <option value="price-low">Price: Low to High</option>
               <option value="price-high">Price: High to Low</option>
-              <option value="shares">Most WhatsApp Shared</option>
+              <option value="shares">Most WhatsApp Shares</option>
             </select>
 
-            <div className="flex items-center rounded-xl bg-slate-950 p-1 border border-slate-800 ml-auto lg:ml-0">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-0.5 bg-slate-100 p-1 rounded-xl text-xs">
               <button
+                type="button"
                 onClick={() => setViewMode('grid')}
-                title="Grid View"
-                className={`p-1.5 rounded-lg text-xs transition-all cursor-pointer ${
-                  viewMode === 'grid' ? 'bg-orange-500 text-white shadow' : 'text-slate-400 hover:text-white'
+                className={`p-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-white text-orange-600 shadow-xs font-bold'
+                    : 'text-slate-400 hover:text-slate-700'
                 }`}
+                title="Grid Cards View"
               >
-                <i className="fa-solid fa-border-all"></i>
+                <i className="ri-grid-fill" />
               </button>
               <button
-                onClick={() => setViewMode('rows')}
-                title="Detailed Rows View"
-                className={`p-1.5 rounded-lg text-xs transition-all cursor-pointer ${
-                  viewMode === 'rows' ? 'bg-orange-500 text-white shadow' : 'text-slate-400 hover:text-white'
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${
+                  viewMode === 'table'
+                    ? 'bg-white text-orange-600 shadow-xs font-bold'
+                    : 'text-slate-400 hover:text-slate-700'
                 }`}
+                title="Dense Table View"
               >
-                <i className="fa-solid fa-list-ul"></i>
+                <i className="ri-list-check" />
               </button>
             </div>
           </div>
         </div>
-
-        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
-          <span>
-            Showing <strong className="text-white">{filteredListings.length}</strong> of{' '}
-            <strong className="text-white">{listings.length}</strong> flat listings
-          </span>
-          <button
-            onClick={fetchData}
-            className="text-slate-400 hover:text-orange-400 flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <i className={`fa-solid fa-rotate-right ${loading ? 'fa-spin' : ''}`}></i> Refresh
-          </button>
-        </div>
       </div>
 
-      {status && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs font-medium text-red-300 flex items-center justify-between">
-          <span><i className="fa-solid fa-triangle-exclamation mr-2"></i>{status}</span>
-          <button onClick={() => setStatus('')} className="text-red-400 hover:text-red-200">
-            <i className="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-      )}
-
-      {/* Main Single Component Content Area */}
+      {/* ─── MAIN CONTENT VIEW (GRID OR DENSE TABLE) ─── */}
       {loading ? (
-        <div className="py-24 text-center text-slate-400 rounded-3xl border border-slate-800/80 bg-slate-900/40">
-          <i className="fa-solid fa-circle-notch fa-spin text-3xl text-orange-500 mb-3 block"></i>
-          <p className="text-xs font-semibold text-slate-300">Loading flat listings and WhatsApp distribution data...</p>
+        <div className="py-20 text-center text-slate-400 rounded-3xl border border-slate-200/90 bg-white shadow-xs">
+          <div className="inline-block rounded-full border-2 border-slate-200 border-t-orange-600 animate-spin h-8 w-8 mb-3" />
+          <p className="text-xs font-semibold text-slate-500">Loading apartment inventory...</p>
         </div>
       ) : filteredListings.length === 0 ? (
-        <div className="py-20 text-center text-slate-400 rounded-3xl border border-slate-800/80 bg-slate-900/40 space-y-3">
-          <div className="h-16 w-16 mx-auto rounded-2xl bg-slate-800/60 flex items-center justify-center text-slate-600 text-2xl">
-            <i className="fa-solid fa-house-circle-xmark"></i>
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-16 text-center shadow-xs">
+          <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+            <div className="h-14 w-14 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center text-2xl border border-orange-200/60 shadow-2xs">
+              <i className="ri-building-line" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mt-2">No Flat Listings Found</h3>
+            <p className="text-xs text-slate-400">
+              No registered properties match your current search parameters or active filters.
+            </p>
+            <div className="pt-2">
+              <AdminButton
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterType('all');
+                  setFilterStatus('all');
+                  setFilterSalesman('all');
+                }}
+              >
+                Reset Filters
+              </AdminButton>
+            </div>
           </div>
-          <h3 className="text-sm font-bold text-white">No Flat Listings Found</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            No properties match your current search parameters or filters.
-          </p>
         </div>
-      ) : (
-        <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 gap-6' : 'grid-cols-1 gap-6'}`}>
+      ) : viewMode === 'grid' ? (
+        /* GRID CARDS VIEW */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredListings.map((listing) => {
             const listingShares = sharesForListing(listing._id);
             const isRent = listing.listingType === 'rent';
             const images = getListingImages(listing);
-            const isExpandedRow = expandedRowId === listing._id;
 
             return (
               <div
                 key={listing._id}
-                className="rounded-3xl border border-slate-800 bg-slate-900/90 shadow-2xl overflow-hidden flex flex-col backdrop-blur-xl transition-all duration-300 hover:border-slate-700"
+                className="group rounded-3xl border border-slate-200/90 bg-white shadow-xs hover:shadow-xl hover:border-orange-300 overflow-hidden flex flex-col transition-all duration-300"
               >
-                {/* Top Section: Photo Slider & Badges */}
+                {/* Photo Slider */}
                 <div className="relative">
                   <CardImageSlider
                     images={images}
@@ -479,272 +600,337 @@ export default function FlatListingsAuditView() {
                     }
                   />
 
-                  {/* Badges Overlay */}
+                  {/* Top Floating Badges */}
                   <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none z-10">
-                    <span
-                      className={`rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider shadow-md backdrop-blur-md ${
-                        isRent
-                          ? 'bg-blue-600/90 text-white border border-blue-400/40'
-                          : 'bg-gradient-to-r from-orange-600 to-amber-600 text-white border border-amber-400/40'
-                      }`}
-                    >
+                    <AdminBadge variant={isRent ? 'info' : 'orange'} size="sm">
                       {isRent ? 'For Rent' : 'For Sale'}
-                    </span>
+                    </AdminBadge>
 
-                    <span
-                      className={`rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border ${
+                    <AdminBadge
+                      variant={
                         listing.dealStatus === 'available'
-                          ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/40'
+                          ? 'success'
                           : listing.dealStatus === 'rented'
-                          ? 'bg-purple-950/90 text-purple-300 border-purple-500/40'
-                          : 'bg-red-950/90 text-red-300 border-red-500/40'
-                      }`}
+                          ? 'purple'
+                          : 'danger'
+                      }
+                      size="sm"
+                      dot
                     >
                       {listing.dealStatus}
-                    </span>
-                  </div>
-
-                  {/* Price Tag Banner Overlay */}
-                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent p-4 flex items-end justify-between z-10">
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                        {isRent ? 'Monthly Rent' : 'Sale Price'}
-                      </p>
-                      <p className="text-xl font-black text-amber-400 tracking-tight mt-0.5">
-                        {formatFlatPrice(listing)}
-                      </p>
-                    </div>
-                    {listing.sizeSqft && (
-                      <span className="text-xs font-semibold text-slate-200 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-slate-700/80">
-                        <i className="fa-solid fa-ruler-combined text-orange-400 mr-1.5"></i>
-                        {listing.sizeSqft} sqft
-                      </span>
-                    )}
+                    </AdminBadge>
                   </div>
                 </div>
 
-                {/* Single Component Body: All Data Rendered Directly */}
-                <div className="p-5 flex-1 space-y-5">
-                  {/* Title & Location Header */}
-                  <div>
-                    <h3 className="text-base font-bold text-white leading-snug">
-                      {listing.title || listing.configuration}
-                    </h3>
-                    <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-1">
-                      <i className="fa-solid fa-location-dot text-orange-500"></i>
-                      <span>{listing.location}</span>
-                    </p>
-                  </div>
-
-                  {/* Key Specifications Grid */}
-                  <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-                      <i className="fa-solid fa-list-check text-orange-400"></i> Specifications
-                    </h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {[
-                        ['Config', listing.configuration],
-                        ['Possession', listing.possessionStatus || 'Ready to Move'],
-                        ['Floor', listing.floor ? `${listing.floor} of ${listing.totalFloors || '—'}` : '—'],
-                        ['Lift / Elevator', listing.lift || 'YES'],
-                        ['Facing', listing.facing || '—'],
-                        ['Parking', listing.parking || '—'],
-                        ['RERA ID', listing.reraId || 'Not Applicable'],
-                        ['Built Year', listing.constructionYear || '—'],
-                        ...(isRent
-                          ? [
-                              ['Security Deposit', listing.securityDeposit ? `₹ ${Number(listing.securityDeposit).toLocaleString('en-IN')}` : '—'],
-                              ['Maintenance', listing.maintenanceCharge ? `₹ ${Number(listing.maintenanceCharge).toLocaleString('en-IN')}/mo` : '—'],
-                              ['Available From', listing.availableFrom || 'Immediate'],
-                            ]
-                          : [
-                              ['Price / Sqft', listing.pricePerSqft ? `₹ ${Number(listing.pricePerSqft).toLocaleString('en-IN')}` : '—'],
-                              ['Negotiable', listing.priceNegotiable ? 'Yes' : 'No'],
-                            ]),
-                      ].map(([label, val]) => (
-                        <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/80 p-2.5">
-                          <p className="text-[9px] uppercase font-semibold text-slate-500">{label}</p>
-                          <p className="text-xs font-bold text-slate-200 truncate mt-0.5">{val}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Amenities */}
-                  {listing.amenities?.trim() && (
-                    <div>
-                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1.5 flex items-center gap-1.5">
-                        <i className="fa-solid fa-shield-halved"></i> Amenities
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {listing.amenities.split(',').map((item, idx) => (
-                          <span
-                            key={idx}
-                            className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-[11px] font-medium text-emerald-300 flex items-center gap-1.5"
-                          >
-                            <i className="fa-solid fa-check text-[10px] text-emerald-400"></i>
-                            {item.trim()}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Video Presentation embedded directly if present */}
-                  {listing.videoUrl && (
-                    <div>
-                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-red-400 mb-2 flex items-center gap-1.5">
-                        <i className="fa-solid fa-circle-play"></i> Video Tour
-                      </h4>
-                      <div className="aspect-video w-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-800">
-                        {(() => {
-                          const embedSrc = safeEmbedUrl(listing.videoUrl);
-                          if (embedSrc) {
-                            return (
-                              <iframe
-                                src={embedSrc}
-                                title="Flat Video"
-                                className="h-full w-full border-0"
-                                allowFullScreen
-                              ></iframe>
-                            );
-                          }
-                          return <video src={listing.videoUrl} controls className="h-full w-full object-contain"></video>;
-                        })()}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Description */}
-                  {listing.description && (
-                    <div>
-                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
-                        <i className="fa-solid fa-align-left text-orange-400"></i> Description
-                      </h4>
-                      <p className="text-xs text-slate-300 leading-relaxed bg-slate-950 p-3 rounded-2xl border border-slate-800/80">
-                        {listing.description}
+                {/* Card Body */}
+                <div className="p-5 flex-1 space-y-4">
+                  {/* Price & Location Header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1 min-w-0">
+                      <h3 className="text-base font-bold text-slate-900 tracking-tight leading-snug group-hover:text-orange-600 transition-colors truncate">
+                        {listing.title || listing.configuration}
+                      </h3>
+                      <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                        <i className="ri-map-pin-2-line text-orange-500 text-xs" />
+                        <span className="truncate">{listing.location}</span>
                       </p>
                     </div>
-                  )}
 
-                  {/* Salesman Info Tag */}
-                  <div className="flex items-center justify-between rounded-xl bg-slate-950 p-3 border border-slate-800">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="h-7 w-7 rounded-lg bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold text-xs shrink-0">
-                        {(listing.submittedBy?.name || 'S')[0]}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[9px] uppercase font-bold text-slate-500">Submitted Salesman</p>
-                        <p className="text-xs font-bold text-white truncate">{listing.submittedBy?.name || 'Salesman'}</p>
-                      </div>
-                    </div>
-                    {listing.submittedBy?.email && (
-                      <span className="text-[10px] text-slate-400 truncate max-w-[150px]">{listing.submittedBy.email}</span>
-                    )}
-                  </div>
-
-                  {/* BOTTOM SECTION: PROMINENT WHATSAPP STATUS & DETAILS */}
-                  <div className="border-t border-slate-800/90 pt-4 space-y-3">
-                    {/* Status Summary Banner */}
-                    <div className="rounded-2xl bg-emerald-950/40 border border-emerald-500/30 p-3.5 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-base shrink-0 shadow-lg shadow-emerald-500/10">
-                          <i className="fa-brands fa-whatsapp"></i>
-                        </div>
-                        <div>
-                          <p className="text-[10px] uppercase font-bold tracking-wider text-emerald-400">WhatsApp Broadcast Status</p>
-                          <p className="text-xs font-bold text-white mt-0.5">
-                            {listingShares.length === 0 ? (
-                              <span className="text-slate-400">Not shared with any customers yet</span>
-                            ) : (
-                              <span>
-                                Sent to <strong className="text-emerald-400">{listingShares.length}</strong> customer{listingShares.length !== 1 ? 's' : ''} via WhatsApp
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-
-                      {listingShares.length > 0 && (
-                        <button
-                          onClick={() => setExpandedRowId(isExpandedRow ? null : listing._id)}
-                          className="rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-                        >
-                          <span>{isExpandedRow ? 'Hide Log' : 'View Log'}</span>
-                          <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${isExpandedRow ? 'rotate-180' : ''}`}></i>
-                        </button>
+                    <div className="text-right shrink-0">
+                      <span className="text-lg font-black text-slate-900 tracking-tight tabular-nums block">
+                        {formatFlatPrice(listing)}
+                      </span>
+                      {listing.sizeSqft && (
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          {listing.sizeSqft} sqft
+                        </span>
                       )}
                     </div>
-
-                    {/* WhatsApp Audit Details List (Expanded or visible if shares exist) */}
-                    {(isExpandedRow || listingShares.length <= 3) && listingShares.length > 0 && (
-                      <div className="space-y-2 pt-1 animate-fadeIn">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                          WhatsApp Share Log Details ({listingShares.length})
-                        </p>
-                        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                          {listingShares.map((s) => (
-                            <div
-                              key={s._id}
-                              className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 p-2.5 text-xs"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <i className="fa-solid fa-paper-plane text-emerald-400 text-xs shrink-0"></i>
-                                <div className="min-w-0">
-                                  <p className="text-slate-200 font-medium truncate">
-                                    <strong className="text-white">{s.sharedBy?.name || 'Staff'}</strong> shared with{' '}
-                                    <span className="font-mono text-emerald-400 font-bold">+{s.phone}</span>
-                                  </p>
-                                </div>
-                              </div>
-                              <span className="text-[10px] text-slate-500 font-mono shrink-0 ml-2">
-                                {new Date(s.createdAt).toLocaleString('en-IN', {
-                                  dateStyle: 'short',
-                                  timeStyle: 'short',
-                                })}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
+
+                  {/* Specifications Chip Grid */}
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase block">
+                        Config
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 truncate block mt-0.5">
+                        {listing.configuration}
+                      </span>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase block">
+                        Floor
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 truncate block mt-0.5">
+                        {listing.floor ? `${listing.floor} of ${listing.totalFloors || '—'}` : '—'}
+                      </span>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase block">
+                        Facing
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 truncate block mt-0.5">
+                        {listing.facing || 'North-East'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* WhatsApp Broadcast Status Banner */}
+                  <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-8 w-8 rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center text-sm shrink-0">
+                        <i className="ri-whatsapp-line text-base" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-emerald-700 uppercase block">
+                          WhatsApp Distribution
+                        </span>
+                        <span className="text-xs font-semibold text-slate-800 truncate block">
+                          {listingShares.length === 0
+                            ? 'Not shared yet'
+                            : `Broadcasted to ${listingShares.length} client${listingShares.length !== 1 ? 's' : ''}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUnit(listing)}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-orange-50 text-slate-700 hover:text-orange-600 text-xs font-bold border border-slate-200 transition cursor-pointer shadow-2xs shrink-0"
+                    >
+                      Audit Details →
+                    </button>
+                  </div>
+                </div>
+
+                {/* Card Footer: Salesman attribution */}
+                <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center gap-2">
+                    <i className="ri-user-3-line text-slate-400" />
+                    <span>
+                      Registered by <strong className="text-slate-800">{listing.submittedBy?.name || 'Salesman'}</strong>
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {new Date(listing.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                  </span>
                 </div>
               </div>
             );
           })}
         </div>
+      ) : (
+        /* DENSE TABLE VIEW */
+        <AdminDataTable
+          columns={tableColumns}
+          data={filteredListings}
+          loading={loading}
+          keyField="_id"
+        />
       )}
 
-      {/* LIGHTBOX MEDIA SLIDER OVERLAY */}
+      {/* ─── APARTMENT AUDIT RIGHT-SLIDING DRAWER ─── */}
+      <AdminDrawer
+        isOpen={!!selectedUnit}
+        onClose={() => setSelectedUnit(null)}
+        title={selectedUnit?.title || selectedUnit?.configuration || 'Unit Specifications'}
+        subtitle={`Location: ${selectedUnit?.location || 'Unspecified'}`}
+        icon="ri-building-2-line"
+      >
+        {selectedUnit && (
+          <div className="space-y-5 text-slate-800">
+            {/* Price Banner */}
+            <div className="p-4 rounded-2xl bg-orange-50 border border-orange-200/80 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-orange-700 uppercase block">
+                  {selectedUnit.listingType === 'rent' ? 'Monthly Rent' : 'Sale Valuation'}
+                </span>
+                <span className="text-2xl font-black text-slate-900 tabular-nums">
+                  {formatFlatPrice(selectedUnit)}
+                </span>
+              </div>
+              <AdminBadge
+                variant={
+                  selectedUnit.dealStatus === 'available'
+                    ? 'success'
+                    : selectedUnit.dealStatus === 'rented'
+                    ? 'purple'
+                    : 'danger'
+                }
+                size="md"
+                dot
+              >
+                {selectedUnit.dealStatus}
+              </AdminBadge>
+            </div>
+
+            {/* Complete Specifications Grid */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                Technical Property Audit
+              </span>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase">Configuration</span>
+                  <span className="font-bold text-slate-900">{selectedUnit.configuration}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase">Super Area</span>
+                  <span className="font-bold text-slate-900">{selectedUnit.sizeSqft || '—'} sqft</span>
+                </div>
+                <div className="border-t border-slate-200/60 pt-2">
+                  <span className="text-slate-400 block text-[10px] uppercase">Floor Level</span>
+                  <span className="font-bold text-slate-900">
+                    {selectedUnit.floor ? `${selectedUnit.floor} of ${selectedUnit.totalFloors || '—'}` : '—'}
+                  </span>
+                </div>
+                <div className="border-t border-slate-200/60 pt-2">
+                  <span className="text-slate-400 block text-[10px] uppercase">Facing Direction</span>
+                  <span className="font-bold text-slate-900">{selectedUnit.facing || '—'}</span>
+                </div>
+                <div className="border-t border-slate-200/60 pt-2">
+                  <span className="text-slate-400 block text-[10px] uppercase">Lift / Elevator</span>
+                  <span className="font-bold text-slate-900">{selectedUnit.lift || 'Yes'}</span>
+                </div>
+                <div className="border-t border-slate-200/60 pt-2">
+                  <span className="text-slate-400 block text-[10px] uppercase">Parking Facility</span>
+                  <span className="font-bold text-slate-900">{selectedUnit.parking || 'Covered'}</span>
+                </div>
+                <div className="border-t border-slate-200/60 pt-2">
+                  <span className="text-slate-400 block text-[10px] uppercase">RERA Registration</span>
+                  <span className="font-mono text-slate-900">{selectedUnit.reraId || 'Verified / NA'}</span>
+                </div>
+                <div className="border-t border-slate-200/60 pt-2">
+                  <span className="text-slate-400 block text-[10px] uppercase">Possession Status</span>
+                  <span className="font-bold text-slate-900">{selectedUnit.possessionStatus || 'Ready to Move'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Amenities */}
+            {selectedUnit.amenities && (
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Furnishing & Amenities
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedUnit.amenities.split(',').map((item, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700 flex items-center gap-1"
+                    >
+                      <i className="ri-check-line text-emerald-600" />
+                      {item.trim()}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Video Tour Preview (if any) */}
+            {selectedUnit.videoUrl && (
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Video Tour Walkthrough
+                </span>
+                <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black border border-slate-200">
+                  {(() => {
+                    const embedSrc = safeEmbedUrl(selectedUnit.videoUrl);
+                    if (embedSrc) {
+                      return (
+                        <iframe
+                          src={embedSrc}
+                          title="Flat Video"
+                          className="h-full w-full border-0"
+                          allowFullScreen
+                        />
+                      );
+                    }
+                    return <video src={selectedUnit.videoUrl} controls className="h-full w-full object-contain" />;
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* Description */}
+            {selectedUnit.description && (
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Salesman Property Description
+                </span>
+                <p className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-700 leading-relaxed">
+                  {selectedUnit.description}
+                </p>
+              </div>
+            )}
+
+            {/* WhatsApp Broadcast Log in Drawer */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                WhatsApp Activity Log ({sharesForListing(selectedUnit._id).length})
+              </span>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {sharesForListing(selectedUnit._id).length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">No shares dispatched for this unit yet.</p>
+                ) : (
+                  sharesForListing(selectedUnit._id).map((s) => (
+                    <div
+                      key={s._id}
+                      className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <i className="ri-whatsapp-line text-emerald-600" />
+                        <span className="text-slate-700">
+                          Shared with <strong className="text-slate-900 font-mono">+{s.phone}</strong>
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        {new Date(s.createdAt).toLocaleDateString('en-IN')}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </AdminDrawer>
+
+      {/* ─── LIGHTBOX MEDIA SLIDER OVERLAY ─── */}
       {lightbox && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-2xl animate-fadeIn">
           {/* Close Button */}
           <button
+            type="button"
             onClick={() => setLightbox(null)}
             className="absolute top-5 right-5 h-11 w-11 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white flex items-center justify-center text-xl transition-colors cursor-pointer z-50"
             title="Close Lightbox"
           >
-            <i className="fa-solid fa-xmark"></i>
+            <i className="ri-close-line" />
           </button>
 
           {/* Prev / Next Arrows */}
           {lightbox.images.length > 1 && (
             <>
               <button
+                type="button"
                 onClick={handleLightboxPrev}
-                className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-slate-900/90 hover:bg-orange-500 border border-slate-700 text-white flex items-center justify-center text-lg transition-all cursor-pointer z-50 shadow-2xl"
+                className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-slate-900/90 hover:bg-orange-600 border border-slate-700 text-white flex items-center justify-center text-lg transition-all cursor-pointer z-50 shadow-2xl"
                 title="Previous Image"
               >
-                <i className="fa-solid fa-chevron-left"></i>
+                <i className="ri-arrow-left-s-line" />
               </button>
 
               <button
+                type="button"
                 onClick={handleLightboxNext}
-                className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-slate-900/90 hover:bg-orange-500 border border-slate-700 text-white flex items-center justify-center text-lg transition-all cursor-pointer z-50 shadow-2xl"
+                className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-slate-900/90 hover:bg-orange-600 border border-slate-700 text-white flex items-center justify-center text-lg transition-all cursor-pointer z-50 shadow-2xl"
                 title="Next Image"
               >
-                <i className="fa-solid fa-chevron-right"></i>
+                <i className="ri-arrow-right-s-line" />
               </button>
             </>
           )}

@@ -3,13 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './store/AuthContext'
-import { ToastContainer } from './components/Toast'
+import { ToastProvider } from './hooks/useToast.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <App />
-      <ToastContainer toasts={[]} onDismiss={() => {}} />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </ToastProvider>
   </StrictMode>,
 )

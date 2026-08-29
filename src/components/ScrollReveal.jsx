@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 
 const revealVariants = {
   up: 'reveal-up',
@@ -20,33 +20,31 @@ export default function ScrollReveal({
   const ref = useRef(null);
   const revealed = useRef(false);
 
-  const handleIntersect = useCallback((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        if (once && revealed.current) return;
-        if (!revealed.current) revealed.current = true;
-        const el = entry.target;
-        const delayMs = Number(el.dataset.delay || 0);
-        setTimeout(() => el.classList.add('visible'), delayMs);
-        if (once) observer.disconnect();
-      } else if (!once) {
-        entry.target.classList.remove('visible');
-      }
-    });
-  }, [once]);
-
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
 
-    const observer = new IntersectionObserver(handleIntersect, {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          if (once && revealed.current) return;
+          if (!revealed.current) revealed.current = true;
+          const el = entry.target;
+          const delayMs = Number(el.dataset.delay || 0);
+          setTimeout(() => el.classList.add('visible'), delayMs);
+          if (once) observer.disconnect();
+        } else if (!once) {
+          entry.target.classList.remove('visible');
+        }
+      });
+    }, {
       threshold,
       rootMargin,
     });
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [handleIntersect, threshold, rootMargin]);
+  }, [threshold, rootMargin, once]);
 
   const variantClass = revealVariants[variant] || 'reveal-up';
 

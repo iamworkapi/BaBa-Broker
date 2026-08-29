@@ -43,29 +43,50 @@ export default function AdminExcelView() {
     setStatus({ type: '', msg: '' });
 
     try {
-      let rows = [];
-      if (file.name.endsWith('.json')) {
-        const text = await file.text();
-        rows = parseExcelJSON(text);
-      } else if (file.name.endsWith('.csv')) {
-        const text = await file.text();
-        rows = parseCSV(text);
-      } else if (file.name.match(/\.(xlsx?)$/)) {
+      if (file.name.match(/\.(xlsx|xls)$/i)) {
         const form = new FormData();
         form.append('file', file);
-        const res = await api('/api/excel/upload', { method: 'POST', body: form });
-        rows = res.data || res.rows || [];
+        const res = await api('/api/admin/excel-upload/bulk-upload', { method: 'POST', body: form });
+        
+        const successCount = res.success ? res.success.length : 0;
+        const failedCount = res.failed ? res.failed.length : 0;
+        
+        if (successCount > 0) {
+          setStatus({
+            type: 'success',
+            msg: `✓ Successfully parsed & imported ${successCount} flat listings into database!${failedCount > 0 ? ` (${failedCount} rows skipped due to missing fields)` : ''}`,
+          });
+          // Load the latest imported flat listings
+          const historyRes = await api('/api/admin/excel-upload/flat-listings?limit=50');
+          if (historyRes && Array.isArray(historyRes.listings)) {
+            setParsedData(historyRes.listings);
+          }
+        } else {
+          setStatus({
+            type: 'error',
+            msg: `Upload completed but 0 rows imported. ${res.failed?.[0]?.error || 'Check required headers: listingType, title, location, configuration, description.'}`,
+          });
+        }
+      } else if (file.name.endsWith('.csv')) {
+        const text = await file.text();
+        const rows = parseCSV(text);
+        if (rows.length === 0) {
+          setStatus({ type: 'error', msg: 'CSV parsed but no data rows found.' });
+        } else {
+          setParsedData(rows);
+          setStatus({ type: 'success', msg: `✓ ${rows.length} rows loaded from "${file.name}"` });
+        }
+      } else if (file.name.endsWith('.json')) {
+        const text = await file.text();
+        const rows = parseExcelJSON(text);
+        if (rows.length === 0) {
+          setStatus({ type: 'error', msg: 'JSON parsed but no data rows found.' });
+        } else {
+          setParsedData(rows);
+          setStatus({ type: 'success', msg: `✓ ${rows.length} rows loaded from "${file.name}"` });
+        }
       } else {
-        setStatus({ type: 'error', msg: 'Unsupported format. Use CSV, JSON, or XLSX.' });
-        setUploading(false);
-        return;
-      }
-
-      if (rows.length === 0) {
-        setStatus({ type: 'error', msg: 'File parsed but no data rows found.' });
-      } else {
-        setParsedData(rows);
-        setStatus({ type: 'success', msg: `✓ ${rows.length} rows loaded from "${file.name}"` });
+        setStatus({ type: 'error', msg: 'Unsupported format. Please upload .xlsx, .xls, or .csv files.' });
       }
     } catch (err) {
       setStatus({ type: 'error', msg: err.message || 'Upload failed. Check server connection.' });
@@ -89,11 +110,38 @@ export default function AdminExcelView() {
   const pageData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const columns = parsedData.length > 0 ? Object.keys(parsedData[0]).filter((k) => k !== '_id' && k !== '_sourceRow') : [];
 
+  const downloadSampleTemplate = () => {
+    const csvContent =
+      'listingType,title,location,configuration,sizeSqft,floor,totalFloors,lift,parking,possessionStatus,constructionYear,facing,reraId,amenities,description,monthlyRent,securityDeposit,maintenanceCharge,availableFrom,salePrice,pricePerSqft,priceNegotiable,dealStatus\n' +
+      'rent,Luxury 3BHK Apartment,Sector 150 Noida,3 BHK,1850,5,18,YES,Car + Bike Parking,Ready to Move,2023,North-East,UPRERA12345,"Gym, Swimming Pool, 24x7 Security",Spacious premium 3BHK with panoramic park view,45000,90000,3500,Immediate,0,0,No,available\n' +
+      'buy,2BHK Builder Floor,Dwarka Mor Delhi,2 BHK,900,2,4,YES,Bike Parking,Ready to Move,2022,East,NA,"Gated Community, Power Backup",Newly constructed luxury builder floor close to metro station,0,0,0,Immediate,3500000,3888,Yes,available\n';
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'baba_broker_listing_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-5">
-      <div>
-        <h1 className="text-xl font-black text-slate-900 tracking-tight">Excel / CSV Upload</h1>
-        <p className="text-xs text-slate-500 mt-1">Upload XLSX, CSV, or JSON files. Data previews below and can be pushed to the database.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs">
+        <div>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight">Excel / CSV Bulk Upload</h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Import property listings directly via XLSX or CSV file.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={downloadSampleTemplate}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold border border-orange-200/80 transition cursor-pointer shrink-0"
+        >
+          <i className="ri-download-cloud-2-line text-sm" />
+          <span>Download Sample CSV Template</span>
+        </button>
       </div>
 
       {/* Drop Zone */}
