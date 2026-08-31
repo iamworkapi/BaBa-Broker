@@ -192,9 +192,7 @@ export default function EmployeeDashboard() {
     { id: 'overview', label: 'Overview', icon: 'ri-dashboard-3-line', activeIcon: 'ri-dashboard-3-fill' },
     { id: 'add', label: 'Add Property', icon: 'ri-add-circle-line', activeIcon: 'ri-add-circle-fill' },
     { id: 'list', label: 'Inventory Audit', icon: 'ri-building-line', activeIcon: 'ri-building-fill' },
-    { id: 'leads', label: 'Client Inquiries', icon: 'ri-user-star-line', activeIcon: 'ri-user-star-fill' },
-    { id: 'verification', label: 'RERA & Docs', icon: 'ri-file-shield-line', activeIcon: 'ri-file-shield-fill' },
-    { id: 'calculator', label: 'Commission & EMI', icon: 'ri-calculator-line', activeIcon: 'ri-calculator-fill' },
+    { id: 'leads', label: 'Client & Investment Inquiries', icon: 'ri-user-star-line', activeIcon: 'ri-user-star-fill' },
   ];
 
   const filteredListings = useMemo(() => {
@@ -671,10 +669,10 @@ export default function EmployeeDashboard() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setView('verification')}
+                        onClick={() => setView('leads')}
                         className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition border border-slate-200 flex items-center gap-1.5 cursor-pointer"
                       >
-                        <i className="ri-file-shield-line text-sm text-emerald-600" /> RERA Checklist
+                        <i className="ri-user-star-line text-sm text-amber-600" /> Client & Investment Inquiries
                       </button>
                     </div>
                   </div>
@@ -734,7 +732,7 @@ export default function EmployeeDashboard() {
                   </div>
 
                   <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full text-left text-xs border-collapse select-none">
                       <thead className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase font-black tracking-wider text-slate-400">
                         <tr>
                           <th className="py-2.5 px-3">Property Unit</th>
@@ -746,89 +744,112 @@ export default function EmployeeDashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700">
-                        {listings.slice(0, 6).map((item) => (
-                          <tr key={item._id} className="hover:bg-slate-50/80 transition">
-                            <td className="py-2.5 px-3">
-                              <div className="flex items-center gap-2">
-                                <div className="h-8 w-8 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-black text-xs shrink-0 overflow-hidden">
-                                  {item.coverImage ? (
-                                    <img src={item.coverImage} alt="" className="h-full w-full object-cover" />
-                                  ) : (
-                                    (item.configuration || '2B').slice(0, 2)
-                                  )}
+                        {listings.slice(0, 8).map((item) => {
+                          const isSold = item.dealStatus === 'sold';
+                          const isRented = item.dealStatus === 'rented';
+                          const isClosed = isSold || isRented;
+
+                          return (
+                            <tr
+                              key={item._id}
+                              className={`transition-colors duration-150 select-none ${
+                                isClosed ? 'opacity-35 bg-slate-100/70 pointer-events-none' : 'hover:bg-slate-50/80'
+                              }`}
+                            >
+                              <td className="py-2.5 px-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-8 w-8 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-black text-xs shrink-0 overflow-hidden">
+                                    {item.coverImage ? (
+                                      <img src={item.coverImage} alt="" className="h-full w-full object-cover" />
+                                    ) : (
+                                      (item.configuration || '2B').slice(0, 2)
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bold text-slate-900 block truncate text-xs">
+                                        {item.title || `${item.configuration} Builder Floor`}
+                                      </span>
+                                      {isClosed && (
+                                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-100 text-red-700 uppercase shrink-0">
+                                          {isSold ? 'SOLD' : 'RENTED'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-mono">
+                                      {item.sizeSqft || '50 Gaj'} · {item.configuration}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="min-w-0">
-                                  <span className="font-bold text-slate-900 block truncate text-xs">
-                                    {item.title || `${item.configuration} Builder Floor`}
-                                  </span>
-                                  <span className="text-[10px] text-slate-400 font-mono">
-                                    {item.sizeSqft || '50 Gaj'} · {item.configuration}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
+                              </td>
 
-                            <td className="py-2.5 px-3">
-                              <span className="font-medium text-slate-800 block text-xs truncate max-w-[160px]">
-                                {item.location}
-                              </span>
-                              <span className="text-[10px] text-slate-400">
-                                {item.floor || 'Standard Floor'}
-                              </span>
-                            </td>
+                              <td className="py-2.5 px-3">
+                                <span className="font-medium text-slate-800 block text-xs truncate max-w-[160px]">
+                                  {item.location}
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  {item.floor || 'Standard Floor'}
+                                </span>
+                              </td>
 
-                            <td className="py-2.5 px-3 font-bold text-slate-900">
-                              <span className="text-xs font-black text-slate-900 block">
-                                {priceLabel(item)}
-                              </span>
-                              <span className="text-[10px] text-slate-400 uppercase">
-                                {item.listingType === 'rent' ? 'Rental' : 'Sale'}
-                              </span>
-                            </td>
+                              <td className="py-2.5 px-3 font-bold text-slate-900">
+                                <span className="text-xs font-black text-slate-900 block">
+                                  {priceLabel(item)}
+                                </span>
+                                <span className="text-[10px] text-slate-400 uppercase">
+                                  {item.listingType === 'rent' ? 'Rental' : 'Sale'}
+                                </span>
+                              </td>
 
-                            <td className="py-2.5 px-3">
-                              <span className="font-bold text-slate-800 block text-xs">{item.ownerName || 'Direct Party'}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">{item.ownerContact || '—'}</span>
-                            </td>
+                              <td className="py-2.5 px-3">
+                                <span className="font-bold text-slate-800 block text-xs">{item.ownerName || 'Direct Party'}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">{item.ownerContact || '—'}</span>
+                              </td>
 
-                            <td className="py-2.5 px-3">
-                              <button
-                                type="button"
-                                onClick={() => toggleVerification(item._id, item.isVerified !== false)}
-                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider border cursor-pointer ${
-                                  item.isVerified !== false
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                    : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                                }`}
-                              >
-                                <span className={`h-1.5 w-1.5 rounded-full ${item.isVerified !== false ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                                <span>{item.isVerified !== false ? 'Verified' : 'Pending'}</span>
-                              </button>
-                            </td>
-
-                            <td className="py-2.5 px-3 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
+                              <td className="py-2.5 px-3">
                                 <button
                                   type="button"
-                                  onClick={() => { setPitchingProperty(item); setPitchClientName(''); setPitchClientPhone(''); }}
-                                  className="h-6 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
-                                  title="WhatsApp Share"
+                                  disabled={isClosed}
+                                  onClick={() => toggleVerification(item._id, item.isVerified !== false)}
+                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider border ${
+                                    isClosed
+                                      ? 'opacity-40 cursor-not-allowed pointer-events-none bg-slate-100 text-slate-500 border-slate-300'
+                                      : item.isVerified !== false
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 cursor-pointer'
+                                      : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 cursor-pointer'
+                                  }`}
                                 >
-                                  <i className="ri-whatsapp-line text-xs" />
-                                  <span>Pitch</span>
+                                  <span className={`h-1.5 w-1.5 rounded-full ${item.isVerified !== false ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                  <span>{item.isVerified !== false ? 'Verified' : 'Pending'}</span>
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => startEdit(item)}
-                                  className="h-6 w-6 rounded-lg bg-slate-100 hover:bg-orange-100 text-slate-600 hover:text-orange-700 flex items-center justify-center text-xs cursor-pointer"
-                                  title="Edit"
-                                >
-                                  <i className="ri-edit-line" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+
+                              <td className="py-2.5 px-3 text-right">
+                                <div className={`flex items-center justify-end gap-1.5 ${isClosed ? 'pointer-events-none opacity-30 cursor-not-allowed' : ''}`}>
+                                  <button
+                                    type="button"
+                                    disabled={isClosed}
+                                    onClick={() => { setPitchingProperty(item); setPitchClientName(''); setPitchClientPhone(''); }}
+                                    className="h-6 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                                    title="WhatsApp Pitch"
+                                  >
+                                    <i className="ri-whatsapp-line text-xs" />
+                                    <span>Pitch</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isClosed}
+                                    onClick={() => startEdit(item)}
+                                    className="h-6 w-6 rounded-lg bg-slate-100 hover:bg-orange-100 text-slate-600 hover:text-orange-700 flex items-center justify-center text-xs cursor-pointer disabled:cursor-not-allowed"
+                                    title="Edit"
+                                  >
+                                    <i className="ri-edit-line" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1476,7 +1497,7 @@ export default function EmployeeDashboard() {
 
                 {/* 3. Table View with Deal Status Switch at Last Position */}
                 <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-left text-xs border-collapse select-none">
                     <thead className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase font-black tracking-wider text-slate-400">
                       <tr>
                         <th className="py-2.5 px-3">Unit / Heading</th>
@@ -1498,13 +1519,11 @@ export default function EmployeeDashboard() {
                         return (
                           <tr
                             key={item._id}
-                            className={`transition-colors duration-150 ${
-                              isClosed
-                                ? 'opacity-35 bg-slate-100/70 select-none'
-                                : 'hover:bg-slate-50/80'
+                            className={`transition-colors duration-150 select-none ${
+                              isClosed ? 'bg-slate-100/70' : 'hover:bg-slate-50/80'
                             }`}
                           >
-                            <td className="py-2.5 px-3">
+                            <td className={`py-2.5 px-3 ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                               <div className="flex items-center gap-2">
                                 <div className="h-8 w-8 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-black text-xs shrink-0 overflow-hidden">
                                   {item.coverImage ? (
@@ -1519,7 +1538,7 @@ export default function EmployeeDashboard() {
                                       {item.title || `${item.configuration} Builder Floor`}
                                     </span>
                                     {isClosed && (
-                                      <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-slate-200 text-slate-700 uppercase shrink-0">
+                                      <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-100 text-red-700 uppercase shrink-0">
                                         {isSold ? 'SOLD' : 'RENTED'}
                                       </span>
                                     )}
@@ -1531,7 +1550,7 @@ export default function EmployeeDashboard() {
                               </div>
                             </td>
 
-                            <td className="py-2.5 px-3">
+                            <td className={`py-2.5 px-3 ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                               <span className="font-medium text-slate-800 block text-xs truncate max-w-[160px]">
                                 {item.location}
                               </span>
@@ -1540,7 +1559,7 @@ export default function EmployeeDashboard() {
                               </span>
                             </td>
 
-                            <td className="py-2.5 px-3 font-bold text-slate-900">
+                            <td className={`py-2.5 px-3 font-bold text-slate-900 ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                               <span className="text-xs font-black text-slate-900 block">
                                 {priceLabel(item)}
                               </span>
@@ -1549,13 +1568,13 @@ export default function EmployeeDashboard() {
                               </span>
                             </td>
 
-                            <td className="py-2.5 px-3">
+                            <td className={`py-2.5 px-3 ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                               <span className="font-bold text-slate-800 block text-xs">{item.ownerName || 'Direct'}</span>
                               <span className="text-[10px] text-slate-400 font-mono">{item.ownerContact || '—'}</span>
                             </td>
 
                             {/* Verification Button (Frozen if Closed) */}
-                            <td className="py-2.5 px-3">
+                            <td className={`py-2.5 px-3 ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                               <button
                                 type="button"
                                 disabled={isClosed}
@@ -1574,7 +1593,7 @@ export default function EmployeeDashboard() {
                             </td>
 
                             {/* Actions Buttons (Frozen if Closed) */}
-                            <td className="py-2.5 px-3">
+                            <td className={`py-2.5 px-3 ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                               <div className={`flex items-center gap-1.5 ${isClosed ? 'pointer-events-none opacity-30 cursor-not-allowed' : ''}`}>
                                 <button
                                   type="button"
@@ -1607,7 +1626,7 @@ export default function EmployeeDashboard() {
                               </div>
                             </td>
 
-                            {/* Deal Switch Column (Always interactive so deal can be reopened) */}
+                            {/* Deal Switch Column (Always interactive & 100% opacity so deal can be reopened) */}
                             <td className="py-2.5 px-3 text-right pointer-events-auto">
                               <div className="flex items-center justify-end gap-1.5">
                                 {isForRent ? (
@@ -1700,8 +1719,8 @@ export default function EmployeeDashboard() {
               <div className="bg-white p-4 rounded-3xl border border-slate-200/90 shadow-xs space-y-3 w-full">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                   <div>
-                    <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider">Client & Buyer Inquiry Desk</h2>
-                    <p className="text-[11px] text-slate-400">Manage buyer requirements, site visits, and instant WhatsApp connect</p>
+                    <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider">Client, Buyer & Investment Inquiry Desk</h2>
+                    <p className="text-[11px] text-slate-400">Manage buyer requirements, investor inquiries, site visits, and instant WhatsApp connect</p>
                   </div>
                 </div>
                 <AssignedLeadsPanel />

@@ -219,7 +219,6 @@ export default function SalesmanDashboard() {
     { id: 'add', label: 'Add Property', icon: 'ri-add-circle-line', activeIcon: 'ri-add-circle-fill' },
     { id: 'list', label: 'My Listings', icon: 'ri-building-line', activeIcon: 'ri-building-fill' },
     { id: 'leads', label: 'Client Leads', icon: 'ri-user-star-line', activeIcon: 'ri-user-star-fill' },
-    { id: 'calculator', label: 'Commission & EMI', icon: 'ri-calculator-line', activeIcon: 'ri-calculator-fill' },
   ];
 
   const filteredListings = useMemo(() => {
@@ -753,43 +752,79 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                   </div>
 
                   <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full text-left text-xs border-collapse select-none">
                       <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-200">
                         <tr>
-                          <th className="py-2 px-3">Property</th>
-                          <th className="py-2 px-3">Location</th>
-                          <th className="py-2 px-3">Specs</th>
-                          <th className="py-2 px-3">Price</th>
-                          <th className="py-2 px-3">Associate</th>
-                          <th className="py-2 px-3 text-right">Quick Pitch</th>
+                          <th className="py-2.5 px-3">Property</th>
+                          <th className="py-2.5 px-3">Location</th>
+                          <th className="py-2.5 px-3">Specs</th>
+                          <th className="py-2.5 px-3">Price</th>
+                          <th className="py-2.5 px-3">Associate</th>
+                          <th className="py-2.5 px-3 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 font-medium">
-                        {listings.slice(0, 5).map((item) => (
-                          <tr key={item._id} className="hover:bg-orange-50/40 transition">
-                            <td className="py-2 px-3 max-w-[200px]">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 text-[10px] font-black uppercase">
-                                  {item.configuration || '2 BHK'}
-                                </span>
-                                <span className="font-bold text-slate-900 truncate">{item.sizeSqft || 'Builder Floor'}</span>
-                              </div>
-                            </td>
-                            <td className="py-2 px-3 text-slate-700 font-medium">{item.location}</td>
-                            <td className="py-2 px-3 text-[10px] text-slate-500">{item.floor || 'Standard'} · {item.lift === 'YES' ? 'Lift' : 'No Lift'}</td>
-                            <td className="py-2 px-3 font-bold text-emerald-700">{priceLabel(item)}</td>
-                            <td className="py-2 px-3 text-slate-600">{item.ownerName || 'Associate'}</td>
-                            <td className="py-2 px-3 text-right">
-                              <button
-                                type="button"
-                                onClick={() => { setPitchingProperty(item); setPitchClientName(''); }}
-                                className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 cursor-pointer inline-flex items-center gap-1"
-                              >
-                                <i className="ri-whatsapp-line" /> Pitch
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                      <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                        {listings.slice(0, 8).map((item) => {
+                          const isSold = item.dealStatus === 'sold';
+                          const isRented = item.dealStatus === 'rented';
+                          const isClosed = isSold || isRented;
+
+                          return (
+                            <tr
+                              key={item._id}
+                              className={`transition-colors duration-150 select-none ${
+                                isClosed ? 'opacity-35 bg-slate-100/70 pointer-events-none' : 'hover:bg-orange-50/40'
+                              }`}
+                            >
+                              <td className="py-2.5 px-3 max-w-[200px]">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 text-[10px] font-black uppercase">
+                                    {item.configuration || '2 BHK'}
+                                  </span>
+                                  <span className="font-bold text-slate-900 truncate">{item.sizeSqft || 'Builder Floor'}</span>
+                                  {isClosed && (
+                                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-100 text-red-700 uppercase shrink-0">
+                                      {isSold ? 'SOLD' : 'RENTED'}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-700 font-medium">
+                                {item.location}
+                              </td>
+                              <td className="py-2.5 px-3 text-[10px] text-slate-500">
+                                {item.floor || 'Standard'} · {item.lift === 'YES' ? 'Lift' : 'No Lift'}
+                              </td>
+                              <td className="py-2.5 px-3 font-bold text-emerald-700">
+                                {priceLabel(item)}
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-600">
+                                {item.ownerName || 'Associate'}
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                <div className={`inline-flex items-center gap-1 ${isClosed ? 'pointer-events-none opacity-30 cursor-not-allowed' : ''}`}>
+                                  <button
+                                    type="button"
+                                    disabled={isClosed}
+                                    onClick={() => { setPitchingProperty(item); setPitchClientName(''); }}
+                                    className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 cursor-pointer inline-flex items-center gap-1 disabled:cursor-not-allowed"
+                                  >
+                                    <i className="ri-whatsapp-line" /> Pitch
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isClosed}
+                                    onClick={() => setViewingProperty(item)}
+                                    className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs transition cursor-pointer disabled:cursor-not-allowed"
+                                    title="View"
+                                  >
+                                    <i className="ri-eye-line" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -948,20 +983,20 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                 {/* Table View */}
                 {layoutMode === 'table' ? (
                   <div className="overflow-x-auto rounded-2xl border border-slate-200 w-full">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full text-left text-xs border-collapse select-none">
                       <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-200">
                         <tr>
-                          <th className="py-2 px-3">Property & Size</th>
-                          <th className="py-2 px-3">Location & Landmark</th>
-                          <th className="py-2 px-3">Floor & Specs</th>
-                          <th className="py-2 px-3">Demand Price</th>
-                          <th className="py-2 px-3">Net Price</th>
-                          <th className="py-2 px-3">Associate Contact</th>
-                          <th className="py-2 px-3">Actions</th>
-                          <th className="py-2 px-3 text-right">Deal Status Switch</th>
+                          <th className="py-2.5 px-3">Property & Size</th>
+                          <th className="py-2.5 px-3">Location & Landmark</th>
+                          <th className="py-2.5 px-3">Floor & Specs</th>
+                          <th className="py-2.5 px-3">Demand Price</th>
+                          <th className="py-2.5 px-3">Net Price</th>
+                          <th className="py-2.5 px-3">Associate Contact</th>
+                          <th className="py-2.5 px-3">Actions</th>
+                          <th className="py-2.5 px-3 text-right">Deal Status Switch</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 font-medium">
+                      <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                         {pageData.map((item) => {
                           const cleanPhone = String(item.ownerContact || '').replace(/[^\d]/g, '');
                           const isSold = item.dealStatus === 'sold';
@@ -972,13 +1007,11 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                           return (
                             <tr
                               key={item._id}
-                              className={`transition-all duration-200 ${
-                                isClosed
-                                  ? 'opacity-40 hover:opacity-90 bg-slate-50/90'
-                                  : 'hover:bg-orange-50/40'
+                              className={`transition-colors duration-150 select-none ${
+                                isClosed ? 'bg-slate-100/70' : 'hover:bg-orange-50/40'
                               }`}
                             >
-                              <td className="py-2 px-3 max-w-[240px]">
+                              <td className={`py-2.5 px-3 max-w-[240px] ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 text-[10px] font-black uppercase">
                                     {item.configuration || '2 BHK'}
@@ -987,7 +1020,7 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                                     {item.sizeSqft || 'Builder Floor'}
                                   </span>
                                   {isClosed && (
-                                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-slate-200 text-slate-700 uppercase shrink-0">
+                                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-100 text-red-700 uppercase shrink-0">
                                       {isSold ? 'SOLD' : 'RENTED'}
                                     </span>
                                   )}
@@ -997,7 +1030,7 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                                 </span>
                               </td>
 
-                              <td className="py-2 px-3 max-w-[200px]">
+                              <td className={`py-2.5 px-3 max-w-[200px] ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                                 <div className="flex items-center gap-1 font-bold text-slate-800">
                                   <i className="ri-map-pin-2-fill text-orange-500 text-xs shrink-0" />
                                   <span className="truncate">{item.location || '—'}</span>
@@ -1007,7 +1040,7 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                                 )}
                               </td>
 
-                              <td className="py-2 px-3 whitespace-nowrap">
+                              <td className={`py-2.5 px-3 whitespace-nowrap ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                                 <div className="flex items-center gap-1.5 text-[10px] font-bold">
                                   <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
                                     {item.floor || 'Standard'}
@@ -1021,25 +1054,25 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                                 </div>
                               </td>
 
-                              <td className="py-2 px-3 whitespace-nowrap">
+                              <td className={`py-2.5 px-3 whitespace-nowrap ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                                 <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
                                   {priceLabel(item)}
                                 </span>
                               </td>
 
-                              <td className="py-2 px-3 whitespace-nowrap">
+                              <td className={`py-2.5 px-3 whitespace-nowrap ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                                 <span className={`text-xs font-bold ${item.netProfit > 0 ? 'text-amber-700' : 'text-slate-300'}`}>
                                   {item.netProfit > 0 ? formatINR(item.netProfit) : '—'}
                                 </span>
                               </td>
 
-                              <td className="py-2 px-3 whitespace-nowrap">
+                              <td className={`py-2.5 px-3 whitespace-nowrap ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                                 <span className="text-slate-800 font-bold block">{item.ownerName || 'Associate'}</span>
                                 {cleanPhone && <span className="text-[10px] text-slate-400 font-mono block">{cleanPhone}</span>}
                               </td>
 
                               {/* Actions Buttons (Frozen if Closed) */}
-                              <td className="py-2 px-3 text-right whitespace-nowrap">
+                              <td className={`py-2.5 px-3 text-right whitespace-nowrap ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
                                 <div className={`inline-flex items-center gap-1 ${isClosed ? 'pointer-events-none opacity-30 cursor-not-allowed' : ''}`}>
                                   <button
                                     type="button"
@@ -1080,8 +1113,8 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                                 </div>
                               </td>
 
-                              {/* Deal Switch Column (Always interactive so deal can be reopened) */}
-                              <td className="py-2 px-3 text-right whitespace-nowrap pointer-events-auto">
+                              {/* Deal Switch Column (Always interactive & 100% opacity so deal can be reopened) */}
+                              <td className="py-2.5 px-3 text-right whitespace-nowrap pointer-events-auto">
                                 {isForRent ? (
                                   <div className="flex items-center justify-end gap-1.5">
                                     <button
