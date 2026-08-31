@@ -78,7 +78,7 @@ const SAMPLE_PROPERTIES = [
     fundedPercentage: 60,
     expectedRoi: 14.5,
     minInvestment: 500000,
-    image: '/assets/hero-bg.png',
+    image: '/assets/img/hero-bg.png',
     description: 'High-yield fractional real estate co-investment in prime residential hub.',
     isFeatured: true,
     investorsList: [
@@ -99,7 +99,7 @@ const SAMPLE_PROPERTIES = [
     fundedPercentage: 40,
     expectedRoi: 16.2,
     minInvestment: 1000000,
-    image: '/assets/hero-bg.png',
+    image: '/assets/img/hero-bg.png',
     description: 'Grade-A commercial office space with long-term corporate lease returns.',
     isFeatured: true,
     investorsList: [
@@ -121,7 +121,7 @@ const SAMPLE_PROPERTIES = [
     expectedSalePrice: 25000000,
     holdingPeriodMonths: 8,
     estimatedNetProfit: '+₹40.0 Lakhs Net Profit',
-    image: '/assets/hero-bg.png',
+    image: '/assets/img/hero-bg.png',
     description: 'Luxury villa buy, renovate & flip opportunity with high projected ROI.',
     isFeatured: false,
     investorsList: []

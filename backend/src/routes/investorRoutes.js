@@ -11,7 +11,7 @@ const router = Router();
 router.post('/', requireDb, asyncHandler(createInvestor));
 
 // Admin only: browse/manage registered investors.
-router.get('/', requireAuth, requireRole('admin'), requireDb, asyncHandler(getInvestors));
-router.delete('/:id', requireAuth, requireRole('admin'), requireDb, asyncHandler(deleteInvestor));
+router.get('/', requireDb, requireAuth, requireRole('admin'), asyncHandler(getInvestors));
+router.delete('/:id', requireDb, requireAuth, requireRole('admin'), asyncHandler(deleteInvestor));
 
 export default router;

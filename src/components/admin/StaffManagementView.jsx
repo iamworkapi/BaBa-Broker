@@ -24,15 +24,17 @@ export default function StaffManagementView() {
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingStaff, setEditingStaff] = useState(null);
   const [resetTargetMember, setResetTargetMember] = useState(null);
   const [resetPassword, setResetPassword] = useState('');
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(true);
+  const [showCreatePassword, setShowCreatePassword] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all'); // 'all' | 'salesman' | 'employee'
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'active' | 'suspended'
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
-  const [copiedEmail, setCopiedEmail] = useState(null);
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
+  const [copiedId, setCopiedId] = useState(null);
+  const [visiblePasswords, setVisiblePasswords] = useState({}); // { [id]: boolean }
 
   const load = async () => {
     try {
@@ -45,6 +47,7 @@ export default function StaffManagementView() {
           name: 'Amit Sharma',
           email: 'salesman@bababroker.com',
           phone: '9891140379',
+          displayPassword: 'Baba@123',
           role: 'salesman',
           isActive: true,
           flatListingsCount: 18,
@@ -58,6 +61,7 @@ export default function StaffManagementView() {
           name: 'Pooja Verma',
           email: 'employee@bababroker.com',
           phone: '9810022334',
+          displayPassword: 'Baba@123',
           role: 'employee',
           isActive: true,
           flatListingsCount: 45,
@@ -71,6 +75,7 @@ export default function StaffManagementView() {
           name: 'Vikram Malhotra',
           email: 'vikram.sales@bababroker.com',
           phone: '9811223344',
+          displayPassword: 'Sales@2026',
           role: 'salesman',
           isActive: true,
           flatListingsCount: 14,
@@ -84,6 +89,7 @@ export default function StaffManagementView() {
           name: 'Neha Sundaram',
           email: 'neha.ops@bababroker.com',
           phone: '9871122334',
+          displayPassword: 'Ops@Pass44',
           role: 'employee',
           isActive: false,
           flatListingsCount: 28,
@@ -112,7 +118,8 @@ export default function StaffManagementView() {
         const matches =
           member.name?.toLowerCase().includes(q) ||
           member.email?.toLowerCase().includes(q) ||
-          member.phone?.toLowerCase().includes(q);
+          member.phone?.toLowerCase().includes(q) ||
+          member.role?.toLowerCase().includes(q);
         if (!matches) return false;
       }
       return true;
@@ -130,10 +137,27 @@ export default function StaffManagementView() {
     return { total, activeCount, salesCount, opsCount, totalListings, totalConverted };
   }, [staff]);
 
-  const handleCopyEmail = (email) => {
-    navigator.clipboard?.writeText(email);
-    setCopiedEmail(email);
-    setTimeout(() => setCopiedEmail(null), 2000);
+  const togglePasswordVisibility = (id) => {
+    setVisiblePasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const generateRandomPassword = () => {
+    const prefixes = ['Baba', 'Agent', 'Staff', 'Broker', 'Desk', 'Key'];
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const num = Math.floor(1000 + Math.random() * 9000);
+    return `${prefix}@${num}`;
+  };
+
+  const copyToClipboard = (text, type, id) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedId(`${type}-${id}`);
+    setTimeout(() => setCopiedId(null), 2200);
+  };
+
+  const copyFullCredentials = (member) => {
+    const pass = member.displayPassword || 'Baba@123';
+    const text = `🔑 *Baba Broker Staff Credentials*\n\n👤 *Name*: ${member.name}\n👔 *Role*: ${member.role === 'salesman' ? 'Sales / Field Agent' : 'Operations Employee'}\n📱 *Mobile*: ${member.phone || 'N/A'}\n✉️ *Email*: ${member.email}\n🔒 *Password*: ${pass}\n\n🌐 *Login Portal*: https://bababroker.com/${member.role}/login`;
+    copyToClipboard(text, 'creds', member._id);
   };
 
   const createStaff = async (e) => {
@@ -144,19 +168,20 @@ export default function StaffManagementView() {
     }
     setSaving(true);
     try {
-      await api('/api/staff', {
+      const res = await api('/api/staff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
       setForm(emptyStaffForm);
       setShowAddModal(false);
-      setStatus(`${form.role === 'salesman' ? 'Salesman' : 'Employee'} provisioned successfully.`);
+      setStatus(`✓ ${form.role === 'salesman' ? 'Sales / Field Agent' : 'Employee'} provisioned successfully with password "${form.password}".`);
       await load();
     } catch {
       const newStaff = {
         _id: 'staff-' + Date.now(),
         ...form,
+        displayPassword: form.password,
         isActive: true,
         flatListingsCount: 0,
         sharesCount: 0,
@@ -167,7 +192,47 @@ export default function StaffManagementView() {
       setStaff((prev) => [newStaff, ...prev]);
       setForm(emptyStaffForm);
       setShowAddModal(false);
-      setStatus(`${form.role === 'salesman' ? 'Salesman' : 'Employee'} provisioned successfully.`);
+      setStatus(`✓ ${form.role === 'salesman' ? 'Sales / Field Agent' : 'Employee'} provisioned successfully.`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateStaff = async (e) => {
+    e.preventDefault();
+    if (!editingStaff) return;
+    setSaving(true);
+    try {
+      const updated = await api(`/api/staff/${editingStaff._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editingStaff.name,
+          phone: editingStaff.phone,
+          email: editingStaff.email,
+          role: editingStaff.role,
+          password: editingStaff.newPassword || undefined,
+        }),
+      });
+      setStaff((list) =>
+        list.map((item) =>
+          item._id === editingStaff._id
+            ? { ...item, ...updated, displayPassword: editingStaff.newPassword || item.displayPassword }
+            : item
+        )
+      );
+      setStatus(`✓ Account for ${editingStaff.name} updated successfully.`);
+      setEditingStaff(null);
+    } catch {
+      setStaff((list) =>
+        list.map((item) =>
+          item._id === editingStaff._id
+            ? { ...item, ...editingStaff, displayPassword: editingStaff.newPassword || item.displayPassword }
+            : item
+        )
+      );
+      setStatus(`✓ Account for ${editingStaff.name} updated successfully.`);
+      setEditingStaff(null);
     } finally {
       setSaving(false);
     }
@@ -210,95 +275,209 @@ export default function StaffManagementView() {
       setStatus('New password must be at least 6 characters.');
       return;
     }
+    setSaving(true);
     try {
       await api(`/api/staff/${resetTargetMember._id}/reset-password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ newPassword: resetPassword }),
       });
-      setStatus(`Password reset for ${resetTargetMember.name} successfully.`);
+      setStaff((list) =>
+        list.map((item) =>
+          item._id === resetTargetMember._id
+            ? { ...item, displayPassword: resetPassword }
+            : item
+        )
+      );
+      setStatus(`✓ Password for ${resetTargetMember.name} changed to "${resetPassword}".`);
       setResetTargetMember(null);
       setResetPassword('');
     } catch {
-      setStatus(`Password reset for ${resetTargetMember.name} successfully.`);
+      setStaff((list) =>
+        list.map((item) =>
+          item._id === resetTargetMember._id
+            ? { ...item, displayPassword: resetPassword }
+            : item
+        )
+      );
+      setStatus(`✓ Password for ${resetTargetMember.name} changed to "${resetPassword}".`);
       setResetTargetMember(null);
       setResetPassword('');
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Columns for the Dense Table View
+  // ─── RICH TABLE VIEW COLUMNS ───
   const tableColumns = [
     {
       key: 'name',
-      label: 'Staff Member',
+      label: 'Staff & Field Agent',
       sortable: true,
-      render: (_, member) => (
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 text-orange-600 font-black text-xs flex items-center justify-center border border-orange-500/20 shadow-2xs shrink-0">
-            {member.name
-              ? member.name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')
-                  .substring(0, 2)
-                  .toUpperCase()
-              : 'ST'}
+      render: (_, member) => {
+        const isSales = member.role === 'salesman';
+        const initials = member.name
+          ? member.name
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .substring(0, 2)
+              .toUpperCase()
+          : 'ST';
+
+        return (
+          <div className="flex items-center gap-3">
+            <div
+              className={`h-10 w-10 rounded-2xl flex items-center justify-center text-xs font-black shadow-xs shrink-0 ${
+                isSales
+                  ? 'bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-orange-500/20'
+                  : 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-blue-500/20'
+              }`}
+            >
+              {initials}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-slate-900 text-xs truncate block">{member.name}</span>
+                <AdminBadge
+                  variant={isSales ? 'orange' : 'info'}
+                  size="xs"
+                >
+                  {isSales ? 'Sales Rep' : 'Ops & Audit'}
+                </AdminBadge>
+              </div>
+              <span className="text-[11px] text-slate-400 font-mono truncate block mt-0.5">{member.email}</span>
+            </div>
           </div>
-          <div>
-            <span className="font-bold text-slate-900 block">{member.name}</span>
-            <span className="text-[11px] text-slate-400 font-mono">{member.email}</span>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'role',
-      label: 'Role & Dept',
-      sortable: true,
-      render: (role) => (
-        <AdminBadge
-          variant={role === 'salesman' ? 'orange' : 'info'}
-          size="sm"
-          dot
-        >
-          {role === 'salesman' ? 'Sales Rep' : 'Ops & Audit'}
-        </AdminBadge>
-      ),
+        );
+      },
     },
     {
       key: 'phone',
-      label: 'Phone',
-      render: (phone) => (
-        <span className="text-slate-600 font-medium text-xs">
-          {phone || '—'}
-        </span>
-      ),
+      label: 'Mobile Number (Login ID)',
+      sortable: true,
+      render: (phone, member) => {
+        const isCopied = copiedId === `phone-${member._id}`;
+        const cleanPhone = phone?.replace(/\D/g, '') || '';
+
+        return (
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-800 font-mono font-bold text-xs">
+                  {phone || '—'}
+                </span>
+                {phone && (
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(phone, 'phone', member._id)}
+                    className="text-slate-400 hover:text-orange-600 p-0.5 cursor-pointer transition"
+                    title="Copy Phone Number"
+                  >
+                    {isCopied ? (
+                      <i className="ri-check-line text-emerald-600 font-bold text-xs" />
+                    ) : (
+                      <i className="ri-file-copy-line text-xs" />
+                    )}
+                  </button>
+                )}
+              </div>
+              {cleanPhone && (
+                <div className="flex items-center gap-2 mt-0.5">
+                  <a
+                    href={`https://wa.me/91${cleanPhone}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:text-emerald-700 transition"
+                  >
+                    <i className="ri-whatsapp-line" /> WhatsApp
+                  </a>
+                  <span className="text-slate-300 text-[10px]">·</span>
+                  <a
+                    href={`tel:${phone}`}
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 hover:text-blue-700 transition"
+                  >
+                    <i className="ri-phone-line" /> Call
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      },
     },
     {
-      key: 'flatListingsCount',
-      label: 'Listings',
-      sortable: true,
-      align: 'center',
-      render: (count) => (
-        <span className="font-bold text-slate-800">{count || 0}</span>
-      ),
+      key: 'displayPassword',
+      label: 'Login Password',
+      render: (displayPass, member) => {
+        const isVisible = visiblePasswords[member._id];
+        const pass = member.displayPassword || displayPass || 'Baba@123';
+        const isCopied = copiedId === `pass-${member._id}`;
+
+        return (
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-2.5 py-1.5 w-fit">
+            <span className="font-mono text-xs font-bold text-slate-800 tracking-wider">
+              {isVisible ? pass : '••••••••'}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility(member._id)}
+              className="text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer transition"
+              title={isVisible ? 'Hide password' : 'Show password'}
+            >
+              <i className={isVisible ? 'ri-eye-off-line text-xs' : 'ri-eye-line text-xs'} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => copyToClipboard(pass, 'pass', member._id)}
+              className="text-slate-400 hover:text-orange-600 p-0.5 cursor-pointer transition"
+              title="Copy Password"
+            >
+              {isCopied ? (
+                <i className="ri-check-line text-emerald-600 font-bold text-xs" />
+              ) : (
+                <i className="ri-file-copy-line text-xs" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setResetTargetMember(member);
+                setResetPassword(pass);
+              }}
+              className="text-[10px] font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-1.5 py-0.5 rounded border border-orange-200/60 cursor-pointer ml-1 transition"
+              title="Change Password"
+            >
+              Change
+            </button>
+          </div>
+        );
+      },
     },
     {
-      key: 'sharesCount',
-      label: 'WhatsApp Shares',
-      sortable: true,
-      align: 'center',
-      render: (count) => (
-        <span className="font-bold text-emerald-600">{count || 0}</span>
-      ),
-    },
-    {
-      key: 'convertedRequestsCount',
-      label: 'Deals Closed',
-      sortable: true,
-      align: 'center',
-      render: (count) => (
-        <span className="font-bold text-orange-600">{count || 0}</span>
+      key: 'stats',
+      label: 'Activity & Deals',
+      sortable: false,
+      render: (_, member) => (
+        <div className="flex items-center gap-3">
+          <div className="text-center">
+            <span className="block text-xs font-black text-slate-800">{member.flatListingsCount || 0}</span>
+            <span className="block text-[9px] font-semibold text-slate-400 uppercase">Listings</span>
+          </div>
+          <span className="text-slate-200">|</span>
+          <div className="text-center">
+            <span className="block text-xs font-black text-emerald-600">{member.sharesCount || 0}</span>
+            <span className="block text-[9px] font-semibold text-slate-400 uppercase">Shares</span>
+          </div>
+          <span className="text-slate-200">|</span>
+          <div className="text-center">
+            <span className="block text-xs font-black text-orange-600">{member.convertedRequestsCount || 0}</span>
+            <span className="block text-[9px] font-semibold text-slate-400 uppercase">Deals</span>
+          </div>
+        </div>
       ),
     },
     {
@@ -317,7 +496,7 @@ export default function StaffManagementView() {
         >
           <span
             className={`h-1.5 w-1.5 rounded-full ${
-              isActive ? 'bg-emerald-500' : 'bg-rose-500'
+              isActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
             }`}
           />
           <span>{isActive ? 'Active' : 'Suspended'}</span>
@@ -328,38 +507,60 @@ export default function StaffManagementView() {
       key: 'actions',
       label: 'Actions',
       align: 'right',
-      render: (_, member) => (
-        <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => setResetTargetMember(member)}
-            className="p-1.5 rounded-lg bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-600 text-xs transition cursor-pointer"
-            title="Reset Password"
-          >
-            <i className="ri-key-line" />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleCopyEmail(member.email)}
-            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs transition cursor-pointer"
-            title="Copy Email"
-          >
-            {copiedEmail === member.email ? (
-              <i className="ri-check-line text-emerald-600" />
-            ) : (
-              <i className="ri-file-copy-line" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => deleteStaffMember(member)}
-            className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-xs transition cursor-pointer"
-            title="Delete Staff"
-          >
-            <i className="ri-delete-bin-line" />
-          </button>
-        </div>
-      ),
+      render: (_, member) => {
+        const isCredsCopied = copiedId === `creds-${member._id}`;
+
+        return (
+          <div className="flex items-center justify-end gap-1.5">
+            {/* Direct Change Password */}
+            <button
+              type="button"
+              onClick={() => {
+                setResetTargetMember(member);
+                setResetPassword(member.displayPassword || 'Baba@123');
+              }}
+              className="p-1.5 rounded-lg bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-600 text-xs transition cursor-pointer"
+              title="Change Password"
+            >
+              <i className="ri-key-line" />
+            </button>
+
+            {/* Edit Staff Info */}
+            <button
+              type="button"
+              onClick={() => setEditingStaff({ ...member, newPassword: '' })}
+              className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 text-xs transition cursor-pointer"
+              title="Edit Agent Info"
+            >
+              <i className="ri-edit-line" />
+            </button>
+
+            {/* Copy Full Credentials for WhatsApp sharing */}
+            <button
+              type="button"
+              onClick={() => copyFullCredentials(member)}
+              className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 text-xs transition cursor-pointer"
+              title="Copy Full Login Card for WhatsApp"
+            >
+              {isCredsCopied ? (
+                <i className="ri-check-line text-emerald-600 font-bold" />
+              ) : (
+                <i className="ri-share-line" />
+              )}
+            </button>
+
+            {/* Delete Account */}
+            <button
+              type="button"
+              onClick={() => deleteStaffMember(member)}
+              className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-xs transition cursor-pointer"
+              title="Delete Account"
+            >
+              <i className="ri-delete-bin-line" />
+            </button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -371,29 +572,35 @@ export default function StaffManagementView() {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-orange-500/15 text-orange-600 border border-orange-500/25">
               <i className="ri-shield-user-line" />
-              Access Control & Performance
+              Access Control &amp; Credentials
             </span>
             <span className="text-[11px] text-slate-400 hidden sm:inline">
-              · Enterprise Directory
+              · Mobile Number &amp; Password Management
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
-            Staff & Field Agent Management
+            Staff &amp; Field Agent Management
           </h1>
           <p className="text-xs text-slate-500 font-normal max-w-xl">
-            Provision roles, manage login credentials, and track listings and closed deals for sales and operations personnel.
+            View employee phone numbers, inspect &amp; reset login passwords, track closed deals, and provision new agents.
           </p>
         </div>
 
         {/* Right CTA */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
           <AdminButton
             variant="primary"
             size="md"
             icon="ri-user-add-line"
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setForm({
+                ...emptyStaffForm,
+                password: generateRandomPassword(),
+              });
+              setShowAddModal(true);
+            }}
           >
-            Provision Staff
+            Add Staff / Agent
           </AdminButton>
         </div>
       </div>
@@ -426,7 +633,7 @@ export default function StaffManagementView() {
         />
 
         <AdminStatCard
-          title="Salesman"
+          title="Sales / Field Agents"
           value={summaryStats.salesCount}
           subValue="Active"
           icon="ri-user-star-line"
@@ -435,7 +642,7 @@ export default function StaffManagementView() {
         />
 
         <AdminStatCard
-          title="Employee"
+          title="Operations Employees"
           value={summaryStats.opsCount}
           subValue="Active"
           icon="ri-shield-user-line"
@@ -461,7 +668,7 @@ export default function StaffManagementView() {
             <AdminSearchBar
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder="Search staff by name, email, phone..."
+              placeholder="Search by name, phone number, email..."
             />
           </div>
 
@@ -504,6 +711,18 @@ export default function StaffManagementView() {
             <div className="flex items-center gap-0.5 bg-slate-100 p-1 rounded-xl text-xs">
               <button
                 type="button"
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${
+                  viewMode === 'table'
+                    ? 'bg-white text-orange-600 shadow-xs font-bold'
+                    : 'text-slate-400 hover:text-slate-700'
+                }`}
+                title="Dense Table View (View Number & Password)"
+              >
+                <i className="ri-list-check" />
+              </button>
+              <button
+                type="button"
                 onClick={() => setViewMode('grid')}
                 className={`p-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${
                   viewMode === 'grid'
@@ -514,24 +733,12 @@ export default function StaffManagementView() {
               >
                 <i className="ri-grid-fill" />
               </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`p-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${
-                  viewMode === 'table'
-                    ? 'bg-white text-orange-600 shadow-xs font-bold'
-                    : 'text-slate-400 hover:text-slate-700'
-                }`}
-                title="Dense Table View"
-              >
-                <i className="ri-list-check" />
-              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ─── MAIN CONTENT VIEW (GRID OR DENSE TABLE) ─── */}
+      {/* ─── MAIN CONTENT VIEW (DENSE TABLE OR GRID) ─── */}
       {filteredStaff.length === 0 ? (
         <div className="rounded-3xl border border-slate-200/90 bg-white p-16 text-center shadow-xs">
           <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
@@ -557,11 +764,22 @@ export default function StaffManagementView() {
             </div>
           </div>
         </div>
-      ) : viewMode === 'grid' ? (
+      ) : viewMode === 'table' ? (
+        /* DENSE TABLE VIEW (Shows Numbers and Passwords clearly) */
+        <AdminDataTable
+          columns={tableColumns}
+          data={filteredStaff}
+          loading={loading}
+          keyField="_id"
+          pageSize={10}
+        />
+      ) : (
         /* GRID CARDS VIEW */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredStaff.map((member) => {
             const isSales = member.role === 'salesman';
+            const isVisible = visiblePasswords[member._id];
+            const pass = member.displayPassword || 'Baba@123';
             const initials = member.name
               ? member.name
                   .split(' ')
@@ -599,106 +817,80 @@ export default function StaffManagementView() {
                       </div>
 
                       <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-slate-900 truncate group-hover:text-orange-600 transition-colors">
-                          {member.name}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <AdminBadge
-                            variant={isSales ? 'orange' : 'info'}
-                            size="sm"
-                            dot
-                          >
-                            {isSales ? 'Salesman' : 'Operations'}
-                          </AdminBadge>
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            {member.lastActive || 'Active today'}
-                          </span>
-                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm truncate">{member.name}</h4>
+                        <span className="text-[11px] text-slate-400 font-mono truncate block">{member.email}</span>
                       </div>
                     </div>
 
-                    {/* Active Status Pill Switch */}
-                    <button
-                      type="button"
-                      onClick={() => toggleActive(member)}
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition cursor-pointer shrink-0 ${
-                        member.isActive
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                          : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                      }`}
-                      title="Click to toggle status"
+                    <AdminBadge
+                      variant={isSales ? 'orange' : 'info'}
+                      size="sm"
                     >
-                      {member.isActive ? 'Active' : 'Suspended'}
-                    </button>
+                      {isSales ? 'Salesman' : 'Employee'}
+                    </AdminBadge>
                   </div>
 
-                  {/* Contact Info Pills */}
-                  <div className="space-y-1.5 p-3 rounded-2xl bg-slate-50 border border-slate-100 text-xs">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="flex items-center gap-1.5 text-slate-600 font-medium truncate">
-                        <i className="ri-mail-line text-slate-400" />
-                        <span className="truncate">{member.email}</span>
+                  {/* Credentials Box: Mobile & Password */}
+                  <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-3.5 space-y-2.5 text-xs">
+                    {/* Phone */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                        <i className="ri-phone-line" /> Mobile (Login ID)
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyEmail(member.email)}
-                        className="text-slate-400 hover:text-slate-700 text-xs shrink-0 cursor-pointer p-0.5"
-                        title="Copy Email"
-                      >
-                        {copiedEmail === member.email ? (
-                          <i className="ri-check-line text-emerald-600" />
-                        ) : (
-                          <i className="ri-file-copy-line" />
+                      <div className="flex items-center gap-1.5 font-mono font-bold text-slate-800">
+                        <span>{member.phone || '—'}</span>
+                        {member.phone && (
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(member.phone, 'phone', member._id)}
+                            className="text-slate-400 hover:text-orange-600 p-0.5 cursor-pointer"
+                          >
+                            <i className="ri-file-copy-line text-xs" />
+                          </button>
                         )}
-                      </button>
+                      </div>
                     </div>
 
-                    {member.phone && (
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/50">
-                        <span className="flex items-center gap-1.5 text-slate-600 font-medium truncate">
-                          <i className="ri-phone-line text-slate-400" />
-                          <span>{member.phone}</span>
+                    {/* Password */}
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                        <i className="ri-lock-line" /> Password
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                          {isVisible ? pass : '••••••••'}
                         </span>
-                        <a
-                          href={`https://wa.me/${member.phone.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-emerald-600 hover:text-emerald-700 text-xs shrink-0"
-                          title="WhatsApp Staff"
+                        <button
+                          type="button"
+                          onClick={() => togglePasswordVisibility(member._id)}
+                          className="text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer"
                         >
-                          <i className="ri-whatsapp-line" />
-                        </a>
+                          <i className={isVisible ? 'ri-eye-off-line' : 'ri-eye-line'} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(pass, 'pass', member._id)}
+                          className="text-slate-400 hover:text-orange-600 p-0.5 cursor-pointer"
+                        >
+                          <i className="ri-file-copy-line text-xs" />
+                        </button>
                       </div>
-                    )}
+                    </div>
                   </div>
 
-                  {/* Performance Metrics Stats Row */}
-                  <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+                  {/* Performance Counter Row */}
+                  <div className="grid grid-cols-3 gap-2 text-center pt-1">
                     <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase block">
-                        Listings
-                      </span>
-                      <span className="text-sm font-black text-slate-800">
-                        {member.flatListingsCount || 0}
-                      </span>
+                      <span className="block text-[10px] text-slate-400 font-bold uppercase">Listings</span>
+                      <span className="text-xs font-black text-slate-900">{member.flatListingsCount || 0}</span>
                     </div>
-
                     <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase block">
-                        Shares
-                      </span>
-                      <span className="text-sm font-black text-emerald-600">
-                        {member.sharesCount || 0}
-                      </span>
+                      <span className="block text-[10px] text-slate-400 font-bold uppercase">Shares</span>
+                      <span className="text-xs font-black text-emerald-600">{member.sharesCount || 0}</span>
                     </div>
-
                     <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase block">
-                        Closed
-                      </span>
-                      <span className="text-sm font-black text-orange-600">
-                        {member.convertedRequestsCount || 0}
-                      </span>
+                      <span className="block text-[10px] text-slate-400 font-bold uppercase">Deals</span>
+                      <span className="text-xs font-black text-orange-600">{member.convertedRequestsCount || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -709,12 +901,31 @@ export default function StaffManagementView() {
                     variant="outline"
                     size="xs"
                     icon="ri-key-line"
-                    onClick={() => setResetTargetMember(member)}
+                    onClick={() => {
+                      setResetTargetMember(member);
+                      setResetPassword(pass);
+                    }}
                   >
-                    Reset Pass
+                    Change Password
                   </AdminButton>
 
                   <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditingStaff({ ...member, newPassword: '' })}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer text-xs"
+                      title="Edit Staff"
+                    >
+                      <i className="ri-edit-line" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => copyFullCredentials(member)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition cursor-pointer text-xs"
+                      title="Copy Full Login Card"
+                    >
+                      <i className="ri-share-line" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => deleteStaffMember(member)}
@@ -729,21 +940,13 @@ export default function StaffManagementView() {
             );
           })}
         </div>
-      ) : (
-        /* DENSE TABLE VIEW */
-        <AdminDataTable
-          columns={tableColumns}
-          data={filteredStaff}
-          loading={loading}
-          keyField="_id"
-        />
       )}
 
       {/* ─── PROVISION STAFF RIGHT SLIDE DRAWER ─── */}
       <AdminDrawer
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        title="Provision Staff Member"
+        title="Provision Staff / Field Agent"
         subtitle="Create credentials for sales agents or operations personnel"
         icon="ri-user-add-line"
       >
@@ -751,12 +954,12 @@ export default function StaffManagementView() {
           {/* Role Switcher */}
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
-              Select Department & Role *
+              Select Department &amp; Role *
             </label>
             <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-100 text-xs">
               {[
-                { id: 'salesman', label: 'Salesman', icon: 'ri-user-star-line' },
-                { id: 'employee', label: 'Employee', icon: 'ri-shield-user-line' },
+                { id: 'salesman', label: 'Salesman (Field)', icon: 'ri-user-star-line' },
+                { id: 'employee', label: 'Employee (Ops)', icon: 'ri-shield-user-line' },
               ].map((r) => (
                 <button
                   key={r.id}
@@ -793,6 +996,24 @@ export default function StaffManagementView() {
             </div>
           </div>
 
+          {/* Phone Number (Login identifier) */}
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
+              Mobile Number (Used for Login &amp; WhatsApp) *
+            </label>
+            <div className="relative">
+              <i className="ri-smartphone-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="e.g. 9891140379"
+                required
+                className="w-full rounded-xl bg-slate-50 pl-9 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 outline-none border border-slate-200 focus:border-orange-500 focus:bg-white transition-all font-mono"
+              />
+            </div>
+          </div>
+
           {/* Work Email */}
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
@@ -811,36 +1032,28 @@ export default function StaffManagementView() {
             </div>
           </div>
 
-          {/* Phone */}
-          <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
-              Phone Number
-            </label>
-            <div className="relative">
-              <i className="ri-phone-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-              <input
-                type="tel"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="e.g. 9891140379"
-                className="w-full rounded-xl bg-slate-50 pl-9 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 outline-none border border-slate-200 focus:border-orange-500 focus:bg-white transition-all"
-              />
-            </div>
-          </div>
-
-          {/* Temporary Password */}
+          {/* Initial Password with Generator */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Initial Password *
               </label>
-              <button
-                type="button"
-                onClick={() => setShowCreatePassword(!showCreatePassword)}
-                className="text-[10px] font-semibold text-orange-600 hover:text-orange-700 cursor-pointer"
-              >
-                {showCreatePassword ? 'Hide Password' : 'Show Password'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, password: generateRandomPassword() }))}
+                  className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded cursor-pointer flex items-center gap-1"
+                >
+                  <i className="ri-magic-line" /> Auto Generate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePassword(!showCreatePassword)}
+                  className="text-[10px] font-semibold text-orange-600 hover:text-orange-700 cursor-pointer"
+                >
+                  {showCreatePassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
             <div className="relative">
               <i className="ri-lock-2-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
@@ -876,30 +1089,48 @@ export default function StaffManagementView() {
         </form>
       </AdminDrawer>
 
-      {/* ─── RESET PASSWORD RIGHT SLIDE DRAWER ─── */}
+      {/* ─── RESET / CHANGE PASSWORD DRAWER ─── */}
       <AdminDrawer
         isOpen={!!resetTargetMember}
         onClose={() => {
           setResetTargetMember(null);
           setResetPassword('');
         }}
-        title={`Reset Password for ${resetTargetMember?.name}`}
-        subtitle={`Account: ${resetTargetMember?.email}`}
+        title={`Change Password for ${resetTargetMember?.name}`}
+        subtitle={`Login ID: ${resetTargetMember?.phone || resetTargetMember?.email}`}
         icon="ri-key-line"
       >
         <form onSubmit={submitResetPassword} className="space-y-4">
+          <div className="p-3.5 rounded-2xl bg-orange-50/70 border border-orange-200/80 space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-orange-700 block">
+              Staff Member Credentials
+            </span>
+            <p className="text-xs text-slate-800 font-bold">{resetTargetMember?.name} ({resetTargetMember?.role})</p>
+            <p className="text-[11px] text-slate-600 font-mono">📱 Mobile: {resetTargetMember?.phone || 'N/A'}</p>
+            <p className="text-[11px] text-slate-600 font-mono">✉️ Email: {resetTargetMember?.email}</p>
+          </div>
+
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 New Secure Password *
               </label>
-              <button
-                type="button"
-                onClick={() => setShowResetPassword(!showResetPassword)}
-                className="text-[10px] font-semibold text-orange-600 hover:text-orange-700 cursor-pointer"
-              >
-                {showResetPassword ? 'Hide Password' : 'Show Password'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setResetPassword(generateRandomPassword())}
+                  className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded cursor-pointer flex items-center gap-1"
+                >
+                  <i className="ri-magic-line" /> Auto Generate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowResetPassword(!showResetPassword)}
+                  className="text-[10px] font-semibold text-orange-600 hover:text-orange-700 cursor-pointer"
+                >
+                  {showResetPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
             <div className="relative">
               <i className="ri-lock-password-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
@@ -925,11 +1156,103 @@ export default function StaffManagementView() {
             >
               Cancel
             </AdminButton>
-            <AdminButton type="submit" variant="primary" size="md">
-              Update Password
+            <AdminButton type="submit" variant="primary" size="md" loading={saving}>
+              Save New Password
             </AdminButton>
           </div>
         </form>
+      </AdminDrawer>
+
+      {/* ─── EDIT STAFF PROFILE DRAWER ─── */}
+      <AdminDrawer
+        isOpen={!!editingStaff}
+        onClose={() => setEditingStaff(null)}
+        title={`Edit Profile: ${editingStaff?.name}`}
+        subtitle="Update mobile number, email, role or set password"
+        icon="ri-edit-line"
+      >
+        {editingStaff && (
+          <form onSubmit={handleUpdateStaff} className="space-y-4">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
+                Full Name *
+              </label>
+              <input
+                type="text"
+                value={editingStaff.name}
+                onChange={(e) => setEditingStaff({ ...editingStaff, name: e.target.value })}
+                required
+                className="w-full rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-800 outline-none border border-slate-200 focus:border-orange-500 focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
+                Mobile Number (Login ID) *
+              </label>
+              <input
+                type="tel"
+                value={editingStaff.phone || ''}
+                onChange={(e) => setEditingStaff({ ...editingStaff, phone: e.target.value })}
+                placeholder="e.g. 9891140379"
+                className="w-full rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-800 font-mono outline-none border border-slate-200 focus:border-orange-500 focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
+                Work Email *
+              </label>
+              <input
+                type="email"
+                value={editingStaff.email}
+                onChange={(e) => setEditingStaff({ ...editingStaff, email: e.target.value })}
+                required
+                className="w-full rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-800 outline-none border border-slate-200 focus:border-orange-500 focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
+                Role &amp; Department
+              </label>
+              <select
+                value={editingStaff.role}
+                onChange={(e) => setEditingStaff({ ...editingStaff, role: e.target.value })}
+                className="w-full rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-800 outline-none border border-slate-200 focus:border-orange-500 focus:bg-white"
+              >
+                <option value="salesman">Salesman (Field Deal Desk)</option>
+                <option value="employee">Employee (Operations &amp; Audit)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
+                Change Password (Leave blank to keep current)
+              </label>
+              <input
+                type="text"
+                value={editingStaff.newPassword || ''}
+                onChange={(e) => setEditingStaff({ ...editingStaff, newPassword: e.target.value })}
+                placeholder="Enter new password (min. 6 chars)"
+                className="w-full rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-800 font-mono outline-none border border-slate-200 focus:border-orange-500 focus:bg-white"
+              />
+            </div>
+
+            <div className="pt-4 flex items-center justify-end gap-2.5 border-t border-slate-100">
+              <AdminButton
+                variant="secondary"
+                size="md"
+                onClick={() => setEditingStaff(null)}
+              >
+                Cancel
+              </AdminButton>
+              <AdminButton type="submit" variant="primary" size="md" loading={saving}>
+                Update Details
+              </AdminButton>
+            </div>
+          </form>
+        )}
       </AdminDrawer>
     </div>
   );

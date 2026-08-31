@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import mongoose from 'mongoose';
 import FlatListing from '../models/FlatListing.js';
+import { uploadBase64ToImageKit, uploadUrlToImageKit } from '../utils/imagekit.js';
 
 const EXPECTED_HEADERS = [
   'listingType', 'title', 'location', 'configuration', 'sizeSqft',
@@ -61,6 +62,30 @@ export const uploadExcelFlatListings = async (req, res) => {
     if (listingType === 'rent' && monthlyRent <= 0) { results.failed.push({ row: i + 2, error: 'monthlyRent must be > 0' }); continue; }
     if (listingType === 'buy' && salePrice <= 0) { results.failed.push({ row: i + 2, error: 'salePrice must be > 0' }); continue; }
 
+    let coverImageUrl = '';
+    let imageUrls = [];
+    try {
+      const coverRaw = String(row[colMap['coverImage']] || '').trim();
+      if (coverRaw) {
+        coverImageUrl = coverRaw.startsWith('http')
+          ? (await uploadUrlToImageKit(coverRaw, `cover-${i + 2}-${Date.now()}`)) || coverRaw
+          : (await uploadBase64ToImageKit(coverRaw, `cover-${i + 2}-${Date.now()}`)) || '';
+      }
+      const imagesRaw = String(row[colMap['images']] || '').trim();
+      if (imagesRaw) {
+        const candidates = imagesRaw.split(/[|,]/).map((s) => s.trim()).filter(Boolean);
+        for (let j = 0; j < candidates.length; j++) {
+          const img = candidates[j];
+          const url = img.startsWith('http')
+            ? (await uploadUrlToImageKit(img, `img-${i + 2}-${j}-${Date.now()}`)) || img
+            : (await uploadBase64ToImageKit(img, `img-${i + 2}-${j}-${Date.now()}`)) || '';
+          if (url) imageUrls.push(url);
+        }
+      }
+    } catch (err) {
+      console.error(`ImageKit error row ${i + 2}:`, err.message);
+    }
+
     const listingData = {
       listingType,
       title: String(row[colMap['title']] || '').trim(),
@@ -77,8 +102,8 @@ export const uploadExcelFlatListings = async (req, res) => {
       reraId: String(row[colMap['reraId']] || 'RERA Not Applicable').trim(),
       amenities: String(row[colMap['amenities']] || '').trim(),
       description,
-      coverImage: '',
-      images: [],
+      coverImage: coverImageUrl,
+      images: imageUrls,
       videoUrl: String(row[colMap['videoUrl']] || '').trim(),
       monthlyRent,
       securityDeposit: Number(row[colMap['securityDeposit']]) || 0,
@@ -123,4 +148,117 @@ export const getExcelUploadHistory = async (req, res) => {
     .lean();
   const total = await FlatListing.countDocuments({ isActive: true });
   res.status(200).json({ listings, total, page: Number(page), totalPages: Math.ceil(total / limit) });
+};
+
+const ALLOWED_CATEGORIES = ['RK', 'HK', 'Office', 'Shop', 'Plot'];
+const ALLOWED_FURNISHING = ['Furnished', 'Unfurnished', 'Semi-Furnished'];
+const ALLOWED_DEAL_STATUS = ['available', 'rented', 'sold'];
+
+export const pushFlatListingData = async (req, res) => {
+  const { data, model } = req.body || {};
+  if (model !== 'flat-listing') {
+    return res.status(400).json({ error: `Unsupported model: ${model}` });
+  }
+  if (!Array.isArray(data) || data.length === 0) {
+    return res.status(400).json({ error: 'No data rows provided.' });
+  }
+
+  const results = { success: [], failed: [], total: data.length };
+
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i] || {};
+    const listingType = String(row.listingType || '').trim().toLowerCase();
+    const location = String(row.location || '').trim();
+    const configuration = String(row.configuration || '').trim();
+    const description = String(row.description || '').trim();
+
+    if (!['rent', 'buy'].includes(listingType)) { results.failed.push({ row: i + 1, error: 'listingType must be rent or buy' }); continue; }
+    if (!location) { results.failed.push({ row: i + 1, error: 'Missing location' }); continue; }
+    if (!configuration) { results.failed.push({ row: i + 1, error: 'Missing configuration' }); continue; }
+    if (!description) { results.failed.push({ row: i + 1, error: 'Missing description' }); continue; }
+
+    const salePrice = Number(row.salePrice) || 0;
+    const monthlyRent = Number(row.monthlyRent) || 0;
+    if (listingType === 'rent' && monthlyRent <= 0) { results.failed.push({ row: i + 1, error: 'monthlyRent must be > 0' }); continue; }
+    if (listingType === 'buy' && salePrice <= 0) { results.failed.push({ row: i + 1, error: 'salePrice must be > 0' }); continue; }
+
+    const propertyCategory = ALLOWED_CATEGORIES.includes(String(row.propertyCategory || '').trim()) ? String(row.propertyCategory).trim() : 'HK';
+    const furnishingStatus = ALLOWED_FURNISHING.includes(String(row.furnishingStatus || '').trim()) ? String(row.furnishingStatus).trim() : 'Unfurnished';
+    const dealStatus = ALLOWED_DEAL_STATUS.includes(String(row.dealStatus || '').trim()) ? String(row.dealStatus).trim() : 'available';
+    const lift = String(row.lift || 'YES').trim().toUpperCase() === 'NO' ? 'NO' : 'YES';
+
+    let coverImageUrl = '';
+    let imageUrls = [];
+    try {
+      const coverRaw = String(row.coverImage || '').trim();
+      if (coverRaw) {
+        coverImageUrl = coverRaw.startsWith('http')
+          ? (await uploadUrlToImageKit(coverRaw, `cover-${i + 1}-${Date.now()}`)) || coverRaw
+          : (await uploadBase64ToImageKit(coverRaw, `cover-${i + 1}-${Date.now()}`)) || '';
+      }
+      const imagesRaw = String(row.images || '').trim();
+      if (imagesRaw) {
+        const candidates = imagesRaw.split(/[|,]/).map((s) => s.trim()).filter(Boolean);
+        for (let j = 0; j < candidates.length; j++) {
+          const img = candidates[j];
+          const url = img.startsWith('http')
+            ? (await uploadUrlToImageKit(img, `img-${i + 1}-${j}-${Date.now()}`)) || img
+            : (await uploadBase64ToImageKit(img, `img-${i + 1}-${j}-${Date.now()}`)) || '';
+          if (url) imageUrls.push(url);
+        }
+      }
+    } catch (err) {
+      console.error(`Image upload failed for row ${i + 1}:`, err.message);
+    }
+
+    const listingData = {
+      listingType,
+      title: String(row.title || '').trim(),
+      location,
+      configuration,
+      sizeSqft: String(row.sizeSqft || '').trim(),
+      floor: String(row.floor || '').trim(),
+      totalFloors: String(row.totalFloors || '').trim(),
+      lift,
+      parking: String(row.parking || '').trim(),
+      possessionStatus: String(row.possessionStatus || 'Ready to Move').trim(),
+      constructionYear: String(row.constructionYear || '').trim(),
+      facing: String(row.facing || '').trim(),
+      reraId: String(row.reraId || 'RERA Not Applicable').trim(),
+      amenities: String(row.amenities || '').trim(),
+      description,
+      coverImage: coverImageUrl,
+      images: imageUrls,
+      videoUrl: String(row.videoUrl || '').trim(),
+      monthlyRent,
+      securityDeposit: Number(row.securityDeposit) || 0,
+      maintenanceCharge: Number(row.maintenanceCharge) || 0,
+      availableFrom: String(row.availableFrom || '').trim(),
+      salePrice,
+      pricePerSqft: Number(row.pricePerSqft) || 0,
+      priceNegotiable: Boolean(row.priceNegotiable),
+      ownerName: String(row.ownerName || '').trim(),
+      ownerContact: String(row.ownerContact || '').trim(),
+      propertyCategory,
+      furnishingStatus,
+      completeAddress: String(row.completeAddress || '').trim(),
+      latitude: String(row.latitude || '').trim(),
+      longitude: String(row.longitude || '').trim(),
+      commission: String(row.commission || '').trim(),
+      specialInstructions: String(row.specialInstructions || '').trim(),
+      netProfit: Number(row.netProfit) || 0,
+      dealStatus,
+      submittedBy: req.user.id,
+      isActive: true,
+    };
+
+    try {
+      const saved = await FlatListing.create(listingData);
+      results.success.push({ row: i + 1, _id: saved._id, title: saved.title || saved.configuration });
+    } catch (err) {
+      results.failed.push({ row: i + 1, error: err.message });
+    }
+  }
+
+  res.status(201).json(results);
 };

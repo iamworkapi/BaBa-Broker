@@ -76,10 +76,18 @@ const seedBootstrapAdmin = async () => {
   const email = (process.env.ADMIN_EMAIL || "admin@bababroker.com")
     .trim()
     .toLowerCase();
-  if (await User.findOne({ email })) return;
   const password = process.env.ADMIN_PASSWORD || "Baba@123";
+  const existing = await User.findOne({ email });
+  if (existing) {
+    if (!existing.displayPassword || !existing.phone) {
+      existing.displayPassword = existing.displayPassword || password;
+      existing.phone = existing.phone || '9586505111';
+      await existing.save();
+    }
+    return;
+  }
   const passwordHash = await bcrypt.hash(password, 10);
-  await User.create({ name: "Admin", email, passwordHash, role: "admin" });
+  await User.create({ name: "Admin", email, phone: "9586505111", passwordHash, displayPassword: password, role: "admin" });
   console.log(`Bootstrap admin account created: ${email}`);
 };
 
@@ -87,13 +95,23 @@ const seedBootstrapSalesman = async () => {
   const email = (process.env.SALESMAN_EMAIL || "salesman@bababroker.com")
     .trim()
     .toLowerCase();
-  if (await User.findOne({ email })) return;
   const password = process.env.SALESMAN_PASSWORD || "Baba@123";
+  const existing = await User.findOne({ email });
+  if (existing) {
+    if (!existing.displayPassword || !existing.phone) {
+      existing.displayPassword = existing.displayPassword || password;
+      existing.phone = existing.phone || '9891140379';
+      await existing.save();
+    }
+    return;
+  }
   const passwordHash = await bcrypt.hash(password, 10);
   await User.create({
     name: "Salesman",
     email,
+    phone: "9891140379",
     passwordHash,
+    displayPassword: password,
     role: "salesman",
   });
   console.log(`Bootstrap salesman account created: ${email}`);
@@ -103,13 +121,23 @@ const seedBootstrapEmployee = async () => {
   const email = (process.env.EMPLOYEE_EMAIL || "employee@bababroker.com")
     .trim()
     .toLowerCase();
-  if (await User.findOne({ email })) return;
   const password = process.env.EMPLOYEE_PASSWORD || "Baba@123";
+  const existing = await User.findOne({ email });
+  if (existing) {
+    if (!existing.displayPassword || !existing.phone) {
+      existing.displayPassword = existing.displayPassword || password;
+      existing.phone = existing.phone || '9810022334';
+      await existing.save();
+    }
+    return;
+  }
   const passwordHash = await bcrypt.hash(password, 10);
   await User.create({
     name: "Employee",
     email,
+    phone: "9810022334",
     passwordHash,
+    displayPassword: password,
     role: "employee",
   });
   console.log(`Bootstrap employee account created: ${email}`);

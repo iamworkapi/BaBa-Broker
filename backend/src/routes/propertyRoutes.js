@@ -17,8 +17,8 @@ const router = Router();
 router.get('/', requireDb, asyncHandler(getProperties));
 router.get('/portfolios', requireDb, asyncHandler(getPortfolios));
 router.get('/featured', requireDb, asyncHandler(getFeaturedProperties));
-router.post('/', requireAuth, requireRole('admin'), requireDb, asyncHandler(createProperty));
-router.put('/:id', requireAuth, requireRole('admin'), requireDb, asyncHandler(updateProperty));
-router.delete('/:id', requireAuth, requireRole('admin'), requireDb, asyncHandler(deleteProperty));
+router.post('/', requireDb, requireAuth, requireRole('admin'), asyncHandler(createProperty));
+router.put('/:id', requireDb, requireAuth, requireRole('admin'), asyncHandler(updateProperty));
+router.delete('/:id', requireDb, requireAuth, requireRole('admin'), asyncHandler(deleteProperty));
 
 export default router;

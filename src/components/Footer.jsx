@@ -195,11 +195,11 @@ export default function Footer() {
         <div className="my-8 h-px bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
 
         {/* Feature Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {FEATURES.map(({ icon: Icon, title, sub }) => (
             <div
               key={title}
-              className="group flex items-center gap-3.5 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.07] hover:border-white/15 transition-all duration-300"
+              className="group flex items-center gap-3.5 p-3.5 sm:p-4 rounded-2xl bg-white/[0.03] border border-white/[0.07] hover:border-white/15 transition-all duration-300"
             >
               <div
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
@@ -226,9 +226,9 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-6 pt-5 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+        <div className="mt-6 pt-5 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 text-center sm:text-left">
           <p>© {new Date().getFullYear()} Baba Broker Pvt Ltd. All rights reserved.</p>
-          <div className="flex gap-6 font-medium">
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-6 font-medium">
             {LEGAL_LINKS.map((link) => (
               <a key={link} href="#" className="hover:text-white transition-colors">{link}</a>
             ))}

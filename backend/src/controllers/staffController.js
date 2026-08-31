@@ -35,6 +35,7 @@ export const createStaff = async (req, res) => {
     name: name.trim(),
     email: normalizedEmail,
     passwordHash,
+    displayPassword: String(password),
     role,
     phone: phone?.trim() || '',
     createdBy: req.user.id,
@@ -53,7 +54,14 @@ export const updateStaff = async (req, res) => {
   const updates = {};
   if (req.body?.name !== undefined) updates.name = req.body.name.trim();
   if (req.body?.phone !== undefined) updates.phone = req.body.phone.trim();
+  if (req.body?.email !== undefined) updates.email = req.body.email.trim().toLowerCase();
+  if (req.body?.role !== undefined && creatableRoles.includes(req.body.role)) updates.role = req.body.role;
   if (req.body?.isActive !== undefined) updates.isActive = Boolean(req.body.isActive);
+
+  if (req.body?.password && req.body.password.length >= 6) {
+    updates.passwordHash = await bcrypt.hash(req.body.password, 10);
+    updates.displayPassword = String(req.body.password);
+  }
 
   const user = await User.findOneAndUpdate(
     { _id: id, role: { $in: creatableRoles } },
@@ -106,12 +114,12 @@ export const resetStaffPassword = async (req, res) => {
   const passwordHash = await bcrypt.hash(newPassword, 10);
   const user = await User.findOneAndUpdate(
     { _id: id, role: { $in: creatableRoles } },
-    { passwordHash },
+    { passwordHash, displayPassword: String(newPassword) },
     { new: true }
   ).select('-passwordHash');
 
   if (!user) return res.status(404).json({ error: 'Staff member not found.' });
-  res.status(200).json({ success: true });
+  res.status(200).json({ success: true, user });
 };
 
 export const getStaffStats = async (req, res) => {

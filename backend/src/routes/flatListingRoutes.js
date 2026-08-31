@@ -13,7 +13,7 @@ import {
 
 const router = Router();
 
-router.use(requireAuth, requireDb);
+router.use(requireDb, requireAuth);
 
 router.get('/', requireRole(['salesman', 'employee', 'admin']), asyncHandler(getFlatListings));
 router.post('/', requireRole('salesman'), asyncHandler(createFlatListing));

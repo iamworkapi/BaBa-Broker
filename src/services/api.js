@@ -1,4 +1,4 @@
-import { authHeaders, clearAuth, getAuth } from '../store/auth';
+import { authHeaders, clearAuth, getAuth, refreshAccessToken } from '../store/auth';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -13,44 +13,57 @@ const TOAST_MESSAGES = {
   fallback: 'Something went wrong. Please try again.',
 };
 
-export async function api(path, options = {}, toastFn) {
-  try {
-    const response = await fetch(apiUrl(path), {
-      ...options,
-      headers: {
-        ...authHeaders(),
-        ...(options.headers || {}),
-      },
-    });
+async function requestWithRefresh(path, options = {}, toastFn, depth = 0) {
+  const isAuthRoute = path.includes('/api/auth/login') || path.includes('/api/auth/register') || path.includes('/api/auth/refresh');
 
-    if (response.status === 401) {
-      const auth = getAuth();
-      const redirectPath =
-        auth?.role === 'salesman'
-          ? '/salesman/login'
-          : auth?.role === 'employee'
-            ? '/employee/login'
-            : '/admin/login';
-      clearAuth();
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = redirectPath;
-      }
-      toastFn?.({ type: 'error', message: TOAST_MESSAGES['401'], duration: 5000 });
-      throw new Error('Session expired. Please log in again.');
+  const response = await fetch(apiUrl(path), {
+    ...options,
+    headers: {
+      ...(typeof options.body === 'string' && !options.headers?.['Content-Type']
+        ? { 'Content-Type': 'application/json' }
+        : {}),
+      ...authHeaders(),
+      ...(options.headers || {}),
+    },
+  });
+
+  if (response.status === 401 && !isAuthRoute && depth === 0) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return requestWithRefresh(path, options, toastFn, depth + 1);
     }
-
-    if (!response.ok) {
-      const msg = response.status === 500 ? TOAST_MESSAGES['500'] : TOAST_MESSAGES.fallback;
-      toastFn?.({ type: 'error', message: msg, duration: 5000 });
-      const body = await response.text();
-      let data = {};
-      try { data = body ? JSON.parse(body) : {}; } catch { /* ignore */ }
-      throw new Error(data.error || data.message || msg);
+    const auth = getAuth();
+    const redirectPath =
+      auth?.role === 'salesman'
+        ? '/salesman/login'
+        : auth?.role === 'employee'
+          ? '/employee/login'
+          : '/admin/login';
+    clearAuth();
+    if (!window.location.pathname.includes('/login')) {
+      window.location.href = redirectPath;
     }
+    toastFn?.({ type: 'error', message: TOAST_MESSAGES['401'], duration: 5000 });
+    throw new Error('Session expired. Please log in again.');
+  }
 
+  if (!response.ok) {
     const body = await response.text();
     let data = {};
-    // Accept empty 200 responses (some endpoints return no body on success)
+    try { data = body ? JSON.parse(body) : {}; } catch { /* ignore */ }
+    const errorMsg = data.error || data.message || (response.status === 500 ? TOAST_MESSAGES['500'] : TOAST_MESSAGES.fallback);
+    toastFn?.({ type: 'error', message: errorMsg, duration: 5000 });
+    throw new Error(errorMsg);
+  }
+
+  return response;
+}
+
+export async function api(path, options = {}, toastFn) {
+  try {
+    const response = await requestWithRefresh(path, options, toastFn, 0);
+    const body = await response.text();
+    let data = {};
     if (body && body.trim()) {
       try { data = JSON.parse(body); } catch { /* ignore */ }
     }
@@ -62,3 +75,4 @@ export async function api(path, options = {}, toastFn) {
     throw err;
   }
 }
+

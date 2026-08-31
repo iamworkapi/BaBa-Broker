@@ -7,7 +7,7 @@ import { getContacts, createContact, deleteContact } from '../controllers/contac
 
 const router = Router();
 
-router.use(requireAuth, requireRole('admin'), requireDb);
+router.use(requireDb, requireAuth, requireRole('admin'));
 
 router.get('/', asyncHandler(getContacts));
 router.post('/', asyncHandler(createContact));

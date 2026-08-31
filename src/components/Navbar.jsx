@@ -214,7 +214,7 @@ export default function Navbar() {
             transition={{ ...spring, delay: 0.32 }}
           >
             <MotionLink
-              to="/salesman/login"
+              to="/admin/login"
               className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-orange-500/30 bg-orange-500/10 text-orange-400 text-xs font-bold hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-all shadow-sm"
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
@@ -433,14 +433,24 @@ export default function Navbar() {
                   <Link
                     to="/become-investor"
                     onClick={closeAll}
-                    className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 font-bold text-xs"
+                    className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 font-bold text-xs shadow-lg shadow-orange-500/20"
                   >
                     <i className="fa-solid fa-user-tie text-[11px]" />
                     Become an Investor
                   </Link>
+
+                  <Link
+                    to="/admin/login"
+                    onClick={closeAll}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-orange-500/30 bg-orange-500/10 text-orange-400 font-bold text-xs"
+                  >
+                    <i className="fa-solid fa-user-gear text-[11px]" />
+                    Staff &amp; Admin Portal
+                  </Link>
+
                   <button
                     onClick={() => { closeAll(); handleWhatsAppConnect(); }}
-                    className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-bold text-xs"
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-bold text-xs"
                   >
                     <i className="fa-brands fa-whatsapp text-sm" />
                     WhatsApp Connect

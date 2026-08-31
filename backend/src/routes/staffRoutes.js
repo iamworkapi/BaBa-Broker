@@ -14,7 +14,7 @@ import {
 
 const router = Router();
 
-router.use(requireAuth, requireRole('admin'), requireDb);
+router.use(requireDb, requireAuth, requireRole('admin'));
 
 router.get('/', asyncHandler(getStaff));
 router.get('/stats', asyncHandler(getStaffStats));

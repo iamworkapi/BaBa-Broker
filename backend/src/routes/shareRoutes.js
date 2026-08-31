@@ -7,7 +7,7 @@ import { getShareCount, getShares, createShare } from '../controllers/shareContr
 
 const router = Router();
 
-router.use(requireAuth, requireDb);
+router.use(requireDb, requireAuth);
 
 router.get('/', requireRole(['admin', 'employee']), asyncHandler(getShareCount));
 router.get('/list', requireRole('admin'), asyncHandler(getShares));

@@ -34,8 +34,8 @@ router.put(
 );
 
 // Admin only: review, assign, and approve/reject investment requests.
-router.get('/', requireAuth, requireRole('admin'), requireDb, asyncHandler(getInvestmentRequests));
-router.put('/:id/status', requireAuth, requireRole('admin'), requireDb, asyncHandler(updateInvestmentRequestStatus));
-router.put('/:id/assign', requireAuth, requireRole('admin'), requireDb, asyncHandler(assignInvestmentRequest));
+router.get('/', requireDb, requireAuth, requireRole('admin'), asyncHandler(getInvestmentRequests));
+router.put('/:id/status', requireDb, requireAuth, requireRole('admin'), asyncHandler(updateInvestmentRequestStatus));
+router.put('/:id/assign', requireDb, requireAuth, requireRole('admin'), asyncHandler(assignInvestmentRequest));
 
 export default router;

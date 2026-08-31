@@ -256,6 +256,7 @@ export default function SalesmanDashboard() {
   const { getAuth, clearAuth } = useAuthStore();
   const auth = getAuth();
   const [view, setView] = useState('add'); // 'add' | 'list' | 'leads' (Exact previous salesman navigation)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyFlatListing());
@@ -499,20 +500,41 @@ export default function SalesmanDashboard() {
       />
 
       {/* Master Curved Card Container (Matching Admin Dashboard) */}
-      <div className="w-full h-full rounded-[28px] sm:rounded-[36px] md:rounded-[40px] shadow-2xl shadow-slate-950/70 overflow-hidden bg-white flex flex-col lg:flex-row border border-slate-800/30">
+      <div className="w-full h-full rounded-2xl sm:rounded-[36px] md:rounded-[40px] shadow-2xl shadow-slate-950/70 overflow-hidden bg-white flex flex-col lg:flex-row border border-slate-800/30 relative">
+
+        {/* Mobile Backdrop Overlay */}
+        {mobileSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 lg:hidden transition-opacity duration-300 animate-fadeIn"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
 
         {/* ─── LEFT SOLID ORANGE SIDEBAR WITH PREVIOUS NAV TABS & SIGNATURE NOTCH ─── */}
-        <aside className="w-full lg:w-56 h-full lg:h-screen bg-[#ea580c] text-white flex flex-col justify-between pl-3.5 py-3.5 pr-0 select-none shrink-0 overflow-y-auto font-['Inter',sans-serif] z-20 shadow-md">
+        <aside
+          className={`fixed lg:static top-0 left-0 h-full w-72 sm:w-80 lg:w-56 bg-[#ea580c] text-white flex flex-col justify-between pl-3.5 py-3.5 pr-0 select-none shrink-0 overflow-y-auto font-['Inter',sans-serif] z-50 lg:z-20 shadow-2xl transition-transform duration-300 ease-in-out ${
+            mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          }`}
+        >
           <div className="space-y-4">
-            {/* Logo */}
-            <div className="pr-3.5">
-              <Link to="/" className="flex items-center px-1 py-1 group">
+            {/* Logo & Mobile Close */}
+            <div className="pr-3.5 flex items-center justify-between">
+              <Link to="/" onClick={() => setMobileSidebarOpen(false)} className="flex items-center px-1 py-1 group">
                 <img
                   src="/assets/img/logo.svg"
                   alt="Baba Broker"
                   className="h-8 sm:h-9 w-auto max-w-[170px] object-contain brightness-0 invert transition-all duration-300 group-hover:scale-105"
                 />
               </Link>
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen(false)}
+                className="lg:hidden h-8 w-8 rounded-xl bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-all cursor-pointer"
+                title="Close Menu"
+              >
+                <i className="ri-close-line text-lg"></i>
+              </button>
             </div>
 
             {/* Navigation Items (Add Property, My Listings, Investment Leads) */}
@@ -524,7 +546,10 @@ export default function SalesmanDashboard() {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setView(item.id)}
+                    onClick={() => {
+                      setView(item.id);
+                      setMobileSidebarOpen(false);
+                    }}
                     className={`w-full group relative flex items-center justify-between text-xs cursor-pointer text-left transition-all duration-300 ${
                       isActive
                         ? 'bg-white text-[#ea580c] font-black pl-3 py-2.5 pr-4 rounded-l-2xl rounded-r-none shadow-[-6px_4px_20px_rgba(0,0,0,0.12)] z-10 -mr-[1px]'
@@ -596,14 +621,24 @@ export default function SalesmanDashboard() {
         <div className="flex-1 h-full flex flex-col min-w-0 overflow-hidden bg-white">
           
           {/* Top Sticky Header */}
-          <header className="px-5 sm:px-7 py-2.5 border-b border-slate-100 flex items-center justify-between gap-4 font-['Inter',sans-serif] bg-white">
+          <header className="px-3 sm:px-7 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2.5 sm:gap-4 font-['Inter',sans-serif] bg-white sticky top-0 z-30">
+            {/* Left: Mobile Hamburger */}
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen((prev) => !prev)}
+              className="lg:hidden h-9 w-9 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 border border-orange-500/20 flex items-center justify-center cursor-pointer shrink-0 transition-all"
+              title="Toggle Menu"
+            >
+              <i className="ri-menu-2-line text-lg font-bold"></i>
+            </button>
+
             <div className="relative flex-1 max-w-xs">
               <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
               <input
                 type="text"
                 value={searchVal}
                 onChange={(e) => setSearchVal(e.target.value)}
-                placeholder="Search properties, leads, clients..."
+                placeholder="Search properties, leads..."
                 className="w-full rounded-xl bg-slate-50 hover:bg-slate-100/70 focus:bg-white pl-8 pr-7 py-1.5 text-xs text-slate-700 placeholder-slate-400 outline-none border border-slate-200/80 focus:border-orange-400 transition-all"
               />
               {searchVal && (
@@ -613,8 +648,8 @@ export default function SalesmanDashboard() {
               )}
             </div>
 
-            <div className="flex items-center gap-3 sm:gap-5">
-              <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2 sm:gap-5 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-2.5">
                 <span className="text-xs font-medium text-slate-800 hidden sm:inline">{salesmanName}</span>
                 <div className="relative">
                   <img
@@ -628,7 +663,7 @@ export default function SalesmanDashboard() {
 
               <button
                 type="button"
-                className="relative text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                className="relative text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer hidden sm:block"
                 title="Notifications"
               >
                 <i className="ri-notification-3-line text-lg" />
@@ -637,7 +672,7 @@ export default function SalesmanDashboard() {
 
               <button
                 onClick={handleLogout}
-                className="text-slate-400 hover:text-red-500 p-0.5 cursor-pointer"
+                className="h-8 w-8 sm:h-auto sm:w-auto rounded-lg sm:rounded-none bg-slate-50 sm:bg-transparent text-slate-400 hover:text-red-500 p-1 cursor-pointer flex items-center justify-center"
                 title="Logout"
               >
                 <i className="ri-logout-box-r-line text-base" />

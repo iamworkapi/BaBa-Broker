@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { setAuth } from '../store/auth';
+import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
 import { useToast } from '../hooks/useToast.jsx';
 
@@ -78,6 +78,7 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
+  const { login: contextLogin } = useAuth();
 
   const detectRoleFromPath = () => {
     const p = location.pathname.toLowerCase();
@@ -105,7 +106,9 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
   const [now, setNow] = useState(Date.now());
 
   const activeRole = ROLES[activeRoleKey] || ROLES.admin;
-  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const isEmailFormat = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const isPhoneFormat = /^[0-9+\s-]{7,15}$/.test(email.trim());
+  const isIdentifierValid = isEmailFormat || isPhoneFormat;
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
   const passwordValid = password.length >= MIN_PASSWORD_LEN && (/[A-Z]/.test(password) || /\d/.test(password) || /[^A-Za-z0-9]/.test(password));
   const inCooldown = now < cooldownUntil;
@@ -154,14 +157,14 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
     setSubmitting(true);
 
     try {
-      const emailVal = email.trim().toLowerCase();
+      const identifierVal = email.trim();
 
-      if (!emailVal) {
-        throw new Error('Please enter your work email.');
+      if (!identifierVal) {
+        throw new Error('Please enter your work email or mobile number.');
       }
 
-      if (!isEmailValid) {
-        throw new Error('Please enter a valid email address.');
+      if (!isIdentifierValid) {
+        throw new Error('Please enter a valid work email or 10-digit mobile number.');
       }
 
       if (!password) {
@@ -176,38 +179,43 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
         throw new Error('Password must include at least one number or special character.');
       }
 
-      if (activeRoleKey === 'admin') {
-        const isSales = emailVal.includes('sales');
-        const isEmp = emailVal.includes('employee') || emailVal.includes('staff') || emailVal.includes('audit');
-        if (isSales) {
-          throw new Error("This credential belongs to Sales Team. Please switch to the 'Sales Team' tab above.");
-        }
-        if (isEmp) {
-          throw new Error("This credential belongs to Employee. Please switch to the 'Employee' tab above.");
-        }
-      } else if (activeRoleKey === 'salesman') {
-        const isAdmin = emailVal.includes('admin') || emailVal.includes('owner');
-        const isEmp = emailVal.includes('employee') || emailVal.includes('audit');
-        if (isAdmin) {
-          throw new Error("This credential is for Administrator. Please switch to the 'Admin' tab.");
-        }
-        if (isEmp) {
-          throw new Error("This credential belongs to Employee. Please switch to the 'Employee' tab.");
-        }
-      } else if (activeRoleKey === 'employee') {
-        const isAdmin = emailVal.includes('admin') || emailVal.includes('owner');
-        const isSales = emailVal.includes('sales');
-        if (isAdmin) {
-          throw new Error("This credential is for Administrator. Please switch to the 'Admin' tab.");
-        }
-        if (isSales) {
-          throw new Error("This credential belongs to Sales Team. Please switch to the 'Sales Team' tab.");
+      // Keyword hints only for email logins with obvious team strings
+      if (isEmailFormat) {
+        const emailLower = identifierVal.toLowerCase();
+        if (activeRoleKey === 'admin') {
+          const isSales = emailLower.includes('sales');
+          const isEmp = emailLower.includes('employee') || emailLower.includes('staff') || emailLower.includes('audit');
+          if (isSales) {
+            throw new Error("This credential belongs to Sales Team. Please switch to the 'Sales Team' tab above.");
+          }
+          if (isEmp) {
+            throw new Error("This credential belongs to Employee. Please switch to the 'Employee' tab above.");
+          }
+        } else if (activeRoleKey === 'salesman') {
+          const isAdmin = emailLower.includes('admin') || emailLower.includes('owner');
+          const isEmp = emailLower.includes('employee') || emailLower.includes('audit');
+          if (isAdmin) {
+            throw new Error("This credential is for Administrator. Please switch to the 'Admin' tab.");
+          }
+          if (isEmp) {
+            throw new Error("This credential belongs to Employee. Please switch to the 'Employee' tab.");
+          }
+        } else if (activeRoleKey === 'employee') {
+          const isAdmin = emailLower.includes('admin') || emailLower.includes('owner');
+          const isSales = emailLower.includes('sales');
+          if (isAdmin) {
+            throw new Error("This credential is for Administrator. Please switch to the 'Admin' tab.");
+          }
+          if (isSales) {
+            throw new Error("This credential belongs to Sales Team. Please switch to the 'Sales Team' tab.");
+          }
         }
       }
 
       if (onSubmit) {
         const res = await onSubmit({
-          email: emailVal,
+          email: identifierVal,
+          identifier: identifierVal,
           password,
           role: activeRole.id,
           csrfToken: csrfRef.current,
@@ -221,7 +229,8 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
         method: 'POST',
         headers: { 'X-CSRF-Token': csrfRef.current },
         body: JSON.stringify({
-          email: emailVal,
+          email: identifierVal,
+          identifier: identifierVal,
           password,
           role: activeRole.id,
           csrfToken: csrfRef.current,
@@ -229,15 +238,15 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
       }, toast);
 
       if (res && res.token) {
-        setAuth({
+        contextLogin({
           token: res.token,
-          role: activeRole.id,
-          name: res.user?.name || `${activeRole.tabLabel} Executive`,
-          email: res.user?.email || emailVal,
+          role: res.user?.role || activeRole.id,
+          name: res.user?.name || `${activeRole.tabLabel} Member`,
+          email: res.user?.email || identifierVal,
+          phone: res.user?.phone || '',
         });
 
-        localStorage.setItem('rememberedRole', activeRole.id);
-        toast({ type: 'success', message: `Authenticated as ${activeRole.tabLabel}! Redirecting...`, duration: 2500 });
+        localStorage.setItem('rememberedRole', res.user?.role || activeRole.id);
         navigate(activeRole.dashboard, { replace: true });
         return;
       }
@@ -409,23 +418,30 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
                 }`}
               >
                 <span className={`mr-3 text-lg shrink-0 transition-colors ${emailFocused ? 'text-[#ea580c]' : 'text-gray-400'}`}>
-                  <i className="ri-user-3-line" />
+                  {isPhoneFormat ? (
+                    <i className="ri-smartphone-line text-orange-500" title="Mobile Number detected" />
+                  ) : (
+                    <i className="ri-user-3-line" />
+                  )}
                 </span>
                 <input
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onFocus={() => setEmailFocused(true)}
                   onBlur={() => setEmailFocused(false)}
-                  placeholder="Work Email"
+                  placeholder="Work Email or Mobile Number"
                   required
                   disabled={submitting}
                   className="w-full bg-transparent text-sm text-slate-800 placeholder:text-gray-400 outline-none font-medium"
                 />
                 {email && (
-                  <span className="shrink-0 text-xs">
-                    {isEmailValid ? (
-                      <i className="ri-checkbox-circle-fill text-emerald-500 text-base" title="Valid email format" />
+                  <span className="shrink-0 text-xs flex items-center gap-1">
+                    {isIdentifierValid ? (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        <i className="ri-checkbox-circle-fill text-emerald-500 text-xs" />
+                        {isPhoneFormat ? 'Phone' : 'Email'}
+                      </span>
                     ) : (
                       <button
                         type="button"

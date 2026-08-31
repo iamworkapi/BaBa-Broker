@@ -1,8 +1,9 @@
 const STORAGE_KEY = 'staffAuth';
 
-const SESSION_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours
+const ACCESS_TTL_MS = 15 * 60 * 1000;
+const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-export const getAuth = () => {
+export function getAuth() {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
@@ -15,28 +16,98 @@ export const getAuth = () => {
   } catch {
     return null;
   }
-};
+}
 
-export const setAuth = ({ token, role, name, email }) => {
+export function setAuth(payload) {
+  if (!payload) return;
+  const token = payload.token || {};
+  const user = payload.user || payload;
+
+  const access = typeof token === 'string' ? token : token.access || payload.access || '';
+  const refresh = typeof token === 'object' ? token.refresh : payload.refresh || '';
+
   const session = {
-    token,
-    role,
-    name,
-    email,
+    access,
+    refresh,
+    name: user?.name || payload.name || '',
+    email: user?.email || payload.email || '',
+    role: user?.role || payload.role || '',
+    id: user?.id || user?._id || payload.id || '',
+    phone: user?.phone || payload.phone || '',
     expiresAt: Date.now() + SESSION_DURATION_MS,
+    lastRefresh: Date.now(),
   };
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-};
+}
 
-export const clearAuth = () => {
+export function updateAccessToken(access) {
+  const session = getAuth();
+  if (session) {
+    session.access = access;
+    session.lastRefresh = Date.now();
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  }
+}
+
+export function clearAuth() {
   sessionStorage.removeItem(STORAGE_KEY);
-};
+}
 
-export const isLoggedIn = () => getAuth() !== null;
+export function isLoggedIn() {
+  return getAuth() !== null;
+}
 
-export const authHeaders = () => {
+export function authHeaders() {
   const auth = getAuth();
-  return auth?.token ? { Authorization: `Bearer ${auth.token}` } : {};
-};
+  return auth?.access ? { Authorization: `Bearer ${auth.access}` } : {};
+}
+
+export async function refreshAccessToken() {
+  const auth = getAuth();
+  if (!auth?.refresh) return false;
+
+  try {
+    const res = await fetch(`/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: auth.refresh }),
+    });
+
+    if (!res.ok) {
+      clearAuth();
+      return false;
+    }
+
+    const data = await res.json();
+    if (data.token?.access) {
+      updateAccessToken(data.token.access);
+      if (data.token?.refresh) {
+        const session = getAuth();
+        if (session) {
+          session.refresh = data.token.refresh;
+          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+        }
+      }
+      return true;
+    }
+  } catch {
+    clearAuth();
+  }
+  return false;
+}
+
+export async function logout() {
+  const auth = getAuth();
+  try {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: auth?.access }),
+    });
+  } catch {
+    // best-effort; still clear local session
+  }
+  clearAuth();
+}
 
 export { api } from '../services/api';
