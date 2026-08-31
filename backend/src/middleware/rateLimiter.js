@@ -2,7 +2,7 @@ const loginAttempts = new Map();
 
 export function rateLimiter(options = {}) {
   const windowMs = options.windowMs || 15 * 60 * 1000;
-  const maxAttempts = options.maxAttempts || 5;
+  const maxAttempts = options.maxAttempts || 10;
   const keyPrefix = options.keyPrefix || 'rl';
 
   return (req, res, next) => {
