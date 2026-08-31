@@ -7,7 +7,11 @@ import { rateLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
-const loginLimiter = rateLimiter({ windowMs: 15 * 60 * 1000, maxAttempts: 5, keyPrefix: 'login' });
+const loginLimiter = rateLimiter({
+  windowMs: 15 * 60 * 1000,
+  maxAttempts: process.env.NODE_ENV === 'production' ? 10 : 100,
+  keyPrefix: 'login',
+});
 
 router.post('/login', loginLimiter, requireDb, asyncHandler(login));
 router.post('/register', requireDb, asyncHandler(register));

@@ -28,9 +28,10 @@ const EmployeeDashboard = lazy(() => import('./pages/EmployeeDashboard'));
 const BecomeInvestor   = lazy(() => import('./pages/BecomeInvestor'));
 
 function ProtectedRoute({ allowedRoles, children }) {
-  const { session } = useAuth();
-  const auth = session;
-  if (!auth || !auth.token) {
+  const { session, getAuth } = useAuth();
+  const auth = session || getAuth();
+  const token = auth?.token || auth?.access;
+  if (!auth || !token) {
     if (allowedRoles.includes('salesman')) return <Navigate to="/salesman/login" replace />;
     if (allowedRoles.includes('employee')) return <Navigate to="/employee/login" replace />;
     return <Navigate to="/admin/login" replace />;

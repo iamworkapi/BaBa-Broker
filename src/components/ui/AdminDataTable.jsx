@@ -19,6 +19,7 @@ export function AdminDataTable({
   bulkActions,
   keyField = '_id',
   onRowClick,
+  rowClassName,
   className = '',
 }) {
   const [search, setSearch] = useState('');
@@ -219,13 +220,16 @@ export function AdminDataTable({
               ) : (
                 paginatedData.map((row, rIdx) => {
                   const isSelected = selectedIds.includes(row[keyField]);
+                  const customRowClass = typeof rowClassName === 'function' ? rowClassName(row) : (rowClassName || '');
                   return (
                     <tr
                       key={row[keyField] || rIdx}
                       onClick={() => onRowClick && onRowClick(row)}
-                      className={`hover:bg-slate-50/80 transition-colors group ${
-                        onRowClick ? 'cursor-pointer' : ''
-                      } ${isSelected ? 'bg-orange-50/40' : ''}`}
+                      className={`transition-colors group ${
+                        customRowClass
+                          ? customRowClass
+                          : `hover:bg-slate-50/80 ${onRowClick ? 'cursor-pointer' : ''} ${isSelected ? 'bg-orange-50/40' : ''}`
+                      }`}
                     >
                       {selectable && (
                         <td className="p-3.5 w-10 text-center">

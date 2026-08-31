@@ -16,7 +16,7 @@ const flatListingSchema = new mongoose.Schema(
     facing: { type: String, trim: true, default: '' },
     reraId: { type: String, trim: true, default: 'RERA Not Applicable' },
     amenities: { type: String, trim: true, default: '' },
-    description: { type: String, trim: true, required: true },
+    description: { type: String, trim: true, default: '' },
     coverImage: { type: String, default: '' },
     images: [{ type: String }],
     videoUrl: { type: String, default: '' },

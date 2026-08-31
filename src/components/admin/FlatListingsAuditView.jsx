@@ -291,10 +291,9 @@ export default function FlatListingsAuditView() {
       label: 'Deal Status',
       sortable: true,
       render: (status) => {
-        const variant =
-          status === 'available' ? 'success' : status === 'rented' ? 'purple' : 'danger';
+        const isClosed = status === 'sold' || status === 'rented';
         return (
-          <AdminBadge variant={variant} size="sm" dot>
+          <AdminBadge variant={isClosed ? 'danger' : 'success'} size="sm" dot>
             {status}
           </AdminBadge>
         );
@@ -580,11 +579,14 @@ export default function FlatListingsAuditView() {
             const listingShares = sharesForListing(listing._id);
             const isRent = listing.listingType === 'rent';
             const images = getListingImages(listing);
+            const isClosed = listing.dealStatus === 'sold' || listing.dealStatus === 'rented';
 
             return (
               <div
                 key={listing._id}
-                className="group rounded-3xl border border-slate-200/90 bg-white shadow-xs hover:shadow-xl hover:border-orange-300 overflow-hidden flex flex-col transition-all duration-300"
+                className={`group rounded-3xl border border-slate-200/90 bg-white shadow-xs hover:shadow-xl hover:border-orange-300 overflow-hidden flex flex-col transition-all duration-300 ${
+                  isClosed ? 'opacity-35 bg-slate-100/70 select-none' : ''
+                }`}
               >
                 {/* Photo Slider */}
                 <div className="relative">
@@ -607,13 +609,7 @@ export default function FlatListingsAuditView() {
                     </AdminBadge>
 
                     <AdminBadge
-                      variant={
-                        listing.dealStatus === 'available'
-                          ? 'success'
-                          : listing.dealStatus === 'rented'
-                          ? 'purple'
-                          : 'danger'
-                      }
+                      variant={isClosed ? 'danger' : 'success'}
                       size="sm"
                       dot
                     >
@@ -729,6 +725,11 @@ export default function FlatListingsAuditView() {
           data={filteredListings}
           loading={loading}
           keyField="_id"
+          rowClassName={(row) =>
+            row.dealStatus === 'sold' || row.dealStatus === 'rented'
+              ? 'opacity-35 bg-slate-100/70 select-none'
+              : ''
+          }
         />
       )}
 

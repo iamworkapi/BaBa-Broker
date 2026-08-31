@@ -27,6 +27,7 @@ export function setAuth(payload) {
   const refresh = typeof token === 'object' ? token.refresh : payload.refresh || '';
 
   const session = {
+    token: access,
     access,
     refresh,
     name: user?.name || payload.name || '',
@@ -43,6 +44,7 @@ export function setAuth(payload) {
 export function updateAccessToken(access) {
   const session = getAuth();
   if (session) {
+    session.token = access;
     session.access = access;
     session.lastRefresh = Date.now();
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
@@ -54,12 +56,14 @@ export function clearAuth() {
 }
 
 export function isLoggedIn() {
-  return getAuth() !== null;
+  const auth = getAuth();
+  return Boolean(auth && (auth.token || auth.access));
 }
 
 export function authHeaders() {
   const auth = getAuth();
-  return auth?.access ? { Authorization: `Bearer ${auth.access}` } : {};
+  const token = auth?.access || auth?.token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export async function refreshAccessToken() {

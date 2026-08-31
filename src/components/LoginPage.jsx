@@ -238,16 +238,19 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
       }, toast);
 
       if (res && res.token) {
+        const userRole = res.user?.role || activeRole.id;
+        const targetDashboard = `/${userRole}/dashboard`;
+
         contextLogin({
           token: res.token,
-          role: res.user?.role || activeRole.id,
+          role: userRole,
           name: res.user?.name || `${activeRole.tabLabel} Member`,
           email: res.user?.email || identifierVal,
           phone: res.user?.phone || '',
         });
 
-        localStorage.setItem('rememberedRole', res.user?.role || activeRole.id);
-        navigate(activeRole.dashboard, { replace: true });
+        localStorage.setItem('rememberedRole', userRole);
+        navigate(targetDashboard, { replace: true });
         return;
       }
 

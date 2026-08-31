@@ -176,25 +176,42 @@ export default function CreateInvestmentProjectView() {
     }));
   };
 
-  const handleLocalCoverUpload = (e) => {
+  const readFileAsDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleLocalCoverUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       toast({ type: 'error', message: 'Cover image must be under 5MB.' });
       return;
     }
-    setPropertyForm((prev) => ({ ...prev, image: URL.createObjectURL(file) }));
-    toast({ type: 'success', message: 'Cover photo selected!' });
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setPropertyForm((prev) => ({ ...prev, image: dataUrl }));
+      toast({ type: 'success', message: 'Cover photo selected!' });
+    } catch {
+      toast({ type: 'error', message: 'Failed to read image file.' });
+    }
   };
 
-  const handleLocalGalleryUpload = (e) => {
+  const handleLocalGalleryUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    files.forEach((file) => {
-      if (file.size > 5 * 1024 * 1024) return;
-      setPropertyForm((prev) => ({ ...prev, images: [...(prev.images || []), URL.createObjectURL(file)] }));
-    });
-    toast({ type: 'success', message: `Added ${files.length} gallery photos!` });
+    try {
+      const dataUrls = await Promise.all(
+        files.filter((f) => f.size <= 5 * 1024 * 1024).map((f) => readFileAsDataUrl(f))
+      );
+      setPropertyForm((prev) => ({ ...prev, images: [...(prev.images || []), ...dataUrls] }));
+      toast({ type: 'success', message: `Added ${dataUrls.length} gallery photos!` });
+    } catch {
+      toast({ type: 'error', message: 'Failed to read gallery photos.' });
+    }
   };
 
   // Calculations for live Min Investment & ROI
@@ -1006,18 +1023,23 @@ export default function CreateInvestmentProjectView() {
                   <input
                     type="file"
                     accept="application/pdf"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
                       if (file.size > 10 * 1024 * 1024) {
                         toast({ type: 'error', message: 'PDF must be under 10MB.' });
                         return;
                       }
-                      setPropertyForm((prev) => ({
-                        ...prev,
-                        pdfUrl: URL.createObjectURL(file),
-                      }));
-                      toast({ type: 'success', message: 'PDF brochure uploaded!' });
+                      try {
+                        const dataUrl = await readFileAsDataUrl(file);
+                        setPropertyForm((prev) => ({
+                          ...prev,
+                          pdfUrl: dataUrl,
+                        }));
+                        toast({ type: 'success', message: 'PDF brochure uploaded!' });
+                      } catch {
+                        toast({ type: 'error', message: 'Failed to read PDF file.' });
+                      }
                     }}
                     className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                   />

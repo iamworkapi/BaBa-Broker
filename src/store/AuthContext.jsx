@@ -11,7 +11,7 @@ export function AuthProvider({ children }) {
 
   const login = useCallback((credentials) => {
     setAuth(credentials);
-    setSession(credentials);
+    setSession(getAuth());
     toast({ type: 'success', message: 'Login successful! Welcome back.', duration: 3000 });
   }, [toast]);
 

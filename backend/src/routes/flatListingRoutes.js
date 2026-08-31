@@ -16,9 +16,9 @@ const router = Router();
 router.use(requireDb, requireAuth);
 
 router.get('/', requireRole(['salesman', 'employee', 'admin']), asyncHandler(getFlatListings));
-router.post('/', requireRole('salesman'), asyncHandler(createFlatListing));
-router.put('/:id', requireRole('salesman'), asyncHandler(updateFlatListing));
-router.patch('/:id', requireRole('salesman'), asyncHandler(deactivateFlatListing));
-router.delete('/:id', requireRole(['salesman', 'admin']), asyncHandler(deleteFlatListing));
+router.post('/', requireRole(['salesman', 'employee', 'admin']), asyncHandler(createFlatListing));
+router.put('/:id', requireRole(['salesman', 'employee', 'admin']), asyncHandler(updateFlatListing));
+router.patch('/:id', requireRole(['salesman', 'employee', 'admin']), asyncHandler(deactivateFlatListing));
+router.delete('/:id', requireRole(['salesman', 'employee', 'admin']), asyncHandler(deleteFlatListing));
 
 export default router;

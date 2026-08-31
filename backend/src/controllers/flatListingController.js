@@ -4,47 +4,48 @@ import FlatListing from '../models/FlatListing.js';
 const validListing = (input) =>
   input &&
   ['rent', 'buy'].includes(input.listingType) &&
-  input.location?.trim() &&
-  input.configuration?.trim() &&
-  input.description?.trim() &&
-  (input.listingType === 'rent' ? Number(input.monthlyRent) > 0 : Number(input.salePrice) > 0);
+  Boolean(input.location && String(input.location).trim()) &&
+  Boolean(input.configuration && String(input.configuration).trim()) &&
+  (input.listingType === 'rent'
+    ? Number(input.monthlyRent) > 0 || Number(input.salePrice) > 0
+    : Number(input.salePrice) > 0 || Number(input.monthlyRent) > 0);
 
 const listingData = (input) => ({
-  listingType: input.listingType,
-  title: input.title?.trim() || '',
-  location: input.location.trim(),
-  configuration: input.configuration.trim(),
-  sizeSqft: input.sizeSqft?.trim() || '',
-  floor: input.floor?.trim() || '',
-  totalFloors: input.totalFloors?.trim() || '',
-  lift: input.lift === 'NO' ? 'NO' : 'YES',
-  parking: input.parking?.trim() || '',
-  possessionStatus: input.possessionStatus?.trim() || 'Ready to Move',
-  constructionYear: input.constructionYear?.trim() || '',
-  facing: input.facing?.trim() || '',
-  reraId: input.reraId?.trim() || 'RERA Not Applicable',
-  amenities: input.amenities?.trim() || '',
-  description: input.description.trim(),
+  listingType: input.listingType || 'buy',
+  title: input.title?.trim() || `${input.configuration || 'Property'} at ${input.location || ''}`.trim(),
+  location: String(input.location || '').trim(),
+  configuration: String(input.configuration || '2 BHK').trim(),
+  sizeSqft: String(input.sizeSqft || '').trim(),
+  floor: String(input.floor || '').trim(),
+  totalFloors: String(input.totalFloors || '').trim(),
+  lift: String(input.lift || '').toUpperCase() === 'NO' ? 'NO' : 'YES',
+  parking: String(input.parking || '').trim(),
+  possessionStatus: String(input.possessionStatus || 'Ready to Move').trim(),
+  constructionYear: String(input.constructionYear || '').trim(),
+  facing: String(input.facing || '').trim(),
+  reraId: String(input.reraId || 'RERA Not Applicable').trim(),
+  amenities: String(input.amenities || '').trim(),
+  description: String(input.description || `${input.configuration || 'Property'} located at ${input.location || ''}`).trim(),
   coverImage: input.coverImage || '',
   images: Array.isArray(input.images) ? input.images : [],
-  videoUrl: input.videoUrl?.trim() || '',
+  videoUrl: String(input.videoUrl || '').trim(),
   monthlyRent: Number(input.monthlyRent) || 0,
   securityDeposit: Number(input.securityDeposit) || 0,
   maintenanceCharge: Number(input.maintenanceCharge) || 0,
-  availableFrom: input.availableFrom?.trim() || '',
+  availableFrom: String(input.availableFrom || '').trim(),
   salePrice: Number(input.salePrice) || 0,
   pricePerSqft: Number(input.pricePerSqft) || 0,
   priceNegotiable: Boolean(input.priceNegotiable),
 
-  ownerName: input.ownerName?.trim() || '',
-  ownerContact: input.ownerContact?.trim() || '',
+  ownerName: String(input.ownerName || '').trim(),
+  ownerContact: String(input.ownerContact || '').trim(),
   propertyCategory: ['RK', 'HK', 'Office', 'Shop', 'Plot'].includes(input.propertyCategory) ? input.propertyCategory : 'HK',
   furnishingStatus: ['Furnished', 'Unfurnished', 'Semi-Furnished'].includes(input.furnishingStatus) ? input.furnishingStatus : 'Unfurnished',
-  completeAddress: input.completeAddress?.trim() || '',
-  latitude: input.latitude?.trim() || '',
-  longitude: input.longitude?.trim() || '',
-  commission: input.commission?.trim() || '',
-  specialInstructions: input.specialInstructions?.trim() || '',
+  completeAddress: String(input.completeAddress || '').trim(),
+  latitude: String(input.latitude || '').trim(),
+  longitude: String(input.longitude || '').trim(),
+  commission: String(input.commission || '').trim(),
+  specialInstructions: String(input.specialInstructions || '').trim(),
   netProfit: Number(input.netProfit) || 0,
 
   dealStatus: ['available', 'rented', 'sold'].includes(input.dealStatus) ? input.dealStatus : 'available',
@@ -84,16 +85,33 @@ export const updateFlatListing = async (req, res) => {
 
   const existing = await FlatListing.findById(id);
   if (!existing) return res.status(404).json({ error: 'Listing not found.' });
-  if (!existing.submittedBy.equals(req.user.id)) {
+  if (!['admin', 'employee'].includes(req.user.role) && !existing.submittedBy?.equals(req.user.id)) {
     return res.status(403).json({ error: 'You can only edit your own listings.' });
   }
 
-  const input = req.body;
-  if (!validListing(input)) {
-    return res.status(400).json({ error: 'Listing type, location, configuration, description and pricing are required.' });
-  }
+  const input = req.body || {};
+  const updates = {
+    ...(input.title !== undefined && { title: String(input.title).trim() }),
+    ...(input.location !== undefined && { location: String(input.location).trim() }),
+    ...(input.configuration !== undefined && { configuration: String(input.configuration).trim() }),
+    ...(input.sizeSqft !== undefined && { sizeSqft: String(input.sizeSqft).trim() }),
+    ...(input.floor !== undefined && { floor: String(input.floor).trim() }),
+    ...(input.lift !== undefined && { lift: String(input.lift).toUpperCase() === 'NO' ? 'NO' : 'YES' }),
+    ...(input.parking !== undefined && { parking: String(input.parking).trim() }),
+    ...(input.salePrice !== undefined && { salePrice: Number(input.salePrice) || 0 }),
+    ...(input.monthlyRent !== undefined && { monthlyRent: Number(input.monthlyRent) || 0 }),
+    ...(input.netProfit !== undefined && { netProfit: Number(input.netProfit) || 0 }),
+    ...(input.ownerName !== undefined && { ownerName: String(input.ownerName).trim() }),
+    ...(input.ownerContact !== undefined && { ownerContact: String(input.ownerContact).trim() }),
+    ...(input.completeAddress !== undefined && { completeAddress: String(input.completeAddress).trim() }),
+    ...(input.description !== undefined && { description: String(input.description).trim() }),
+    ...(input.specialInstructions !== undefined && { specialInstructions: String(input.specialInstructions).trim() }),
+    ...(input.dealStatus !== undefined && { dealStatus: input.dealStatus }),
+    ...(input.listingType !== undefined && { listingType: input.listingType }),
+    ...(input.isVerified !== undefined && { isVerified: Boolean(input.isVerified) }),
+  };
 
-  const listing = await FlatListing.findByIdAndUpdate(id, listingData(input), { new: true, runValidators: true });
+  const listing = await FlatListing.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
   res.status(200).json(listing);
 };
 
@@ -105,7 +123,7 @@ export const deactivateFlatListing = async (req, res) => {
 
   const existing = await FlatListing.findById(id);
   if (!existing) return res.status(404).json({ error: 'Listing not found.' });
-  if (!existing.submittedBy.equals(req.user.id)) {
+  if (!['admin', 'employee'].includes(req.user.role) && !existing.submittedBy?.equals(req.user.id)) {
     return res.status(403).json({ error: 'You can only update your own listings.' });
   }
 
@@ -114,6 +132,7 @@ export const deactivateFlatListing = async (req, res) => {
   if (req.body?.dealStatus !== undefined && ['available', 'rented', 'sold'].includes(req.body.dealStatus)) {
     updates.dealStatus = req.body.dealStatus;
   }
+  if (req.body?.isVerified !== undefined) updates.isVerified = Boolean(req.body.isVerified);
 
   const listing = await FlatListing.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
   res.status(200).json(listing);
@@ -127,7 +146,7 @@ export const deleteFlatListing = async (req, res) => {
 
   const existing = await FlatListing.findById(id);
   if (!existing) return res.status(404).json({ error: 'Listing not found.' });
-  if (req.user.role === 'salesman' && !existing.submittedBy.equals(req.user.id)) {
+  if (!['admin', 'employee'].includes(req.user.role) && !existing.submittedBy?.equals(req.user.id)) {
     return res.status(403).json({ error: 'You can only delete your own listings.' });
   }
 

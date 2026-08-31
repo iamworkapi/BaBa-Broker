@@ -208,7 +208,8 @@ export function useAdminDashboard(routeView) {
   };
 
   useEffect(() => {
-    if (!auth || !auth.token) {
+    const token = auth?.token || auth?.access;
+    if (!auth || !token) {
       navigate('/admin/login');
       return;
     }
