@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { useAuthStore } from '../store/AuthContext';
+import { getAuth, clearAuth } from '../store/auth';
 import AssignedLeadsPanel from '../components/AssignedLeadsPanel';
 import { Loader } from '../components/ui';
 
@@ -86,7 +86,6 @@ const priceLabel = (listing) =>
 
 export default function SalesmanDashboard() {
   const navigate = useNavigate();
-  const { getAuth, clearAuth } = useAuthStore();
   const auth = getAuth();
   const [view, setView] = useState('overview'); // 'overview' | 'list' | 'add' | 'leads' | 'calculator'
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);

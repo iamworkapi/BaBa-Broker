@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { useAuthStore } from '../store/AuthContext';
+import { getAuth, clearAuth } from '../store/auth';
 import { Loader } from '../components/ui';
 import AssignedLeadsPanel from '../components/AssignedLeadsPanel';
 
@@ -51,7 +51,6 @@ const emptyFlatListing = () => ({
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
-  const { getAuth, clearAuth } = useAuthStore();
   const auth = getAuth();
   const [view, setView] = useState('overview'); // 'overview' | 'add' | 'list' | 'leads' | 'verification' | 'calculator'
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -858,21 +857,26 @@ export default function EmployeeDashboard() {
               </div>
             )}
 
-            {/* ─── TAB 2: ADD PROPERTY ─── */}
+            {/* ─── TAB 2: ADD PROPERTY (PREMIUM ONBOARDING & AUDIT STUDIO) ─── */}
             {view === 'add' && (
-              <form onSubmit={handleSaveListing} className="space-y-3.5 max-w-4xl mx-auto w-full">
+              <form onSubmit={handleSaveListing} className="space-y-4 w-full pb-10">
                 
-                {/* Header Banner with Sticky Action */}
-                <div className="bg-white p-3.5 sm:p-4 rounded-3xl border border-slate-200/90 shadow-2xs flex items-center justify-between sticky top-0 z-20">
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-8 w-8 rounded-2xl bg-orange-600 text-white flex items-center justify-center text-base font-black shadow-xs">
-                      <i className="ri-building-line" />
+                {/* 1. Header Banner */}
+                <div className="bg-white p-3.5 sm:p-4 rounded-3xl border border-slate-200/90 shadow-2xs flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white flex items-center justify-center text-lg font-black shadow-md shadow-orange-500/20">
+                      <i className={editingId ? "ri-edit-2-line" : "ri-building-line"} />
                     </div>
                     <div>
-                      <h2 className="text-sm font-black text-slate-900">
-                        {editingId ? 'Edit Audited Property' : 'Onboard & Audit New Property'}
-                      </h2>
-                      <p className="text-[11px] text-slate-400">Complete property identity, specifications, and media</p>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-sm sm:text-base font-black text-slate-900">
+                          {editingId ? 'Edit Audited Property' : 'Onboard & Audit New Property'}
+                        </h2>
+                        <span className="px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 text-[10px] font-black uppercase border border-orange-200">
+                          {form.listingType === 'rent' ? 'Rental' : 'Sale Deal'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-medium">Verify property specs, pricing metrics, and photo gallery</p>
                     </div>
                   </div>
 
@@ -880,69 +884,119 @@ export default function EmployeeDashboard() {
                     <button
                       type="button"
                       onClick={() => { setForm(emptyFlatListing()); setEditingId(null); setView('list'); }}
-                      className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={saving}
-                      className="px-4 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50 cursor-pointer flex items-center gap-1"
+                      className="px-4.5 py-2 rounded-xl bg-[#ea580c] hover:bg-orange-700 text-white text-xs font-black shadow-md shadow-orange-600/20 transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
                     >
-                      {saving ? <Loader size={14} color="#fff" /> : <i className="ri-check-line" />}
-                      <span>{editingId ? 'Save' : 'Publish'}</span>
+                      {saving ? <Loader size={14} color="#fff" /> : <i className="ri-check-line text-sm font-black" />}
+                      <span>{editingId ? 'Save Changes' : 'Publish Property'}</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Section 1: Core Property Identity */}
-                <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-2xs space-y-3.5">
-                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                    <div className="h-6 w-6 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-black text-xs">
-                      1
+                {/* 2. Real-Time Live Audit Preview Card */}
+                <div className="bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-orange-500/5 p-4 rounded-3xl border border-orange-200/80 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-2xl bg-white border border-orange-200 text-orange-600 flex items-center justify-center font-black text-sm shrink-0 overflow-hidden shadow-2xs">
+                      {form.coverImage ? (
+                        <img src={form.coverImage} alt="Cover Preview" className="h-full w-full object-cover" />
+                      ) : (
+                        <span>{form.configuration || '2B'}</span>
+                      )}
                     </div>
-                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">Property Identity & Category</h3>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-black text-slate-900 text-sm">
+                          {form.title || `${form.configuration || '2 BHK'} Builder Floor`}
+                        </span>
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-orange-600 text-white shadow-2xs">
+                          {form.listingType === 'rent' ? 'For Rent' : 'For Sale'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className="font-bold text-orange-700">{form.location || 'Location Not Specified'}</span>
+                        <span>·</span>
+                        <span>{form.sizeSqft || '50 Gaj'}</span>
+                        <span>·</span>
+                        <span>{form.floor || '1st Floor'}</span>
+                        <span>·</span>
+                        <span className={form.lift === 'YES' ? 'text-emerald-700 font-bold' : 'text-slate-500'}>
+                          {form.lift === 'YES' ? '🛗 Lift Available' : 'No Lift'}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-left sm:text-right shrink-0 bg-white/90 sm:bg-transparent px-3 py-1.5 rounded-xl border border-orange-200 sm:border-0">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Demand Price</span>
+                    <span className="text-base font-black text-orange-700 block">
+                      {form.listingType === 'rent'
+                        ? (form.monthlyRent ? `${formatINR(form.monthlyRent)}/mo` : '₹ —/mo')
+                        : (form.salePrice ? formatINR(form.salePrice) : '₹ —')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Section 1: Property Identity & Category */}
+                <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-black text-xs">
+                        1
+                      </div>
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">Property Identity & Category</h3>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400">Step 1 of 4</span>
                   </div>
 
                   {/* 1. Category Fast Chips */}
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-slate-700 block">Select Category</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
+                    <label className="text-[11px] font-bold text-slate-700 block">Select Category Type</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                       {[
-                        { id: 'HK', label: '🏠 Builder Floor / Flat' },
-                        { id: 'RK', label: '🏢 Studio / 1 RK' },
-                        { id: 'Plot', label: '📐 Plot / Land' },
-                        { id: 'Shop', label: '🏪 Shop / Commercial' },
+                        { id: 'HK', label: 'Builder Floor / Flat', icon: '🏠', desc: 'Standard residential units' },
+                        { id: 'RK', label: 'Studio / 1 RK Flat', icon: '🏢', desc: 'Compact bachelor units' },
+                        { id: 'Plot', label: 'Freehold Land / Plot', icon: '📐', desc: 'Plots & raw land' },
+                        { id: 'Shop', label: 'Commercial Shop', icon: '🏪', desc: 'Retail & business spaces' },
                       ].map((cat) => (
                         <button
                           key={cat.id}
                           type="button"
                           onClick={() => setForm({ ...form, propertyCategory: cat.id })}
-                          className={`py-2 px-2.5 rounded-xl text-center font-bold text-xs border transition cursor-pointer ${
+                          className={`p-2.5 rounded-2xl text-left border transition cursor-pointer flex flex-col justify-between ${
                             form.propertyCategory === cat.id
-                              ? 'bg-orange-600 text-white border-orange-600 shadow-2xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                              ? 'bg-orange-50 border-orange-500 text-orange-950 font-black shadow-xs ring-1 ring-orange-400'
+                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 font-medium'
                           }`}
                         >
-                          {cat.label}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-base">{cat.icon}</span>
+                            <span className="text-xs font-bold">{cat.label}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 mt-1">{cat.desc}</span>
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* 2. Configuration Fast Chips & Listing Type */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                  {/* 2. Configuration & Listing Type */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
                     <div className="sm:col-span-2 space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-700 block">Configuration</label>
+                      <label className="text-[11px] font-bold text-slate-700 block">Unit Configuration</label>
                       <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                         {['1 BHK', '2 BHK', '3 BHK', '4 BHK', '1 RK', 'Shop'].map((cfg) => (
                           <button
                             key={cfg}
                             type="button"
                             onClick={() => setForm({ ...form, configuration: cfg })}
-                            className={`py-1.5 rounded-xl font-bold text-xs border transition cursor-pointer ${
+                            className={`py-2 rounded-xl font-bold text-xs border transition cursor-pointer text-center ${
                               form.configuration === cfg
-                                ? 'bg-orange-600 text-white border-orange-600 shadow-2xs'
+                                ? 'bg-orange-600 text-white border-orange-600 shadow-2xs font-black'
                                 : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                             }`}
                           >
@@ -953,65 +1007,70 @@ export default function EmployeeDashboard() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-700 block">Listing Type</label>
+                      <label className="text-[11px] font-bold text-slate-700 block">Deal Intent</label>
                       <div className="grid grid-cols-2 gap-1.5">
                         <button
                           type="button"
                           onClick={() => setForm({ ...form, listingType: 'buy' })}
-                          className={`py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                          className={`py-2 rounded-xl text-xs font-bold transition cursor-pointer border text-center ${
                             form.listingType === 'buy'
-                              ? 'bg-orange-600 text-white border-orange-600 shadow-2xs'
+                              ? 'bg-orange-600 text-white border-orange-600 shadow-2xs font-black'
                               : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
-                          For Sale
+                          🏷️ For Sale
                         </button>
                         <button
                           type="button"
                           onClick={() => setForm({ ...form, listingType: 'rent' })}
-                          className={`py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                          className={`py-2 rounded-xl text-xs font-bold transition cursor-pointer border text-center ${
                             form.listingType === 'rent'
-                              ? 'bg-orange-600 text-white border-orange-600 shadow-2xs'
+                              ? 'bg-orange-600 text-white border-orange-600 shadow-2xs font-black'
                               : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
-                          For Rent
+                          🔑 For Rent
                         </button>
                       </div>
                     </div>
                   </div>
 
                   {/* 3. Title & Location with Quick Tags */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
                     <div>
-                      <label className="text-[11px] font-bold text-slate-700 block mb-1">Property Title / Heading</label>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">Property Title / Marketing Heading</label>
                       <input
                         type="text"
                         value={form.title}
                         onChange={(e) => setForm({ ...form, title: e.target.value })}
                         placeholder="e.g. 2 BHK Brand New Builder Floor"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-900 outline-none focus:border-orange-500"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-900 outline-none focus:border-orange-500 focus:bg-white transition"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-bold text-slate-700 block mb-1">Location & Colony</label>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">Location & Landmark Area</label>
                       <input
                         type="text"
                         value={form.location}
                         onChange={(e) => setForm({ ...form, location: e.target.value })}
                         placeholder="e.g. Bhagwati Garden, Dwarka Mor"
                         required
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-900 outline-none focus:border-orange-500"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-900 outline-none focus:border-orange-500 focus:bg-white transition"
                       />
-                      {/* Fast Location Tags */}
-                      <div className="flex items-center gap-1 flex-wrap mt-1">
-                        {['Bhagwati Garden', 'Mohan Garden', 'Rama Park', 'Dwarka Mor', 'Uttam Nagar'].map((loc) => (
+                      {/* Fast Location Quick Chips */}
+                      <div className="flex items-center gap-1 flex-wrap mt-1.5">
+                        <span className="text-[10px] text-slate-400 font-bold">Fast select:</span>
+                        {['Bhagwati Garden', 'Mohan Garden', 'Rama Park', 'Dwarka Mor', 'Uttam Nagar', 'Jain Road', 'Sewak Park'].map((loc) => (
                           <button
                             key={loc}
                             type="button"
                             onClick={() => setForm({ ...form, location: loc })}
-                            className="text-[10px] bg-slate-100 hover:bg-orange-50 hover:text-orange-700 text-slate-600 px-1.5 py-0.5 rounded-md transition font-medium cursor-pointer"
+                            className={`text-[10px] px-2 py-0.5 rounded-md transition font-medium cursor-pointer border ${
+                              form.location === loc
+                                ? 'bg-orange-100 text-orange-800 border-orange-300 font-bold'
+                                : 'bg-slate-100 hover:bg-orange-50 hover:text-orange-700 text-slate-600 border-slate-200'
+                            }`}
                           >
                             + {loc}
                           </button>
@@ -1022,14 +1081,18 @@ export default function EmployeeDashboard() {
                 </div>
 
                 {/* Section 2: Floor Position, Parking & Specs */}
-                <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-2xs space-y-3.5">
-                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                    <div className="h-6 w-6 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-black text-xs">
-                      2
+                <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-black text-xs">
+                        2
+                      </div>
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">Floor Position, Parking & Specifications</h3>
                     </div>
-                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">Floor Position, Parking & Specifications</h3>
+                    <span className="text-[10px] font-bold text-slate-400">Step 2 of 4</span>
                   </div>
 
+                  {/* Floor Position Grid */}
                   <div>
                     <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Select Floor Position</label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
@@ -1060,7 +1123,8 @@ export default function EmployeeDashboard() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                  {/* Lift, Furnishing, Size */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
                     <div>
                       <label className="text-[11px] font-bold text-slate-700 block mb-1">Lift Facility</label>
                       <div className="grid grid-cols-2 gap-1.5">
@@ -1069,9 +1133,9 @@ export default function EmployeeDashboard() {
                             key={val}
                             type="button"
                             onClick={() => setForm({ ...form, lift: val })}
-                            className={`py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                            className={`py-2 rounded-xl text-xs font-bold transition cursor-pointer border text-center ${
                               form.lift === val
-                                ? 'bg-orange-600 text-white border-orange-600 shadow-2xs'
+                                ? 'bg-orange-600 text-white border-orange-600 shadow-2xs font-black'
                                 : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                             }`}
                           >
@@ -1086,7 +1150,7 @@ export default function EmployeeDashboard() {
                       <select
                         value={form.furnishingStatus}
                         onChange={(e) => setForm({ ...form, furnishingStatus: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 outline-none focus:border-orange-500"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 outline-none focus:border-orange-500 focus:bg-white transition"
                       >
                         <option value="Semi-Furnished">Semi-Furnished</option>
                         <option value="Fully-Furnished">Fully-Furnished</option>
@@ -1101,10 +1165,10 @@ export default function EmployeeDashboard() {
                         value={form.sizeSqft}
                         onChange={(e) => setForm({ ...form, sizeSqft: e.target.value })}
                         placeholder="e.g. 50 Gaj (450 sq.ft)"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-900 outline-none focus:border-orange-500"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-900 outline-none focus:border-orange-500 focus:bg-white transition"
                       />
-                      {/* Fast Size Tags */}
-                      <div className="flex items-center gap-1 flex-wrap mt-1">
+                      {/* Fast Size Chips */}
+                      <div className="flex items-center gap-1 flex-wrap mt-1.5">
                         {['35 Gaj', '40 Gaj', '50 Gaj', '60 Gaj', '75 Gaj', '100 Gaj'].map((sz) => (
                           <button
                             key={sz}
@@ -1119,22 +1183,28 @@ export default function EmployeeDashboard() {
                     </div>
                   </div>
 
-                  {/* 1-Row Parking */}
-                  <div>
+                  {/* Vehicle Parking Type */}
+                  <div className="pt-1">
                     <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Select Vehicle Parking Type:</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
-                      {['Car + Bike Parking', 'Car Parking Only', 'Bike Parking Only', 'Covered Stilt Parking'].map((pkg) => (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      {[
+                        { id: 'Car + Bike Parking', icon: '🚗+🏍️', label: 'Car + Bike Parking' },
+                        { id: 'Car Parking Only', icon: '🚗', label: 'Car Parking Only' },
+                        { id: 'Bike Parking Only', icon: '🏍️', label: 'Bike Parking Only' },
+                        { id: 'Covered Stilt Parking', icon: '🅿️', label: 'Covered Stilt Parking' },
+                      ].map((pkg) => (
                         <button
-                          key={pkg}
+                          key={pkg.id}
                           type="button"
-                          onClick={() => setForm({ ...form, parking: pkg })}
-                          className={`py-2 px-2.5 rounded-xl border transition cursor-pointer text-center font-bold text-xs ${
-                            form.parking === pkg
-                              ? 'bg-orange-600 text-white border-orange-600 shadow-2xs'
+                          onClick={() => setForm({ ...form, parking: pkg.id })}
+                          className={`py-2.5 px-3 rounded-2xl border transition cursor-pointer text-center font-bold text-xs ${
+                            form.parking === pkg.id
+                              ? 'bg-orange-600 text-white border-orange-600 shadow-2xs font-black'
                               : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
-                          {pkg}
+                          <span className="block text-sm mb-0.5">{pkg.icon}</span>
+                          <span>{pkg.label}</span>
                         </button>
                       ))}
                     </div>
@@ -1142,15 +1212,18 @@ export default function EmployeeDashboard() {
                 </div>
 
                 {/* Section 3: Pricing & Owner / Associate */}
-                <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-2xs space-y-3.5">
-                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                    <div className="h-6 w-6 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-black text-xs">
-                      3
+                <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-black text-xs">
+                        3
+                      </div>
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">Pricing, Owner & Associate Info</h3>
                     </div>
-                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">Pricing, Owner & Associate Info</h3>
+                    <span className="text-[10px] font-bold text-slate-400">Step 3 of 4</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                     {form.listingType === 'rent' ? (
                       <>
                         <div>
@@ -1161,18 +1234,23 @@ export default function EmployeeDashboard() {
                             onChange={(e) => setForm({ ...form, monthlyRent: e.target.value })}
                             placeholder="e.g. 12000"
                             required
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-black text-orange-600 text-sm outline-none focus:border-orange-500"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-black text-orange-600 text-sm outline-none focus:border-orange-500 focus:bg-white transition"
                           />
+                          {form.monthlyRent > 0 && (
+                            <span className="text-[10px] text-orange-700 font-bold block mt-1">
+                              ₹ {Number(form.monthlyRent).toLocaleString('en-IN')} / month
+                            </span>
+                          )}
                         </div>
 
                         <div>
-                          <label className="text-[11px] font-bold text-slate-700 block mb-1">Rental Commission</label>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">Rental Commission Terms</label>
                           <input
                             type="text"
                             value={form.commission}
                             onChange={(e) => setForm({ ...form, commission: e.target.value })}
                             placeholder="e.g. 15 Days Rent"
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 outline-none focus:border-orange-500"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 outline-none focus:border-orange-500 focus:bg-white transition"
                           />
                         </div>
                       </>
@@ -1186,11 +1264,13 @@ export default function EmployeeDashboard() {
                             onChange={(e) => setForm({ ...form, salePrice: e.target.value })}
                             placeholder="e.g. 2500000"
                             required
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-black text-orange-600 text-sm outline-none focus:border-orange-500"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-black text-orange-600 text-sm outline-none focus:border-orange-500 focus:bg-white transition"
                           />
-                          <span className="text-[10px] text-slate-400 font-bold block mt-0.5">
-                            {formatINR(form.salePrice)}
-                          </span>
+                          {form.salePrice > 0 && (
+                            <span className="text-[10px] text-orange-700 font-bold block mt-1">
+                              {formatINR(form.salePrice)} (₹ {Number(form.salePrice).toLocaleString('en-IN')})
+                            </span>
+                          )}
                         </div>
 
                         <div>
@@ -1200,8 +1280,13 @@ export default function EmployeeDashboard() {
                             value={form.netProfit}
                             onChange={(e) => setForm({ ...form, netProfit: e.target.value })}
                             placeholder="e.g. 2350000"
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 outline-none focus:border-orange-500"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 outline-none focus:border-orange-500 focus:bg-white transition"
                           />
+                          {form.netProfit > 0 && (
+                            <span className="text-[10px] text-slate-500 font-medium block mt-1">
+                              Net: {formatINR(form.netProfit)}
+                            </span>
+                          )}
                         </div>
                       </>
                     )}
@@ -1213,12 +1298,12 @@ export default function EmployeeDashboard() {
                         value={form.ownerName}
                         onChange={(e) => setForm({ ...form, ownerName: e.target.value })}
                         placeholder="e.g. Mr. Rajesh Gupta"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 outline-none focus:border-orange-500"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 outline-none focus:border-orange-500 focus:bg-white transition"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
                     <div>
                       <label className="text-[11px] font-bold text-slate-700 block mb-1">Owner Contact Number</label>
                       <input
@@ -1226,61 +1311,116 @@ export default function EmployeeDashboard() {
                         value={form.ownerContact}
                         onChange={(e) => setForm({ ...form, ownerContact: e.target.value })}
                         placeholder="e.g. 9891140379"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-mono font-bold text-slate-800 outline-none focus:border-orange-500"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-mono font-bold text-slate-800 outline-none focus:border-orange-500 focus:bg-white transition"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-bold text-slate-700 block mb-1">Key Amenities / Features</label>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">Key Amenities & USPs</label>
                       <input
                         type="text"
                         value={form.amenities}
                         onChange={(e) => setForm({ ...form, amenities: e.target.value })}
                         placeholder="e.g. 24x7 Water, Modular Kitchen, Wardrobes"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-orange-500 font-medium"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-orange-500 focus:bg-white font-medium transition"
                       />
+                    </div>
+                  </div>
+
+                  {/* 1-Click Interactive Amenities Cloud */}
+                  <div className="pt-1">
+                    <span className="text-[10px] font-bold text-slate-400 block mb-1.5">Tap to quick-add key features:</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {[
+                        '24x7 Water Supply',
+                        'Modular Kitchen',
+                        'Wardrobes in all Rooms',
+                        'Branded Lift',
+                        'Near Metro Station',
+                        'Gated Society',
+                        'Private Roof Rights',
+                        '25ft Wide Road',
+                        'Loan Available',
+                        'RERA Verified',
+                      ].map((item) => {
+                        const isAdded = (form.amenities || '').includes(item);
+                        return (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => {
+                              if (isAdded) {
+                                const updated = form.amenities
+                                  .split(', ')
+                                  .filter((x) => x !== item)
+                                  .join(', ');
+                                setForm({ ...form, amenities: updated });
+                              } else {
+                                const current = form.amenities ? form.amenities.trim() : '';
+                                setForm({
+                                  ...form,
+                                  amenities: current ? `${current}, ${item}` : item,
+                                });
+                              }
+                            }}
+                            className={`text-[10px] px-2 py-1 rounded-lg border transition font-bold cursor-pointer flex items-center gap-1 ${
+                              isAdded
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs'
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            <span>{isAdded ? '✓' : '+'}</span>
+                            <span>{item}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
 
                 {/* Section 4: Property Photos & Media Studio */}
-                <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-2xs space-y-3.5">
-                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                    <div className="h-6 w-6 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-black text-xs">
-                      4
+                <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-black text-xs">
+                        4
+                      </div>
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">Property Photos & Media Studio</h3>
                     </div>
-                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">Property Photos & Media Studio</h3>
+                    <span className="text-[10px] font-bold text-slate-400">Step 4 of 4</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Cover Dropzone */}
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-700 block">Main Cover Photo</label>
+                      <label className="text-[11px] font-bold text-slate-700 block">⭐ Main Cover Photo (Hero)</label>
                       {form.coverImage ? (
-                        <div className="relative rounded-2xl overflow-hidden border border-slate-200 group aspect-video">
+                        <div className="relative rounded-2xl overflow-hidden border border-slate-200 group aspect-video shadow-2xs">
                           <img src={form.coverImage} alt="Cover Preview" className="w-full h-full object-cover" />
-                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-slate-900/80 backdrop-blur-xs text-white text-[9px] font-bold">
+                          <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-black">
                             ⭐ Primary Cover
                           </div>
                           <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                            <label className="px-3 py-1.5 rounded-xl bg-white text-slate-900 text-xs font-bold cursor-pointer hover:bg-slate-100">
-                              Change
+                            <label className="px-3.5 py-1.5 rounded-xl bg-white text-slate-900 text-xs font-bold cursor-pointer hover:bg-slate-100 shadow-md">
+                              Change Photo
                               <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                             </label>
                             <button
                               type="button"
                               onClick={() => setForm({ ...form, coverImage: '' })}
-                              className="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold cursor-pointer hover:bg-red-700"
+                              className="px-3.5 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold cursor-pointer hover:bg-red-700 shadow-md"
                             >
                               Remove
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 hover:border-orange-500 rounded-2xl cursor-pointer bg-slate-50/60 hover:bg-orange-50/30 transition aspect-video">
-                          <i className="ri-image-add-line text-2xl text-orange-600 mb-1" />
-                          <span className="text-xs font-bold text-slate-800">Upload Cover Image</span>
-                          <span className="text-[10px] text-slate-400 mt-0.5">JPG, PNG under 2MB</span>
+                        <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 hover:border-orange-500 rounded-2xl cursor-pointer bg-slate-50/60 hover:bg-orange-50/30 transition aspect-video group">
+                          <div className="h-10 w-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-xl mb-2 group-hover:scale-110 transition">
+                            <i className="ri-image-add-line" />
+                          </div>
+                          <span className="text-xs font-bold text-slate-800">Upload High-Res Cover Image</span>
+                          <span className="text-[10px] text-slate-400 mt-0.5">JPG, PNG, WebP supported</span>
                           <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                         </label>
                       )}
@@ -1290,7 +1430,7 @@ export default function EmployeeDashboard() {
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <label className="text-[11px] font-bold text-slate-700 block">
-                          Gallery Photos ({(form.images || []).length})
+                          📸 Gallery Photos ({(form.images || []).length})
                         </label>
                         {(form.images || []).length > 0 && (
                           <button
@@ -1303,23 +1443,25 @@ export default function EmployeeDashboard() {
                         )}
                       </div>
 
-                      <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-2xl cursor-pointer bg-slate-50/60 hover:bg-emerald-50/30 transition">
-                        <i className="ri-folder-image-line text-xl text-emerald-600 mb-0.5" />
+                      <label className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-2xl cursor-pointer bg-slate-50/60 hover:bg-emerald-50/30 transition group">
+                        <div className="h-9 w-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg mb-1 group-hover:scale-110 transition">
+                          <i className="ri-folder-image-line" />
+                        </div>
                         <span className="text-xs font-bold text-slate-800">Add Room & Balcony Photos</span>
-                        <span className="text-[10px] text-slate-400 mt-0.5">Select multiple images</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">Select multiple images to attach</span>
                         <input type="file" accept="image/*" multiple onChange={handleGalleryUpload} className="hidden" />
                       </label>
 
                       {/* Gallery preview thumbnails */}
                       {(form.images || []).length > 0 && (
-                        <div className="grid grid-cols-4 gap-1.5 pt-1">
+                        <div className="grid grid-cols-4 gap-1.5 pt-1.5">
                           {form.images.map((img, idx) => (
-                            <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 group">
+                            <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 group shadow-2xs">
                               <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
                               <button
                                 type="button"
                                 onClick={() => handleRemoveGalleryImage(idx)}
-                                className="absolute top-1 right-1 h-5 w-5 rounded-md bg-red-600 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                                className="absolute top-1 right-1 h-5 w-5 rounded-md bg-red-600 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition cursor-pointer shadow-xs"
                               >
                                 <i className="ri-close-line" />
                               </button>
@@ -1331,7 +1473,7 @@ export default function EmployeeDashboard() {
                   </div>
                 </div>
 
-                {/* Bottom Action Bar */}
+                {/* 5. Bottom Action Bar */}
                 <div className="flex items-center justify-between p-4 bg-white rounded-3xl border border-slate-200/90 shadow-xs">
                   <button
                     type="button"
@@ -1344,9 +1486,9 @@ export default function EmployeeDashboard() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-8 py-3 rounded-2xl bg-[#ea580c] hover:bg-orange-700 text-white text-xs font-black shadow-md transition disabled:opacity-50 cursor-pointer flex items-center gap-2 hover:shadow-lg"
+                    className="px-8 py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white text-xs font-black shadow-md shadow-orange-600/20 transition disabled:opacity-50 cursor-pointer flex items-center gap-2 hover:shadow-lg hover:scale-[1.01]"
                   >
-                    {saving ? <Loader size={16} color="#fff" /> : <i className="ri-check-line text-base font-black" />}
+                    {saving ? <Loader size={16} color="#fff" /> : <i className="ri-check-double-line text-base font-black" />}
                     <span>{editingId ? 'Save Audited Changes' : 'Approve & Publish to Catalog'}</span>
                   </button>
                 </div>

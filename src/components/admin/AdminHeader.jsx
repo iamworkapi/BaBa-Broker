@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../store/AuthContext';
+import { useAppDispatch } from '../../store';
+import { logoutAction } from '../../store/authSlice.js';
 
 export default function AdminHeader({ auth, onSearch, onToggleSidebar }) {
   const navigate = useNavigate();
-  const { logout: storeLogout } = useAuthStore();
+  const dispatch = useAppDispatch();
   const [searchVal, setSearchVal] = useState('');
   const searchInputRef = useRef(null);
 
@@ -21,7 +22,7 @@ export default function AdminHeader({ auth, onSearch, onToggleSidebar }) {
   }, []);
 
   const handleLogout = async () => {
-    await storeLogout();
+    await dispatch(logoutAction());
     navigate('/admin/login');
   };
 

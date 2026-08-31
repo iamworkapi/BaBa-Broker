@@ -1,32 +1,27 @@
-import { useState, useCallback } from 'react';
-import { createContext, useContext } from 'react';
-import { getAuth, setAuth, clearAuth, isLoggedIn, authHeaders } from './auth';
-import { useToast } from '../hooks/useToast.jsx';
+import React, { createContext, useContext, useState } from 'react';
+import { getAuth, clearAuth, isLoggedIn, authHeaders, setAuth } from './auth';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(getAuth());
-  const toast = useToast();
+  const [session, setSession] = React.useState(getAuth());
 
-  const login = useCallback((credentials) => {
+  const login = (credentials) => {
     setAuth(credentials);
     setSession(getAuth());
-    toast({ type: 'success', message: 'Login successful! Welcome back.', duration: 3000 });
-  }, [toast]);
+  };
 
-  const logout = useCallback(() => {
+  const logout = () => {
     clearAuth();
     setSession(null);
-    toast({ type: 'info', message: 'You have been logged out.', duration: 3000 });
-  }, [toast]);
+  };
 
-  const refresh = useCallback(() => {
+  const refresh = () => {
     setSession(getAuth());
-  }, []);
+  };
 
   return (
-    <AuthContext.Provider value={{ session, login, logout, refresh, isLoggedIn: Boolean(session), getAuth, setAuth, clearAuth, authHeaders, toast }}>
+    <AuthContext.Provider value={{ session, login, logout, refresh, isLoggedIn: Boolean(session), getAuth, setAuth, clearAuth, authHeaders }}>
       {children}
     </AuthContext.Provider>
   );

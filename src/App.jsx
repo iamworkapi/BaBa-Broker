@@ -1,7 +1,6 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
-import { useAuth } from './hooks/useAuth';
 import LoadingFallback from './components/LoadingFallback';
 import ErrorBoundary from './components/ErrorBoundary';
 import Preloader from './components/Preloader';
@@ -27,18 +26,20 @@ const SalesmanDashboard = lazy(() => import('./pages/SalesmanDashboard'));
 const EmployeeDashboard = lazy(() => import('./pages/EmployeeDashboard'));
 const BecomeInvestor   = lazy(() => import('./pages/BecomeInvestor'));
 
+import { useAppSelector } from './store';
+import { selectAccessToken, selectUser } from './store/authSlice';
+
 function ProtectedRoute({ allowedRoles, children }) {
-  const { session, getAuth } = useAuth();
-  const auth = session || getAuth();
-  const token = auth?.token || auth?.access;
-  if (!auth || !token) {
+  const token = useAppSelector(selectAccessToken);
+  const user = useAppSelector(selectUser);
+  if (!user || !token) {
     if (allowedRoles.includes('salesman')) return <Navigate to="/salesman/login" replace />;
     if (allowedRoles.includes('employee')) return <Navigate to="/employee/login" replace />;
     return <Navigate to="/admin/login" replace />;
   }
-  if (allowedRoles && !allowedRoles.includes(auth.role)) {
-    if (auth.role === 'salesman') return <Navigate to="/salesman/dashboard" replace />;
-    if (auth.role === 'employee') return <Navigate to="/employee/dashboard" replace />;
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    if (user.role === 'salesman') return <Navigate to="/salesman/dashboard" replace />;
+    if (user.role === 'employee') return <Navigate to="/employee/dashboard" replace />;
     return <Navigate to="/admin/dashboard" replace />;
   }
   return children;

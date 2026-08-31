@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { useAuthStore } from '../store/AuthContext';
+import { getAuth } from '../store/auth';
 
 export const emptyProperty = (isFeaturedDefault = true) => ({
   status: 'running',
@@ -131,7 +131,6 @@ const SAMPLE_PROPERTIES = [
 export function useAdminDashboard(routeView) {
   const view = routeView || 'overview';
   const navigate = useNavigate();
-  const { getAuth } = useAuthStore();
   const auth = getAuth();
 
   const [properties, setProperties] = useState([]);

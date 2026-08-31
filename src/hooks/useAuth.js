@@ -1,31 +1,18 @@
-import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/AuthContext';
+import { useAppDispatch, useAppSelector } from '../store';
+import { selectUser, selectIsAuthenticated, selectAuthLoading, selectAuthError } from '../store/authSlice.js';
+import { login, logout as logoutAction } from '../store/authSlice.js';
+
+export { selectUser, selectIsAuthenticated, selectAuthLoading, selectAuthError };
 
 export function useAuth() {
-  const { session, login, logout, refresh, isLoggedIn, getAuth, setAuth, clearAuth, authHeaders, toast } = useAuthStore();
-  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const user = useAppSelector(selectUser);
+  const isLoggedIn = useAppSelector(selectIsAuthenticated);
+  const isLoading = useAppSelector(selectAuthLoading);
+  const error = useAppSelector(selectAuthError);
 
-  const doLogin = useCallback((credentials) => {
-    login(credentials);
-  }, [login]);
+  const doLogin = (credentials) => dispatch(login(credentials));
+  const doLogout = () => dispatch(logoutAction());
 
-  const doLogout = useCallback((redirectTo = '/admin/login') => {
-    logout();
-    navigate(redirectTo, { replace: true });
-  }, [logout, navigate]);
-
-  return {
-    session,
-    user: session,
-    isLoggedIn: Boolean(session),
-    login: doLogin,
-    logout: doLogout,
-    refresh,
-    getAuth,
-    setAuth,
-    clearAuth,
-    authHeaders,
-    toast,
-  };
+  return { user, isLoggedIn, isLoading, error, login: doLogin, logout: doLogout };
 }

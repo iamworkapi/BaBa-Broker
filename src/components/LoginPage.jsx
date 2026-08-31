@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { api } from '../services/api';
 import { useToast } from '../hooks/useToast.jsx';
+import { useAppDispatch, useAppSelector } from '../store/index.js';
+import { login as loginThunk } from '../store/authSlice.js';
 
 const ROLES = {
   admin: {
@@ -78,7 +78,7 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
-  const { login: contextLogin } = useAuth();
+  const dispatch = useAppDispatch();
 
   const detectRoleFromPath = () => {
     const p = location.pathname.toLowerCase();
@@ -225,32 +225,16 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
         return;
       }
 
-      const res = await api('/api/auth/login', {
-        method: 'POST',
-        headers: { 'X-CSRF-Token': csrfRef.current },
-        body: JSON.stringify({
-          email: identifierVal,
-          identifier: identifierVal,
-          password,
-          role: activeRole.id,
-          csrfToken: csrfRef.current,
-        }),
-      }, toast);
+      const res = await dispatch(loginThunk({
+        identifier: identifierVal,
+        password,
+        role: activeRole.id,
+      })).unwrap();
 
-      if (res && res.token) {
+      if (res.token) {
         const userRole = res.user?.role || activeRole.id;
-        const targetDashboard = `/${userRole}/dashboard`;
-
-        contextLogin({
-          token: res.token,
-          role: userRole,
-          name: res.user?.name || `${activeRole.tabLabel} Member`,
-          email: res.user?.email || identifierVal,
-          phone: res.user?.phone || '',
-        });
-
         localStorage.setItem('rememberedRole', userRole);
-        navigate(targetDashboard, { replace: true });
+        navigate(`/${userRole}/dashboard`, { replace: true });
         return;
       }
 
