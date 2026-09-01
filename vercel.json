@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
+    { "source": "/api/:match*", "destination": "https://backend-nine-phi-92.vercel.app/api/:match*" },
     { "source": "/((?!.*\\.[\\w]+$|api/|_vercel).*)", "destination": "/index.html" }
   ]
 }
