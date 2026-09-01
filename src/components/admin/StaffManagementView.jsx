@@ -326,27 +326,41 @@ export default function StaffManagementView() {
           : 'ST';
 
         return (
-          <div className="flex items-center gap-3">
-            <div
-              className={`h-10 w-10 rounded-2xl flex items-center justify-center text-xs font-black shadow-xs shrink-0 ${
-                isSales
-                  ? 'bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-orange-500/20'
-                  : 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-blue-500/20'
-              }`}
-            >
-              {initials}
+          <div className="flex items-center gap-3.5 py-1">
+            <div className="relative shrink-0">
+              <div
+                className={`h-11 w-11 rounded-2xl flex items-center justify-center text-xs font-black shadow-md ${
+                  isSales
+                    ? 'bg-gradient-to-br from-orange-500 via-[#ea580c] to-amber-500 text-white shadow-orange-500/20'
+                    : 'bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-700 text-white shadow-blue-500/20'
+                }`}
+              >
+                {initials}
+              </div>
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white ${
+                  member.isActive ? 'bg-emerald-500' : 'bg-rose-500'
+                }`}
+              />
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-slate-900 text-xs truncate block">{member.name}</span>
-                <AdminBadge
-                  variant={isSales ? 'orange' : 'info'}
-                  size="xs"
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-extrabold text-slate-900 text-sm tracking-tight whitespace-nowrap">
+                  {member.name}
+                </span>
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                    isSales
+                      ? 'bg-orange-50 text-orange-700 border border-orange-200/80'
+                      : 'bg-blue-50 text-blue-700 border border-blue-200/80'
+                  }`}
                 >
                   {isSales ? 'Sales Rep' : 'Ops & Audit'}
-                </AdminBadge>
+                </span>
               </div>
-              <span className="text-[11px] text-slate-400 font-mono truncate block mt-0.5">{member.email}</span>
+              <span className="text-xs text-slate-400 font-mono block truncate">
+                {member.email}
+              </span>
             </div>
           </div>
         );
@@ -361,47 +375,44 @@ export default function StaffManagementView() {
         const cleanPhone = phone?.replace(/\D/g, '') || '';
 
         return (
-          <div className="flex items-center gap-2">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-800 font-mono font-bold text-xs">
-                  {phone || '—'}
-                </span>
-                {phone && (
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(phone, 'phone', member._id)}
-                    className="text-slate-400 hover:text-orange-600 p-0.5 cursor-pointer transition"
-                    title="Copy Phone Number"
-                  >
-                    {isCopied ? (
-                      <i className="ri-check-line text-emerald-600 font-bold text-xs" />
-                    ) : (
-                      <i className="ri-file-copy-line text-xs" />
-                    )}
-                  </button>
-                )}
-              </div>
-              {cleanPhone && (
-                <div className="flex items-center gap-2 mt-0.5">
-                  <a
-                    href={`https://wa.me/91${cleanPhone}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:text-emerald-700 transition"
-                  >
-                    <i className="ri-whatsapp-line" /> WhatsApp
-                  </a>
-                  <span className="text-slate-300 text-[10px]">·</span>
-                  <a
-                    href={`tel:${phone}`}
-                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 hover:text-blue-700 transition"
-                  >
-                    <i className="ri-phone-line" /> Call
-                  </a>
-                </div>
+          <div className="space-y-1.5 py-1">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-900 font-mono font-extrabold text-xs tracking-wider bg-slate-100/90 px-2.5 py-1 rounded-lg border border-slate-200/80">
+                {phone || '—'}
+              </span>
+              {phone && (
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(phone, 'phone', member._id)}
+                  className="text-slate-400 hover:text-orange-600 p-1 rounded-md hover:bg-orange-50 cursor-pointer transition"
+                  title="Copy Phone Number"
+                >
+                  {isCopied ? (
+                    <i className="ri-check-line text-emerald-600 font-bold text-xs" />
+                  ) : (
+                    <i className="ri-file-copy-line text-xs" />
+                  )}
+                </button>
               )}
             </div>
+            {cleanPhone && (
+              <div className="flex items-center gap-2 text-xs">
+                <a
+                  href={`https://wa.me/91${cleanPhone}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200/60 transition"
+                >
+                  <i className="ri-whatsapp-line text-xs" /> WhatsApp
+                </a>
+                <a
+                  href={`tel:${phone}`}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100/80 px-2 py-0.5 rounded-md border border-blue-200/60 transition"
+                >
+                  <i className="ri-phone-line text-xs" /> Call
+                </a>
+              </div>
+            )}
           </div>
         );
       },
@@ -415,7 +426,7 @@ export default function StaffManagementView() {
         const isCopied = copiedId === `pass-${member._id}`;
 
         return (
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-2.5 py-1.5 w-fit">
+          <div className="flex items-center gap-2 bg-slate-50/90 border border-slate-200 rounded-xl px-3 py-1.5 w-fit shadow-2xs">
             <span className="font-mono text-xs font-bold text-slate-800 tracking-wider">
               {isVisible ? pass : '••••••••'}
             </span>
@@ -448,7 +459,7 @@ export default function StaffManagementView() {
                 setResetTargetMember(member);
                 setResetPassword(pass);
               }}
-              className="text-[10px] font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-1.5 py-0.5 rounded border border-orange-200/60 cursor-pointer ml-1 transition"
+              className="text-[10px] font-black uppercase text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-2 py-0.5 rounded-md border border-orange-200/80 cursor-pointer ml-1 transition shadow-2xs"
               title="Change Password"
             >
               Change
@@ -458,29 +469,6 @@ export default function StaffManagementView() {
       },
     },
     {
-      key: 'stats',
-      label: 'Activity & Deals',
-      sortable: false,
-      render: (_, member) => (
-        <div className="flex items-center gap-3">
-          <div className="text-center">
-            <span className="block text-xs font-black text-slate-800">{member.flatListingsCount || 0}</span>
-            <span className="block text-[9px] font-semibold text-slate-400 uppercase">Listings</span>
-          </div>
-          <span className="text-slate-200">|</span>
-          <div className="text-center">
-            <span className="block text-xs font-black text-emerald-600">{member.sharesCount || 0}</span>
-            <span className="block text-[9px] font-semibold text-slate-400 uppercase">Shares</span>
-          </div>
-          <span className="text-slate-200">|</span>
-          <div className="text-center">
-            <span className="block text-xs font-black text-orange-600">{member.convertedRequestsCount || 0}</span>
-            <span className="block text-[9px] font-semibold text-slate-400 uppercase">Deals</span>
-          </div>
-        </div>
-      ),
-    },
-    {
       key: 'isActive',
       label: 'Status',
       sortable: true,
@@ -488,14 +476,14 @@ export default function StaffManagementView() {
         <button
           type="button"
           onClick={() => toggleActive(member)}
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition cursor-pointer border ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border shadow-2xs ${
             isActive
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
               : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
           }`}
         >
           <span
-            className={`h-1.5 w-1.5 rounded-full ${
+            className={`h-2 w-2 rounded-full ${
               isActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
             }`}
           />
@@ -519,7 +507,7 @@ export default function StaffManagementView() {
                 setResetTargetMember(member);
                 setResetPassword(member.displayPassword || 'Baba@123');
               }}
-              className="p-1.5 rounded-lg bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-600 text-xs transition cursor-pointer"
+              className="h-8 w-8 rounded-xl bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-600 flex items-center justify-center text-xs transition cursor-pointer border border-transparent hover:border-orange-200"
               title="Change Password"
             >
               <i className="ri-key-line" />
@@ -529,7 +517,7 @@ export default function StaffManagementView() {
             <button
               type="button"
               onClick={() => setEditingStaff({ ...member, newPassword: '' })}
-              className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 text-xs transition cursor-pointer"
+              className="h-8 w-8 rounded-xl bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 flex items-center justify-center text-xs transition cursor-pointer border border-transparent hover:border-blue-200"
               title="Edit Agent Info"
             >
               <i className="ri-edit-line" />
@@ -539,7 +527,7 @@ export default function StaffManagementView() {
             <button
               type="button"
               onClick={() => copyFullCredentials(member)}
-              className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 text-xs transition cursor-pointer"
+              className="h-8 w-8 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 flex items-center justify-center text-xs transition cursor-pointer border border-transparent hover:border-emerald-200"
               title="Copy Full Login Card for WhatsApp"
             >
               {isCredsCopied ? (
@@ -553,7 +541,7 @@ export default function StaffManagementView() {
             <button
               type="button"
               onClick={() => deleteStaffMember(member)}
-              className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-xs transition cursor-pointer"
+              className="h-8 w-8 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 flex items-center justify-center text-xs transition cursor-pointer border border-transparent hover:border-rose-200"
               title="Delete Account"
             >
               <i className="ri-delete-bin-line" />
@@ -582,7 +570,7 @@ export default function StaffManagementView() {
             Staff &amp; Field Agent Management
           </h1>
           <p className="text-xs text-slate-500 font-normal max-w-xl">
-            View employee phone numbers, inspect &amp; reset login passwords, track closed deals, and provision new agents.
+            View employee phone numbers, inspect &amp; reset login passwords, track permissions, and provision new agents.
           </p>
         </div>
 
@@ -651,12 +639,12 @@ export default function StaffManagementView() {
         />
 
         <AdminStatCard
-          title="Deals Closed"
-          value={summaryStats.totalConverted}
-          subValue={`from ${summaryStats.totalListings} Units`}
-          icon="ri-trophy-line"
+          title="Active Accounts"
+          value={summaryStats.activeCount}
+          subValue={`of ${summaryStats.total} Total`}
+          icon="ri-shield-check-line"
           theme="rose"
-          trendLabel="Staff Conversions"
+          trendLabel="Provisioned & Online"
         />
       </div>
 
@@ -878,20 +866,32 @@ export default function StaffManagementView() {
                     </div>
                   </div>
 
-                  {/* Performance Counter Row */}
-                  <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="block text-[10px] text-slate-400 font-bold uppercase">Listings</span>
-                      <span className="text-xs font-black text-slate-900">{member.flatListingsCount || 0}</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="block text-[10px] text-slate-400 font-bold uppercase">Shares</span>
-                      <span className="text-xs font-black text-emerald-600">{member.sharesCount || 0}</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="block text-[10px] text-slate-400 font-bold uppercase">Deals</span>
-                      <span className="text-xs font-black text-orange-600">{member.convertedRequestsCount || 0}</span>
-                    </div>
+                  {/* Quick Action Contact Row */}
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    {member.phone ? (
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`https://wa.me/91${member.phone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200/80 transition"
+                        >
+                          <i className="ri-whatsapp-line text-xs" /> WhatsApp
+                        </a>
+                        <a
+                          href={`tel:${member.phone}`}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200/80 transition"
+                        >
+                          <i className="ri-phone-line text-xs" /> Call
+                        </a>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 font-medium italic">No phone attached</span>
+                    )}
+
+                    <span className="text-[11px] font-bold text-slate-500">
+                      {isSales ? 'Deal Pitching Desk' : 'Audit & Inventory'}
+                    </span>
                   </div>
                 </div>
 
