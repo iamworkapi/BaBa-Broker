@@ -7,14 +7,15 @@ export const dbState = { ready: false };
 let connectPromise = null;
 
 export const connectDB = async () => {
+  const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/baba_broker';
   if (mongoose.connection.readyState === 1) {
     dbState.ready = true;
     return;
   }
   if (!connectPromise) {
     connectPromise = mongoose
-      .connect(mongoUri, {
-        serverSelectionTimeoutMS: 5000,
+      .connect(uri, {
+        serverSelectionTimeoutMS: 8000,
         bufferCommands: false,
       })
       .then(() => {

@@ -2,7 +2,7 @@ import { dbState, connectDB } from '../config/db.js';
 import { ensureBootstrapUsers } from '../utils/bootstrapUsers.js';
 
 export const requireDb = async (req, res, next) => {
-  if (dbState.ready) {
+  if (dbState.ready && mongoose.connection.readyState === 1) {
     await ensureBootstrapUsers().catch(() => {});
     return next();
   }
@@ -10,9 +10,10 @@ export const requireDb = async (req, res, next) => {
     await connectDB();
     await ensureBootstrapUsers().catch(() => {});
     next();
-  } catch {
+  } catch (error) {
+    console.error('requireDb error:', error);
     res.status(503).json({
-      error: 'Database is not connected. Add MONGODB_URI to your environment and start MongoDB.',
+      error: `Database connection error: ${error.message || 'Unable to connect to MongoDB'}`,
     });
   }
 };
