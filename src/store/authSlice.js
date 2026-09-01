@@ -3,10 +3,22 @@ import { api } from '../services/api.js';
 
 export const login = createAsyncThunk('auth/login', async (credentials, { rejectWithValue }) => {
   try {
+    const rawIdentifier = (credentials.identifier || credentials.email || credentials.phone || '').trim();
+    const isPhone = /^[0-9+\s-]{7,15}$/.test(rawIdentifier);
+    const cleanPhone = rawIdentifier.replace(/\D/g, '').slice(-10);
+
+    const payload = {
+      identifier: rawIdentifier,
+      email: isPhone ? '' : rawIdentifier,
+      phone: isPhone ? cleanPhone : (credentials.phone || rawIdentifier || ''),
+      password: credentials.password,
+      role: credentials.role,
+    };
+
     const res = await api('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: credentials.identifier, identifier: credentials.identifier, password: credentials.password, role: credentials.role }),
+      body: JSON.stringify(payload),
     });
     return res;
   } catch (err) {
