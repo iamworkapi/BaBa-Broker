@@ -167,7 +167,7 @@ export default function AdminSidebar({ view, isOpen, onClose }) {
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div
-                            className={`h-7 w-7 rounded-lg flex items-center justify-center text-base transition-transform duration-200 group-hover:scale-105 shrink-0 ${
+                            className={`h-8 w-8 rounded-lg flex items-center justify-center text-[20px] transition-transform duration-200 group-hover:scale-105 shrink-0 ${
                               isActive
                                 ? 'bg-orange-500 text-white shadow-xs'
                                 : 'bg-white/15 text-white group-hover:bg-white/25'

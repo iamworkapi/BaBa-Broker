@@ -534,65 +534,55 @@ export default function AdminOverview({
       {view === 'overview' ? (
         <>
           {/* Top Executive Header Bar & Global Action Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-5 sm:p-6 rounded-3xl text-white shadow-xl border border-slate-700/60 relative overflow-hidden">
-            {/* Ambient Background Accents */}
-            <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-orange-500/20 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-amber-500/15 blur-3xl" />
-
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl text-slate-900 shadow-xs border border-slate-200/90 relative overflow-hidden">
             <div className="space-y-1 relative z-10 min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white flex items-center gap-2.5">
-                  Executive Command Center
-                </h1>
-                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 backdrop-blur-md shadow-xs">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                  </span>
-                  Live Sync
-                </span>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="h-10 w-10 rounded-2xl bg-orange-50 text-orange-600 border border-orange-200/80 flex items-center justify-center text-xl shadow-2xs shrink-0">
+                  <i className="ri-dashboard-3-line" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+                      Executive Command Center
+                    </h1>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                      </span>
+                      Live Sync
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5 max-w-2xl">
+                    Real-time tracking of capital deployment, project yields, investor pools, and CRM leads.
+                  </p>
+                </div>
               </div>
-              <p className="text-xs sm:text-sm text-slate-300/85 font-medium max-w-2xl">
-                Real-time tracking of capital deployment, project yields, investor pools, and CRM leads.
-              </p>
             </div>
 
-            {/* Quick Action Buttons & Mode Switchers */}
-            <div className="flex items-center gap-2.5 relative z-10 flex-wrap shrink-0">
-              <div className="flex items-center bg-white/10 backdrop-blur-md rounded-2xl p-1 border border-white/15 shadow-inner">
-                {['7D', '14D', '30D', 'All Time'].map((period) => (
-                  <button
-                    key={period}
-                    type="button"
-                    onClick={() => setSelectedPeriod(period)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      selectedPeriod === period || (selectedPeriod.includes('14') && period === '14D')
-                        ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/30'
-                        : 'text-slate-300 hover:text-white hover:bg-white/10'
-                    }`}
-                  >
-                    {period}
-                  </button>
-                ))}
-              </div>
-
-              {openCreateProjectModal && (
+            {/* Mode Switchers */}
+            <div className="flex items-center bg-slate-100/90 rounded-2xl p-1 border border-slate-200/80 shadow-inner shrink-0 self-start sm:self-auto">
+              {['7D', '14D', '30D', 'All Time'].map((period) => (
                 <button
+                  key={period}
                   type="button"
-                  onClick={() => openCreateProjectModal()}
-                  className="px-4 py-2 rounded-2xl text-xs font-black tracking-wide uppercase text-white bg-gradient-to-r from-orange-500 via-[#ea580c] to-amber-600 hover:brightness-110 active:scale-[0.98] shadow-lg shadow-orange-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => setSelectedPeriod(period)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    selectedPeriod === period || (selectedPeriod.includes('14') && period === '14D')
+                      ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
                 >
-                  <i className="ri-add-circle-fill text-sm" />
-                  <span>New Deal</span>
+                  {period}
                 </button>
-              )}
+              ))}
             </div>
           </div>
 
           {/* ========================================================================= */}
           {/* THE FOUR CORE STAT CARDS GRID WITH SPARKLINE CHARTS & INTERACTIVE FILTERS */}
           {/* ========================================================================= */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {/* CARD 1: Total Portfolio Valuation (AUM) */}
             {(() => {
               const valParts = formatCompactINRParts(displayValuation);
@@ -601,48 +591,43 @@ export default function AdminOverview({
               return (
                 <div
                   onClick={() => setChartMetric('valuation')}
-                  className={`group relative overflow-hidden rounded-3xl bg-white p-5 border shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1 ${
+                  className={`relative rounded-2xl bg-white p-5 border transition-all duration-200 cursor-pointer flex flex-col justify-between hover:shadow-md ${
                     isActive
-                      ? 'border-orange-500/80 ring-2 ring-orange-500/20 shadow-orange-500/5'
-                      : 'border-slate-200/80 hover:border-orange-300/80'
+                      ? 'border-orange-500 ring-2 ring-orange-500/15 shadow-xs'
+                      : 'border-slate-200/90 hover:border-slate-300'
                   }`}
                 >
-                  <div className="absolute top-0 right-0 h-32 w-32 bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent rounded-bl-full pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-                  {isActive && (
-                    <div className="absolute top-0 left-6 right-6 h-1 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full" />
-                  )}
-
-                  <div className="flex items-start justify-between gap-3 relative z-10 pt-1">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1.5 min-w-0">
-                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider block truncate">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
                         Portfolio Valuation
                       </span>
                       <div className="flex items-baseline gap-1.5 flex-nowrap">
-                        <span className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight whitespace-nowrap">
+                        <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight whitespace-nowrap">
                           {valParts.amount}
                         </span>
                         {valParts.unit && (
-                          <span className="text-sm lg:text-base font-black text-orange-600 uppercase tracking-tight">
+                          <span className="text-sm font-black text-orange-600 uppercase tracking-tight">
                             {valParts.unit}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-orange-500 via-[#ea580c] to-amber-500 text-white flex items-center justify-center text-xl shadow-lg shadow-orange-500/30 shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-all ring-4 ring-orange-50">
+                    <div className="h-10 w-10 rounded-xl bg-orange-50 text-orange-600 border border-orange-200/80 flex items-center justify-center text-lg shrink-0">
                       <i className="ri-funds-box-line" />
                     </div>
                   </div>
 
                   {/* Sparkline & Sub-Metrics */}
-                  <div className="mt-5 pt-3.5 border-t border-slate-100/90 flex items-center justify-between gap-2 relative z-10">
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <div className="space-y-0.5 min-w-0">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10.5px] border border-emerald-200/60 shadow-2xs">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10.5px] border border-emerald-200/60">
                         <i className="ri-arrow-up-line text-xs font-black" /> +14.8% MoM
                       </span>
-                      <span className="text-[10.5px] text-slate-400 font-medium block truncate pt-0.5">Active Asset AUM</span>
+                      <span className="text-[10px] text-slate-400 font-medium block truncate pt-0.5">Active Asset AUM</span>
                     </div>
-                    <div className="shrink-0 opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all">
+                    <div className="shrink-0">
                       <MiniSparkline data={[35, 42, 38, 55, 60, 52, 70, 85, 95]} color="#ea580c" />
                     </div>
                   </div>
@@ -660,48 +645,43 @@ export default function AdminOverview({
                     setChartMetric('valuation');
                     setDealFilterCategory('all');
                   }}
-                  className={`group relative overflow-hidden rounded-3xl bg-white p-5 border shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1 ${
+                  className={`relative rounded-2xl bg-white p-5 border transition-all duration-200 cursor-pointer flex flex-col justify-between hover:shadow-md ${
                     isActive
-                      ? 'border-emerald-500/80 ring-2 ring-emerald-500/20 shadow-emerald-500/5'
-                      : 'border-slate-200/80 hover:border-emerald-300/80'
+                      ? 'border-emerald-500 ring-2 ring-emerald-500/15 shadow-xs'
+                      : 'border-slate-200/90 hover:border-slate-300'
                   }`}
                 >
-                  <div className="absolute top-0 right-0 h-32 w-32 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent rounded-bl-full pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-                  {isActive && (
-                    <div className="absolute top-0 left-6 right-6 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full" />
-                  )}
-
-                  <div className="flex items-start justify-between gap-3 relative z-10 pt-1">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1.5 min-w-0">
-                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider block truncate">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
                         Active Projects
                       </span>
                       <div className="flex items-baseline gap-1.5 flex-nowrap">
-                        <span className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight whitespace-nowrap">
+                        <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight whitespace-nowrap">
                           {displayActiveDeals}
                         </span>
-                        <span className="text-xs lg:text-sm font-bold text-slate-400 whitespace-nowrap">
+                        <span className="text-xs sm:text-sm font-semibold text-slate-400 whitespace-nowrap">
                           / {displayTotalDeals} Deals
                         </span>
                       </div>
                     </div>
 
-                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-xl shadow-lg shadow-emerald-500/30 shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-all ring-4 ring-emerald-50">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200/80 flex items-center justify-center text-lg shrink-0">
                       <i className="ri-building-2-line" />
                     </div>
                   </div>
 
                   {/* Sparkline & Sub-Metrics */}
-                  <div className="mt-5 pt-3.5 border-t border-slate-100/90 flex items-center justify-between gap-2 relative z-10">
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <div className="space-y-0.5 min-w-0">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10.5px] border border-emerald-200/60 shadow-2xs">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Pipeline
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10.5px] border border-emerald-200/60">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live Pipeline
                       </span>
-                      <span className="text-[10.5px] text-slate-400 font-medium block truncate pt-0.5">
+                      <span className="text-[10px] text-slate-400 font-medium block truncate pt-0.5">
                         {metrics?.coInvestmentCount || 1} Pools · {metrics?.renovateFlipCount || 1} Flips
                       </span>
                     </div>
-                    <div className="shrink-0 opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all">
+                    <div className="shrink-0">
                       <MiniSparkline data={[20, 30, 45, 40, 60, 65, 75, 80, 90]} color="#10b981" />
                     </div>
                   </div>
@@ -717,50 +697,45 @@ export default function AdminOverview({
               return (
                 <div
                   onClick={() => setChartMetric('inflow')}
-                  className={`group relative overflow-hidden rounded-3xl bg-white p-5 border shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1 ${
+                  className={`relative rounded-2xl bg-white p-5 border transition-all duration-200 cursor-pointer flex flex-col justify-between hover:shadow-md ${
                     isActive
-                      ? 'border-indigo-500/80 ring-2 ring-indigo-500/20 shadow-indigo-500/5'
-                      : 'border-slate-200/80 hover:border-indigo-300/80'
+                      ? 'border-indigo-500 ring-2 ring-indigo-500/15 shadow-xs'
+                      : 'border-slate-200/90 hover:border-slate-300'
                   }`}
                 >
-                  <div className="absolute top-0 right-0 h-32 w-32 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent rounded-bl-full pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-                  {isActive && (
-                    <div className="absolute top-0 left-6 right-6 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" />
-                  )}
-
-                  <div className="flex items-start justify-between gap-3 relative z-10 pt-1">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1.5 min-w-0">
-                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider block truncate">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
                         Funded Capital
                       </span>
                       <div className="flex items-baseline gap-1.5 flex-nowrap">
-                        <span className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight whitespace-nowrap">
+                        <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight whitespace-nowrap">
                           {capParts.amount}
                         </span>
                         {capParts.unit && (
-                          <span className="text-sm lg:text-base font-black text-indigo-600 uppercase tracking-tight">
+                          <span className="text-sm font-black text-indigo-600 uppercase tracking-tight">
                             {capParts.unit}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 text-white flex items-center justify-center text-xl shadow-lg shadow-indigo-500/30 shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-all ring-4 ring-indigo-50">
+                    <div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200/80 flex items-center justify-center text-lg shrink-0">
                       <i className="ri-hand-coin-line" />
                     </div>
                   </div>
 
                   {/* Sparkline & Sub-Metrics */}
-                  <div className="mt-5 pt-3.5 border-t border-slate-100/90 flex items-center justify-between gap-2 relative z-10">
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <div className="space-y-0.5 min-w-0">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold text-[10.5px] border border-indigo-200/60 shadow-2xs">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold text-[10.5px] border border-indigo-200/60">
                         ⭐ {displayAvgRoi}% Avg ROI
                       </span>
-                      <span className="text-[10.5px] text-slate-400 font-medium block truncate pt-0.5">
+                      <span className="text-[10px] text-slate-400 font-medium block truncate pt-0.5">
                         {displayInvestors} Active Investors
                       </span>
                     </div>
-                    <div className="shrink-0 opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all">
+                    <div className="shrink-0">
                       <MiniSparkline data={[15, 25, 30, 50, 45, 68, 70, 85, 92]} color="#6366f1" />
                     </div>
                   </div>
@@ -775,48 +750,43 @@ export default function AdminOverview({
               return (
                 <div
                   onClick={() => setChartMetric('leads')}
-                  className={`group relative overflow-hidden rounded-3xl bg-white p-5 border shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1 ${
+                  className={`relative rounded-2xl bg-white p-5 border transition-all duration-200 cursor-pointer flex flex-col justify-between hover:shadow-md ${
                     isActive
-                      ? 'border-rose-500/80 ring-2 ring-rose-500/20 shadow-rose-500/5'
-                      : 'border-slate-200/80 hover:border-rose-300/80'
+                      ? 'border-rose-500 ring-2 ring-rose-500/15 shadow-xs'
+                      : 'border-slate-200/90 hover:border-slate-300'
                   }`}
                 >
-                  <div className="absolute top-0 right-0 h-32 w-32 bg-gradient-to-br from-rose-500/10 via-pink-500/5 to-transparent rounded-bl-full pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-                  {isActive && (
-                    <div className="absolute top-0 left-6 right-6 h-1 bg-gradient-to-r from-rose-500 to-pink-500 rounded-full" />
-                  )}
-
-                  <div className="flex items-start justify-between gap-3 relative z-10 pt-1">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1.5 min-w-0">
-                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider block truncate">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
                         Inquiries & Leads
                       </span>
                       <div className="flex items-baseline gap-1.5 flex-nowrap">
-                        <span className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight whitespace-nowrap">
+                        <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight whitespace-nowrap">
                           {displayLeads}
                         </span>
-                        <span className="text-xs lg:text-sm font-bold text-slate-400 whitespace-nowrap">
+                        <span className="text-xs sm:text-sm font-semibold text-slate-400 whitespace-nowrap">
                           Verified Leads
                         </span>
                       </div>
                     </div>
 
-                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-pink-600 text-white flex items-center justify-center text-xl shadow-lg shadow-rose-500/30 shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-all ring-4 ring-rose-50">
+                    <div className="h-10 w-10 rounded-xl bg-rose-50 text-rose-600 border border-rose-200/80 flex items-center justify-center text-lg shrink-0">
                       <i className="ri-user-star-line" />
                     </div>
                   </div>
 
                   {/* Sparkline & Sub-Metrics */}
-                  <div className="mt-5 pt-3.5 border-t border-slate-100/90 flex items-center justify-between gap-2 relative z-10">
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <div className="space-y-0.5 min-w-0">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 font-bold text-[10.5px] border border-rose-200/60 shadow-2xs">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 font-bold text-[10.5px] border border-rose-200/60">
                         🔥 High Demand
                       </span>
-                      <span className="text-[10.5px] text-slate-400 font-medium block truncate pt-0.5">
+                      <span className="text-[10px] text-slate-400 font-medium block truncate pt-0.5">
                         {displayShares} WhatsApp Shares
                       </span>
                     </div>
-                    <div className="shrink-0 opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all">
+                    <div className="shrink-0">
                       <MiniSparkline data={[20, 35, 40, 30, 55, 60, 75, 82, 94]} color="#f43f5e" />
                     </div>
                   </div>

@@ -548,11 +548,11 @@ export default function EmployeeDashboard() {
 
                     <div className="flex items-center gap-2.5 min-w-0">
                       {isActive ? (
-                        <div className="h-6 w-6 rounded-lg bg-orange-600 text-white flex items-center justify-center text-xs shadow-xs shrink-0">
+                        <div className="h-7 w-7 rounded-lg bg-orange-600 text-white flex items-center justify-center text-sm shadow-xs shrink-0">
                           <i className={item.activeIcon} />
                         </div>
                       ) : (
-                        <i className={`${item.icon} text-base shrink-0 text-white/90`} />
+                        <i className={`${item.icon} text-[20px] shrink-0 text-white/90`} />
                       )}
                       <span className="truncate">{item.label}</span>
                     </div>
@@ -579,66 +579,67 @@ export default function EmployeeDashboard() {
         <div className="flex-1 h-full flex flex-col min-w-0 overflow-hidden bg-white">
           
           {/* Header */}
-          <header className="px-3 sm:px-6 py-2 border-b border-slate-100 flex items-center justify-between gap-3 bg-white sticky top-0 z-30">
-            <div className="flex items-center gap-2 flex-1">
+          <header className="px-3.5 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200/90 flex items-center justify-between gap-3 bg-white sticky top-0 z-30 shadow-xs font-['Inter',sans-serif]">
+            <div className="flex items-center gap-2.5 flex-1 max-w-md">
               <button
                 type="button"
                 onClick={() => setMobileSidebarOpen((prev) => !prev)}
-                className="lg:hidden h-8 w-8 rounded-xl bg-orange-50 text-orange-600 border border-orange-200 flex items-center justify-center cursor-pointer shrink-0"
+                className="lg:hidden h-9 w-9 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 flex items-center justify-center cursor-pointer shrink-0 transition-all shadow-2xs"
                 title="Toggle Menu"
               >
-                <i className="ri-menu-2-line text-base font-bold" />
+                <i className="ri-menu-2-line text-lg font-bold" />
               </button>
 
-              <div className="relative w-full max-w-sm">
-                <i className="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+              <div className="relative w-full">
+                <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
                 <input
                   type="text"
                   value={searchVal}
                   onChange={(e) => setSearchVal(e.target.value)}
                   placeholder="Quick search flat, location, owner, size..."
-                  className="w-full rounded-xl bg-slate-50 hover:bg-slate-100/70 focus:bg-white pl-7 pr-6 py-1 text-xs text-slate-700 placeholder-slate-400 outline-none border border-slate-200 focus:border-orange-400 transition font-medium"
+                  className="w-full rounded-xl bg-slate-50 hover:bg-slate-100/80 focus:bg-white pl-8 pr-7 py-1.5 text-xs text-slate-800 placeholder-slate-400 outline-none border border-slate-200/90 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 transition font-medium shadow-2xs"
                 />
                 {searchVal && (
-                  <button type="button" onClick={() => setSearchVal('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">
+                  <button type="button" onClick={() => setSearchVal('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                     <i className="ri-close-line text-xs" />
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
               {/* Duty Toggle Pill */}
               <button
                 type="button"
                 onClick={() => setDutyStatus(dutyStatus === 'online' ? 'busy' : 'online')}
-                className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border transition cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded-xl text-[10.5px] font-bold uppercase tracking-wider flex items-center gap-1.5 border transition cursor-pointer shadow-2xs ${
                   dutyStatus === 'online'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/90 hover:bg-emerald-100'
+                    : 'bg-amber-50 text-amber-700 border-amber-200/90 hover:bg-amber-100'
                 }`}
               >
                 <span className={`h-1.5 w-1.5 rounded-full ${dutyStatus === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
                 <span>{dutyStatus === 'online' ? 'Available' : 'Auditing Units'}</span>
               </button>
 
-              <div className="flex items-center gap-2">
-                <div className="text-right hidden sm:block">
-                  <span className="text-xs font-bold text-slate-900 block leading-tight">{employeeName}</span>
-                  <span className="text-[10px] text-slate-400">Operations Desk</span>
-                </div>
-                <div className="h-7 w-7 rounded-lg bg-orange-100 text-orange-700 font-black text-xs flex items-center justify-center border border-orange-200">
+              <div className="flex items-center gap-2 bg-slate-50/80 px-2 sm:px-2.5 py-1 rounded-xl border border-slate-200/70">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-orange-100 text-orange-700 font-black text-xs flex items-center justify-center border border-orange-200">
                   {employeeName.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="text-left hidden sm:block">
+                  <span className="text-xs font-bold text-slate-900 block leading-tight">{employeeName}</span>
+                  <span className="text-[9.5px] text-slate-400 font-semibold">Operations Desk</span>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={handleLogout}
-                className="text-slate-400 hover:text-red-600 p-1 cursor-pointer transition"
-                title="Logout"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-600 hover:text-red-600 text-xs font-bold transition-all shadow-2xs cursor-pointer group active:scale-95"
+                title="Sign Out"
               >
-                <i className="ri-logout-box-r-line text-base" />
+                <i className="ri-logout-box-r-line text-sm text-slate-400 group-hover:text-red-500 transition-colors" />
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </header>
