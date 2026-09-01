@@ -1563,7 +1563,7 @@ export default function AdminOverview({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <div className="h-8 w-8 rounded-xl bg-orange-50 text-[#ea580c] flex items-center justify-center font-bold text-sm border border-orange-200/60 shadow-2xs shrink-0">
-                  <i className={view === 'featured' ? 'ri-global-line' : 'ri-building-2-line'} />
+                  <i className={view === 'featured' ? 'ri-star-smile-fill' : 'ri-building-2-line'} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -1571,7 +1571,7 @@ export default function AdminOverview({
                       {isContacts
                         ? 'Customer Leads & Proposals'
                         : view === 'featured'
-                        ? 'Published Website Properties'
+                        ? 'Featured Projects'
                         : 'All Investment Projects'}
                     </h1>
                     <span className="text-[10px] font-black uppercase text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200/60">
@@ -1580,7 +1580,7 @@ export default function AdminOverview({
                   </div>
                   <p className="text-[11px] text-slate-400 font-normal leading-tight mt-0.5">
                     {view === 'featured'
-                      ? 'Inventory published live on the public website homepage showcase.'
+                      ? 'Showcase properties featured and published on the public website homepage.'
                       : 'Fractional co-investment pools and flip opportunities.'}
                   </p>
                 </div>
