@@ -1,43 +1,54 @@
 import mongoose from 'mongoose';
 
-const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/baba_broker';
-
 export const dbState = { ready: false };
 
-let connectPromise = null;
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
 export const connectDB = async () => {
   const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/baba_broker';
-  if (mongoose.connection.readyState === 1) {
+
+  if (cached.conn && mongoose.connection.readyState === 1) {
     dbState.ready = true;
-    return;
+    return cached.conn;
   }
-  if (!connectPromise) {
-    connectPromise = mongoose
-      .connect(uri, {
-        serverSelectionTimeoutMS: 8000,
-        bufferCommands: false,
-      })
-      .then(() => {
-        dbState.ready = true;
-        console.log(`MongoDB connected successfully to database: "${mongoose.connection.name}"`);
-      })
-      .catch((error) => {
-        connectPromise = null;
-        dbState.ready = false;
-        console.error(`MongoDB connection failed: ${error.message}`);
-        throw error;
-      });
+
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: true,
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 8000,
+      socketTimeoutMS: 30000,
+    };
+
+    cached.promise = mongoose.connect(uri, opts).then((m) => {
+      dbState.ready = true;
+      console.log(`MongoDB connected to: "${m.connection.name}"`);
+      return m;
+    });
   }
-  return connectPromise;
+
+  try {
+    cached.conn = await cached.promise;
+    dbState.ready = true;
+  } catch (e) {
+    cached.promise = null;
+    cached.conn = null;
+    dbState.ready = false;
+    throw e;
+  }
+
+  return cached.conn;
 };
 
 mongoose.connection.on('disconnected', () => {
   dbState.ready = false;
-  connectPromise = null;
 });
 
-mongoose.connection.on('reconnected', () => {
+mongoose.connection.on('connected', () => {
   dbState.ready = true;
 });
 

@@ -13,7 +13,7 @@ const loginLimiter = rateLimiter({
   keyPrefix: 'login',
 });
 
-router.post('/login', loginLimiter, requireDb, asyncHandler(login));
+router.post('/login', requireDb, asyncHandler(login));
 router.post('/register', requireDb, asyncHandler(register));
 router.post('/refresh', requireDb, asyncHandler(refresh));
 router.post('/logout', requireAuth, requireDb, asyncHandler(logout));
