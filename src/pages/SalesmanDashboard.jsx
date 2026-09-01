@@ -5,7 +5,6 @@ import { getAuth, clearAuth } from '../store/auth';
 import { useAppDispatch } from '../store';
 import { logoutAction } from '../store/authSlice';
 import AssignedLeadsPanel from '../components/AssignedLeadsPanel';
-import { Loader } from '../components/ui';
 
 const QUICK_AMENITIES = [
   'Lift(s)',
@@ -98,6 +97,7 @@ export default function SalesmanDashboard() {
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
   const [viewingProperty, setViewingProperty] = useState(null);
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [pitchingProperty, setPitchingProperty] = useState(null);
   const [pitchClientName, setPitchClientName] = useState('');
   const [pitchClientPhone, setPitchClientPhone] = useState('');
@@ -287,9 +287,11 @@ export default function SalesmanDashboard() {
     const total = listings.length;
     const available = listings.filter((l) => l.dealStatus === 'available' || !l.dealStatus).length;
     const soldOrRented = listings.filter((l) => l.dealStatus === 'sold' || l.dealStatus === 'rented').length;
-    const totalVolume = listings.reduce((sum, l) => sum + (Number(l.salePrice) || Number(l.monthlyRent) || 0), 0);
-    const estimatedCommission = (totalVolume * 0.01) * 0.4;
-    return { total, available, soldOrRented, totalVolume, estimatedCommission };
+    const buyCount = listings.filter((l) => l.listingType === 'buy' || !l.listingType).length;
+    const rentCount = listings.filter((l) => l.listingType === 'rent').length;
+    const availableBuy = listings.filter((l) => (l.listingType === 'buy' || !l.listingType) && (l.dealStatus === 'available' || !l.dealStatus)).length;
+    const availableRent = listings.filter((l) => l.listingType === 'rent' && (l.dealStatus === 'available' || !l.dealStatus)).length;
+    return { total, available, soldOrRented, buyCount, rentCount, availableBuy, availableRent };
   }, [listings]);
 
   const totalPages = Math.max(1, Math.ceil(filteredListings.length / PAGE_SIZE));
@@ -707,26 +709,38 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                 </div>
 
                 {/* 2. Key Metrics Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full">
                   <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Active Listings</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Inventory</span>
                       <div className="h-6 w-6 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center text-xs">
                         <i className="ri-building-line" />
                       </div>
                     </div>
-                    <div className="text-base sm:text-lg font-black text-slate-900">{stats.available} Available</div>
-                    <span className="text-[10px] text-slate-400 font-medium">Out of {stats.total} total inventory</span>
+                    <div className="text-base sm:text-lg font-black text-slate-900">{stats.total} Units</div>
+                    <span className="text-[10px] text-slate-400 font-medium">{stats.available} Available for Pitch</span>
                   </div>
 
                   <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Est. Commission</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Buy Deals</span>
                       <div className="h-6 w-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
-                        <i className="ri-wallet-3-line" />
+                        <i className="ri-price-tag-3-line" />
                       </div>
                     </div>
-                    <div className="text-base sm:text-lg font-black text-blue-700">{formatINR(stats.estimatedCommission)}</div>
+                    <div className="text-base sm:text-lg font-black text-blue-700">{stats.buyCount} Properties</div>
+                    <span className="text-[10px] text-blue-600 font-bold">{stats.availableBuy} Active for Sale</span>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Rental Units</span>
+                      <div className="h-6 w-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">
+                        <i className="ri-key-2-line" />
+                      </div>
+                    </div>
+                    <div className="text-base sm:text-lg font-black text-emerald-700">{stats.rentCount} Rentals</div>
+                    <span className="text-[10px] text-emerald-600 font-bold">{stats.availableRent} Active for Rent</span>
                   </div>
 
                   <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
@@ -783,17 +797,39 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                                 isClosed ? 'opacity-35 bg-slate-100/70 pointer-events-none' : 'hover:bg-orange-50/40'
                               }`}
                             >
-                              <td className="py-2.5 px-3 max-w-[200px]">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 text-[10px] font-black uppercase">
-                                    {item.configuration || '2 BHK'}
-                                  </span>
-                                  <span className="font-bold text-slate-900 truncate">{item.sizeSqft || 'Builder Floor'}</span>
-                                  {isClosed && (
-                                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-100 text-red-700 uppercase shrink-0">
-                                      {isSold ? 'SOLD' : 'RENTED'}
-                                    </span>
-                                  )}
+                              <td className="py-2.5 px-3 max-w-[240px]">
+                                <div className="flex items-center gap-2.5">
+                                  <div
+                                    onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                                    className="h-10 w-10 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-black text-xs shrink-0 overflow-hidden border border-slate-200 shadow-2xs cursor-pointer hover:opacity-90 transition"
+                                    title="Click to view photo"
+                                  >
+                                    {item.coverImage ? (
+                                      <img src={item.coverImage} alt="" className="h-full w-full object-cover" />
+                                    ) : (item.images && item.images.length > 0) ? (
+                                      <img src={item.images[0]} alt="" className="h-full w-full object-cover" />
+                                    ) : (
+                                      <span className="text-[10px] font-black text-orange-600">{(item.configuration || '2B').slice(0, 2)}</span>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 text-[10px] font-black uppercase">
+                                        {item.configuration || '2 BHK'}
+                                      </span>
+                                      <span
+                                        onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                                        className="font-bold text-slate-900 truncate hover:text-orange-600 cursor-pointer"
+                                      >
+                                        {item.sizeSqft || 'Builder Floor'}
+                                      </span>
+                                      {isClosed && (
+                                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-100 text-red-700 uppercase shrink-0">
+                                          {isSold ? 'SOLD' : 'RENTED'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               </td>
                               <td className="py-2.5 px-3 text-slate-700 font-medium">
@@ -809,23 +845,25 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                                 {item.ownerName || 'Associate'}
                               </td>
                               <td className="py-2.5 px-3 text-right">
-                                <div className={`inline-flex items-center gap-1 ${isClosed ? 'pointer-events-none opacity-30 cursor-not-allowed' : ''}`}>
+                                <div className={`inline-flex items-center gap-1.5 ${isClosed ? 'pointer-events-none opacity-30 cursor-not-allowed' : ''}`}>
                                   <button
                                     type="button"
                                     disabled={isClosed}
                                     onClick={() => { setPitchingProperty(item); setPitchClientName(''); }}
-                                    className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 cursor-pointer inline-flex items-center gap-1 disabled:cursor-not-allowed"
+                                    className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 cursor-pointer inline-flex items-center gap-1 disabled:cursor-not-allowed transition"
                                   >
-                                    <i className="ri-whatsapp-line" /> Pitch
+                                    <i className="ri-whatsapp-line text-xs" />
+                                    <span>Pitch</span>
                                   </button>
                                   <button
                                     type="button"
                                     disabled={isClosed}
-                                    onClick={() => setViewingProperty(item)}
-                                    className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs transition cursor-pointer disabled:cursor-not-allowed"
-                                    title="View"
+                                    onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                                    className="px-2.5 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] border border-blue-200 transition cursor-pointer inline-flex items-center gap-1 disabled:cursor-not-allowed"
+                                    title="View Property & Photos"
                                   >
-                                    <i className="ri-eye-line" />
+                                    <i className="ri-eye-line text-xs" />
+                                    <span>View</span>
                                   </button>
                                 </div>
                               </td>
@@ -1018,23 +1056,44 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                                 isClosed ? 'bg-slate-100/70' : 'hover:bg-orange-50/40'
                               }`}
                             >
-                              <td className={`py-2.5 px-3 max-w-[240px] ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 text-[10px] font-black uppercase">
-                                    {item.configuration || '2 BHK'}
-                                  </span>
-                                  <span className="font-bold text-slate-900 truncate" title={item.title}>
-                                    {item.sizeSqft || 'Builder Floor'}
-                                  </span>
-                                  {isClosed && (
-                                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-100 text-red-700 uppercase shrink-0">
-                                      {isSold ? 'SOLD' : 'RENTED'}
+                              <td className={`py-2.5 px-3 max-w-[260px] ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
+                                <div className="flex items-center gap-2.5">
+                                  <div
+                                    onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                                    className="h-10 w-10 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-black text-xs shrink-0 overflow-hidden border border-slate-200 shadow-2xs cursor-pointer hover:opacity-90 transition"
+                                    title="Click to view photos"
+                                  >
+                                    {item.coverImage ? (
+                                      <img src={item.coverImage} alt="" className="h-full w-full object-cover" />
+                                    ) : (item.images && item.images.length > 0) ? (
+                                      <img src={item.images[0]} alt="" className="h-full w-full object-cover" />
+                                    ) : (
+                                      <span className="text-[10px] font-black text-orange-600">{(item.configuration || '2B').slice(0, 2)}</span>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 text-[10px] font-black uppercase">
+                                        {item.configuration || '2 BHK'}
+                                      </span>
+                                      <span
+                                        onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                                        className="font-bold text-slate-900 truncate hover:text-orange-600 cursor-pointer"
+                                        title={item.title}
+                                      >
+                                        {item.sizeSqft || 'Builder Floor'}
+                                      </span>
+                                      {isClosed && (
+                                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-100 text-red-700 uppercase shrink-0">
+                                          {isSold ? 'SOLD' : 'RENTED'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 block truncate mt-0.5" title={item.title}>
+                                      {item.title || `${item.configuration} in ${item.location}`}
                                     </span>
-                                  )}
+                                  </div>
                                 </div>
-                                <span className="text-[10px] text-slate-400 block truncate mt-0.5" title={item.title}>
-                                  {item.title || `${item.configuration} in ${item.location}`}
-                                </span>
                               </td>
 
                               <td className={`py-2.5 px-3 max-w-[200px] ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
@@ -1080,42 +1139,46 @@ Contact *${salesmanName}* | Baba Broker Real Estate
 
                               {/* Actions Buttons (Frozen if Closed) */}
                               <td className={`py-2.5 px-3 text-right whitespace-nowrap ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
-                                <div className={`inline-flex items-center gap-1 ${isClosed ? 'pointer-events-none opacity-30 cursor-not-allowed' : ''}`}>
+                                <div className={`inline-flex items-center gap-1.5 ${isClosed ? 'pointer-events-none opacity-30 cursor-not-allowed' : ''}`}>
                                   <button
                                     type="button"
                                     disabled={isClosed}
                                     onClick={() => { setPitchingProperty(item); setPitchClientName(''); }}
                                     title="WhatsApp Client Pitch Flyer"
-                                    className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] transition flex items-center gap-1 border border-emerald-200 cursor-pointer disabled:cursor-not-allowed"
+                                    className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] transition inline-flex items-center gap-1 border border-emerald-200 cursor-pointer disabled:cursor-not-allowed"
                                   >
-                                    <i className="ri-whatsapp-line" /> Pitch
+                                    <i className="ri-whatsapp-line text-xs" />
+                                    <span>Pitch</span>
                                   </button>
                                   <button
                                     type="button"
                                     disabled={isClosed}
-                                    onClick={() => setViewingProperty(item)}
-                                    className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs transition cursor-pointer disabled:cursor-not-allowed"
-                                    title="View"
+                                    onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                                    className="px-2.5 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] transition inline-flex items-center gap-1 border border-blue-200 cursor-pointer disabled:cursor-not-allowed"
+                                    title="View Property & Photos"
                                   >
-                                    <i className="ri-eye-line" />
+                                    <i className="ri-eye-line text-xs" />
+                                    <span>View</span>
                                   </button>
                                   <button
                                     type="button"
                                     disabled={isClosed}
                                     onClick={() => startEdit(item)}
-                                    className="p-1 rounded bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs transition cursor-pointer border border-orange-200 disabled:cursor-not-allowed"
+                                    className="px-2.5 py-1 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold text-[11px] transition inline-flex items-center gap-1 border border-orange-200 cursor-pointer disabled:cursor-not-allowed"
                                     title="Edit"
                                   >
-                                    <i className="ri-edit-line" />
+                                    <i className="ri-edit-line text-xs" />
+                                    <span>Edit</span>
                                   </button>
                                   <button
                                     type="button"
                                     disabled={isClosed}
                                     onClick={() => deleteListing(item._id)}
-                                    className="p-1 rounded bg-slate-100 hover:bg-red-100 text-slate-400 hover:text-red-600 text-xs transition cursor-pointer disabled:cursor-not-allowed"
+                                    className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-700 font-bold text-[11px] transition inline-flex items-center gap-1 border border-slate-200 hover:border-red-200 cursor-pointer disabled:cursor-not-allowed"
                                     title="Delete"
                                   >
-                                    <i className="ri-delete-bin-line" />
+                                    <i className="ri-delete-bin-line text-xs" />
+                                    <span>Delete</span>
                                   </button>
                                 </div>
                               </td>
@@ -1226,34 +1289,38 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                           </select>
                         </div>
 
-                        <div className="flex items-center gap-1.5 pt-1">
+                        <div className="grid grid-cols-4 gap-1.5 pt-1">
                           <button
                             type="button"
                             onClick={() => { setPitchingProperty(item); setPitchClientName(''); }}
-                            className="flex-1 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs flex items-center justify-center gap-1 transition border border-emerald-200 cursor-pointer"
+                            className="py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs flex items-center justify-center gap-1 transition border border-emerald-200 cursor-pointer"
                           >
-                            <i className="ri-whatsapp-line" /> Pitch
+                            <i className="ri-whatsapp-line text-xs" />
+                            <span>Pitch</span>
                           </button>
                           <button
                             type="button"
-                            onClick={() => setViewingProperty(item)}
-                            className="p-1 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs cursor-pointer"
+                            onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                            className="py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center gap-1 transition border border-blue-200 cursor-pointer"
                           >
-                            <i className="ri-eye-line" />
+                            <i className="ri-eye-line text-xs" />
+                            <span>View</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => startEdit(item)}
-                            className="p-1 rounded-xl border border-orange-200 text-orange-700 hover:bg-orange-50 text-xs cursor-pointer"
+                            className="py-1 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold text-xs flex items-center justify-center gap-1 transition border border-orange-200 cursor-pointer"
                           >
-                            <i className="ri-edit-line" />
+                            <i className="ri-edit-line text-xs" />
+                            <span>Edit</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => deleteListing(item._id)}
-                            className="p-1 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs cursor-pointer"
+                            className="py-1 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-700 font-bold text-xs flex items-center justify-center gap-1 transition border border-slate-200 hover:border-red-200 cursor-pointer"
                           >
-                            <i className="ri-delete-bin-line" />
+                            <i className="ri-delete-bin-line text-xs" />
+                            <span>Delete</span>
                           </button>
                         </div>
                       </div>
@@ -1788,43 +1855,6 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                         )}
                       </div>
                     </div>
-
-                    {/* Live Financial Payout Ribbon */}
-                    {(form.salePrice || form.monthlyRent) && (
-                      <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 text-xs text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-                        <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm">
-                            ₹
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-bold text-emerald-700 block uppercase">Listed Value</span>
-                            <span className="text-xs font-black text-emerald-900">{priceLabel(form)}</span>
-                          </div>
-                        </div>
-
-                        {form.salePrice && (
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <span className="text-[10px] text-slate-500 block">Gross 1% Cut</span>
-                              <span className="font-bold text-slate-800">{formatINR(Number(form.salePrice) * 0.01)}</span>
-                            </div>
-                            <div className="text-right pl-3 border-l border-emerald-200">
-                              <span className="text-[10px] font-bold text-emerald-700 block uppercase">Your 40% Share</span>
-                              <span className="text-sm font-black text-emerald-700">
-                                {formatINR((Number(form.salePrice) * 0.01) * 0.4)}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                        {form.listingType === 'rent' && form.monthlyRent && (
-                          <div className="text-right">
-                            <span className="text-[10px] font-bold text-emerald-700 block uppercase">Rental Brokerage</span>
-                            <span className="text-xs font-black text-emerald-900">{form.commission || '15 Days / Standard'}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
 
                   {/* 2. Sourced Associate & Media Hub Row */}
@@ -2027,10 +2057,19 @@ Contact *${salesmanName}* | Baba Broker Real Estate
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-8 py-3 rounded-2xl bg-[#ea580c] hover:bg-orange-700 text-white text-xs font-black shadow-md transition disabled:opacity-50 cursor-pointer flex items-center gap-2 hover:shadow-lg"
+                    className="px-8 py-3 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-600 hover:from-orange-700 hover:via-orange-600 hover:to-amber-700 text-white text-xs font-black shadow-md shadow-orange-500/25 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2 hover:shadow-lg hover:shadow-orange-500/35 hover:-translate-y-0.5 active:translate-y-0"
                   >
-                    {saving ? <Loader size={16} color="#fff" /> : <i className="ri-check-line text-base font-black" />}
-                    <span>{editingId ? 'Save Changes' : 'Publish Property Listing'}</span>
+                    {saving ? (
+                      <>
+                        <i className="ri-loader-4-line text-base font-black animate-spin" />
+                        <span>{editingId ? 'Saving Changes...' : 'Publishing Property...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="ri-check-line text-base font-black" />
+                        <span>{editingId ? 'Save Changes' : 'Publish Property Listing'}</span>
+                      </>
+                    )}
                   </button>
                 </div>
 
@@ -2319,115 +2358,203 @@ Contact *${salesmanName}* | Baba Broker Real Estate
         </div>
       )}
 
-      {/* ─── MODAL: PROPERTY DETAIL INSPECTOR ─── */}
-      {viewingProperty && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-slate-200 max-w-lg w-full p-5 shadow-2xl space-y-3.5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-start justify-between border-b border-slate-100 pb-2.5">
-              <div>
-                <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 text-[10px] font-black uppercase">
-                  {viewingProperty.configuration || '2 BHK'}
-                </span>
-                <h3 className="text-sm font-black text-slate-900 mt-1">
-                  {viewingProperty.title || `${viewingProperty.configuration} in ${viewingProperty.location}`}
-                </h3>
-                <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                  <i className="ri-map-pin-2-fill text-orange-500" />
-                  {viewingProperty.location}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewingProperty(null)}
-                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer"
-              >
-                <i className="ri-close-line text-base" />
-              </button>
-            </div>
+      {/* ─── MODAL: PROPERTY DETAIL & IMAGE INSPECTOR ─── */}
+      {viewingProperty && (() => {
+        const allPhotos = [
+          viewingProperty.coverImage,
+          ...(Array.isArray(viewingProperty.images) ? viewingProperty.images : [])
+        ].filter(Boolean);
 
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase">Demand Price</span>
-                <span className="text-xs font-black text-emerald-700">{priceLabel(viewingProperty)}</span>
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl border border-slate-200 max-w-xl w-full p-4 sm:p-5 shadow-2xl space-y-3.5 animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[92vh] overflow-y-auto">
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                <div className="min-w-0 flex-1 pr-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 text-[10px] font-black uppercase">
+                      {viewingProperty.configuration || '2 BHK'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold uppercase">
+                      {viewingProperty.propertyCategory || 'Flat'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase">
+                      {viewingProperty.listingType === 'rent' ? 'For Rent' : 'For Sale'}
+                    </span>
+                    {viewingProperty.dealStatus && viewingProperty.dealStatus !== 'available' && (
+                      <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-[10px] font-black uppercase">
+                        {viewingProperty.dealStatus}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 mt-1 truncate">
+                    {viewingProperty.title || `${viewingProperty.configuration} in ${viewingProperty.location}`}
+                  </h3>
+                  <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                    <i className="ri-map-pin-2-fill text-orange-500 text-xs" />
+                    <span className="truncate">{viewingProperty.location}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setViewingProperty(null); setActivePhotoIdx(0); }}
+                  className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer shrink-0"
+                >
+                  <i className="ri-close-line text-lg" />
+                </button>
               </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase">Net Negotiable</span>
-                <span className="text-xs font-black text-amber-700">
-                  {viewingProperty.netProfit > 0 ? formatINR(viewingProperty.netProfit) : 'Firm Demand'}
-                </span>
-              </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase">Size & Floor</span>
-                <span className="font-bold text-slate-800">
-                  {viewingProperty.sizeSqft || '450 sqft'} • {viewingProperty.floor || 'Standard'}
-                </span>
-              </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase">Lift & Parking</span>
-                <span className="font-bold text-slate-800">
-                  {viewingProperty.lift === 'YES' ? '🛗 Lift Yes' : 'No Lift'} • {viewingProperty.parking || 'No Parking'}
-                </span>
-              </div>
-            </div>
 
-            {viewingProperty.completeAddress && (
-              <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-xs">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase">Address Landmark</span>
-                <span className="font-bold text-slate-700 text-[11px]">{viewingProperty.completeAddress}</span>
-              </div>
-            )}
+              {/* Photo Showcase & Image Gallery */}
+              <div className="space-y-2">
+                {allPhotos.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="relative h-56 sm:h-64 w-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 shadow-inner group">
+                      <img
+                        src={allPhotos[activePhotoIdx] || allPhotos[0]}
+                        alt="Property Preview"
+                        className="h-full w-full object-contain sm:object-cover"
+                      />
+                      <span className="absolute top-2 left-2 px-2.5 py-1 rounded-lg bg-black/70 text-white font-mono text-[10px] font-bold backdrop-blur-xs">
+                        Photo {activePhotoIdx + 1} of {allPhotos.length}
+                      </span>
+                      <span className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-orange-600 text-white text-xs font-black shadow-md">
+                        {priceLabel(viewingProperty)}
+                      </span>
+                    </div>
 
-            <div className="bg-orange-50/70 p-2.5 rounded-2xl border border-orange-200/70 flex items-center justify-between gap-3 text-xs">
-              <div>
-                <span className="text-[10px] text-orange-600 font-bold block uppercase">Associate Contact</span>
-                <span className="font-black text-slate-900 block">{viewingProperty.ownerName || 'Associate'}</span>
-                {viewingProperty.ownerContact && (
-                  <span className="text-[10px] text-slate-600 font-mono block">{viewingProperty.ownerContact}</span>
+                    {allPhotos.length > 1 && (
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5">
+                        {allPhotos.map((img, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setActivePhotoIdx(idx)}
+                            className={`relative h-14 w-14 rounded-xl overflow-hidden shrink-0 border-2 transition cursor-pointer ${
+                              activePhotoIdx === idx ? 'border-orange-600 ring-2 ring-orange-400' : 'border-slate-200 opacity-70 hover:opacity-100'
+                            }`}
+                          >
+                            <img src={img} alt="" className="h-full w-full object-cover" />
+                            <span className="absolute bottom-0 right-0 px-1 rounded-tl bg-black/60 text-white text-[8px] font-bold">
+                              #{idx + 1}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-32 w-full rounded-2xl bg-gradient-to-br from-slate-50 to-orange-50/40 border border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 gap-1.5">
+                    <div className="h-9 w-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-lg">
+                      <i className="ri-image-2-line" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-500">No photos attached to this property</span>
+                  </div>
                 )}
               </div>
-              {viewingProperty.ownerContact && (
-                <div className="flex items-center gap-1">
-                  <a
-                    href={`https://wa.me/91${String(viewingProperty.ownerContact).replace(/[^\d]/g, '')}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-bold shadow-xs flex items-center gap-1"
-                  >
-                    <i className="ri-whatsapp-line" /> WhatsApp
-                  </a>
-                  <a
-                    href={`tel:${String(viewingProperty.ownerContact).replace(/[^\d]/g, '')}`}
-                    className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-bold shadow-xs flex items-center gap-1"
-                  >
-                    <i className="ri-phone-line" /> Call
-                  </a>
+
+              {/* Property Details Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Demand Price</span>
+                  <span className="text-xs font-black text-emerald-700">{priceLabel(viewingProperty)}</span>
+                </div>
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Net Deal</span>
+                  <span className="text-xs font-black text-amber-700">
+                    {viewingProperty.netProfit > 0 ? formatINR(viewingProperty.netProfit) : 'Firm Demand'}
+                  </span>
+                </div>
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Size & Floor</span>
+                  <span className="font-bold text-slate-800 text-xs">
+                    {viewingProperty.sizeSqft || '50 Gaj'} • {viewingProperty.floor || 'Standard'}
+                  </span>
+                </div>
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Lift & Parking</span>
+                  <span className="font-bold text-slate-800 text-xs">
+                    {viewingProperty.lift === 'YES' ? '🛗 Lift Yes' : 'No Lift'} • {viewingProperty.parking || 'Standard'}
+                  </span>
+                </div>
+              </div>
+
+              {viewingProperty.completeAddress && (
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Address Landmark</span>
+                  <span className="font-bold text-slate-700 text-xs">{viewingProperty.completeAddress}</span>
                 </div>
               )}
-            </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  const target = viewingProperty;
-                  setViewingProperty(null);
-                  startEdit(target);
-                }}
-                className="flex-1 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-              >
-                <i className="ri-edit-line" /> Edit Listing
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewingProperty(null)}
-                className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
-              >
-                Close
-              </button>
+              {/* Associate Contact */}
+              <div className="bg-orange-50/70 p-2.5 rounded-2xl border border-orange-200/70 flex items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="text-[10px] text-orange-600 font-bold block uppercase">Associate Contact</span>
+                  <span className="font-black text-slate-900 block">{viewingProperty.ownerName || 'Associate / Direct'}</span>
+                  {viewingProperty.ownerContact && (
+                    <span className="text-[10px] text-slate-600 font-mono block">{viewingProperty.ownerContact}</span>
+                  )}
+                </div>
+                {viewingProperty.ownerContact && (
+                  <div className="flex items-center gap-1.5">
+                    <a
+                      href={`https://wa.me/91${String(viewingProperty.ownerContact).replace(/[^\d]/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-xs flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <i className="ri-whatsapp-line" /> WhatsApp
+                    </a>
+                    <a
+                      href={`tel:${String(viewingProperty.ownerContact).replace(/[^\d]/g, '')}`}
+                      className="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-xs flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <i className="ri-phone-line" /> Call
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = viewingProperty;
+                    setViewingProperty(null);
+                    setActivePhotoIdx(0);
+                    startEdit(target);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <i className="ri-edit-line text-sm" />
+                  <span>Edit Listing</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = viewingProperty;
+                    setViewingProperty(null);
+                    setActivePhotoIdx(0);
+                    setPitchingProperty(target);
+                    setPitchClientName('');
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <i className="ri-whatsapp-line text-sm" />
+                  <span>WhatsApp Pitch</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setViewingProperty(null); setActivePhotoIdx(0); }}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </div>
   );

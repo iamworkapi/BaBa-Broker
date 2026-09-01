@@ -3,8 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { getAuth, clearAuth } from '../store/auth';
 import { useAppDispatch } from '../store';
-import { logoutAction } from '../store/authSlice';
-import { Loader } from '../components/ui';
 import AssignedLeadsPanel from '../components/AssignedLeadsPanel';
 
 const formatINR = (val) => {
@@ -61,8 +59,8 @@ export default function EmployeeDashboard() {
   const [form, setForm] = useState(emptyFlatListing());
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState('');
-  const [saving, setSaving] = useState(false);
   const [viewingProperty, setViewingProperty] = useState(null);
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [pitchingProperty, setPitchingProperty] = useState(null);
   const [pitchClientName, setPitchClientName] = useState('');
   const [pitchClientPhone, setPitchClientPhone] = useState('');
@@ -268,7 +266,11 @@ export default function EmployeeDashboard() {
     const available = listings.filter((l) => l.dealStatus === 'available' || !l.dealStatus).length;
     const verified = listings.filter((l) => l.isVerified !== false).length;
     const converted = listings.filter((l) => l.dealStatus === 'sold' || l.dealStatus === 'rented').length;
-    return { total, available, verified, converted };
+    const buyCount = listings.filter((l) => l.listingType === 'buy' || !l.listingType).length;
+    const rentCount = listings.filter((l) => l.listingType === 'rent').length;
+    const availableBuy = listings.filter((l) => (l.listingType === 'buy' || !l.listingType) && (l.dealStatus === 'available' || !l.dealStatus)).length;
+    const availableRent = listings.filter((l) => l.listingType === 'rent' && (l.dealStatus === 'available' || !l.dealStatus)).length;
+    return { total, available, verified, converted, buyCount, rentCount, availableBuy, availableRent };
   }, [listings]);
 
   // Image Upload Handlers
@@ -686,27 +688,38 @@ export default function EmployeeDashboard() {
                 </div>
 
                 {/* 2. Key Metrics Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full">
                   <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Active Inventory</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Inventory</span>
                       <div className="h-6 w-6 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center text-xs">
                         <i className="ri-building-line" />
                       </div>
                     </div>
-                    <div className="text-base sm:text-lg font-black text-slate-900">{stats.available} Available</div>
-                    <span className="text-[10px] text-slate-400 font-medium">Out of {stats.total} total units</span>
+                    <div className="text-base sm:text-lg font-black text-slate-900">{stats.total} Units</div>
+                    <span className="text-[10px] text-slate-400 font-medium">{stats.available} Available Units</span>
                   </div>
 
                   <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Verified Units</span>
-                      <div className="h-6 w-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">
-                        <i className="ri-checkbox-circle-line" />
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Buy Deals</span>
+                      <div className="h-6 w-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
+                        <i className="ri-price-tag-3-line" />
                       </div>
                     </div>
-                    <div className="text-base sm:text-lg font-black text-emerald-700">{stats.verified} Verified</div>
-                    <span className="text-[10px] text-emerald-600 font-bold">100% Legit documentation</span>
+                    <div className="text-base sm:text-lg font-black text-blue-700">{stats.buyCount} Properties</div>
+                    <span className="text-[10px] text-blue-600 font-bold">{stats.availableBuy} Active for Sale</span>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Rental Units</span>
+                      <div className="h-6 w-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">
+                        <i className="ri-key-2-line" />
+                      </div>
+                    </div>
+                    <div className="text-base sm:text-lg font-black text-emerald-700">{stats.rentCount} Rentals</div>
+                    <span className="text-[10px] text-emerald-600 font-bold">{stats.availableRent} Active for Rent</span>
                   </div>
 
                   <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
@@ -717,7 +730,7 @@ export default function EmployeeDashboard() {
                       </div>
                     </div>
                     <div className="text-base sm:text-lg font-black text-purple-700">{stats.converted} Deals</div>
-                    <span className="text-[10px] text-purple-600 font-bold">Sold & Rented</span>
+                    <span className="text-[10px] text-purple-600 font-bold">{stats.verified} Verified Units</span>
                   </div>
                 </div>
 
@@ -763,18 +776,27 @@ export default function EmployeeDashboard() {
                                 isClosed ? 'opacity-35 bg-slate-100/70 pointer-events-none' : 'hover:bg-slate-50/80'
                               }`}
                             >
-                              <td className="py-2.5 px-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="h-8 w-8 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-black text-xs shrink-0 overflow-hidden">
+                              <td className="py-2.5 px-3 max-w-[240px]">
+                                <div className="flex items-center gap-2.5">
+                                  <div
+                                    onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                                    className="h-10 w-10 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-black text-xs shrink-0 overflow-hidden border border-slate-200 shadow-2xs cursor-pointer hover:opacity-90 transition"
+                                    title="Click to view photo"
+                                  >
                                     {item.coverImage ? (
                                       <img src={item.coverImage} alt="" className="h-full w-full object-cover" />
+                                    ) : (item.images && item.images.length > 0) ? (
+                                      <img src={item.images[0]} alt="" className="h-full w-full object-cover" />
                                     ) : (
-                                      (item.configuration || '2B').slice(0, 2)
+                                      <span className="text-[10px] font-black text-orange-600">{(item.configuration || '2B').slice(0, 2)}</span>
                                     )}
                                   </div>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="font-bold text-slate-900 block truncate text-xs">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span
+                                        onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                                        className="font-bold text-slate-900 block truncate text-xs hover:text-orange-600 cursor-pointer"
+                                      >
                                         {item.title || `${item.configuration} Builder Floor`}
                                       </span>
                                       {isClosed && (
@@ -837,7 +859,7 @@ export default function EmployeeDashboard() {
                                     type="button"
                                     disabled={isClosed}
                                     onClick={() => { setPitchingProperty(item); setPitchClientName(''); setPitchClientPhone(''); }}
-                                    className="h-6 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                                    className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed transition"
                                     title="WhatsApp Pitch"
                                   >
                                     <i className="ri-whatsapp-line text-xs" />
@@ -846,11 +868,22 @@ export default function EmployeeDashboard() {
                                   <button
                                     type="button"
                                     disabled={isClosed}
+                                    onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                                    className="px-2.5 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed transition"
+                                    title="View Property & Photos"
+                                  >
+                                    <i className="ri-eye-line text-xs" />
+                                    <span>View</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isClosed}
                                     onClick={() => startEdit(item)}
-                                    className="h-6 w-6 rounded-lg bg-slate-100 hover:bg-orange-100 text-slate-600 hover:text-orange-700 flex items-center justify-center text-xs cursor-pointer disabled:cursor-not-allowed"
+                                    className="px-2.5 py-1 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed transition"
                                     title="Edit"
                                   >
-                                    <i className="ri-edit-line" />
+                                    <i className="ri-edit-line text-xs" />
+                                    <span>Edit</span>
                                   </button>
                                 </div>
                               </td>
@@ -899,10 +932,19 @@ export default function EmployeeDashboard() {
                     <button
                       type="submit"
                       disabled={saving}
-                      className="px-4.5 py-2 rounded-xl bg-[#ea580c] hover:bg-orange-700 text-white text-xs font-black shadow-md shadow-orange-600/20 transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                      className="px-5 py-2 rounded-xl bg-[#ea580c] hover:bg-orange-700 text-white text-xs font-black shadow-md shadow-orange-600/20 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
                     >
-                      {saving ? <Loader size={14} color="#fff" /> : <i className="ri-check-line text-sm font-black" />}
-                      <span>{editingId ? 'Save Changes' : 'Publish Property'}</span>
+                      {saving ? (
+                        <>
+                          <i className="ri-loader-4-line text-sm font-black animate-spin" />
+                          <span>{editingId ? 'Saving...' : 'Publishing...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <i className="ri-check-line text-sm font-black" />
+                          <span>{editingId ? 'Save Changes' : 'Publish Property'}</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -1494,10 +1536,19 @@ export default function EmployeeDashboard() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-8 py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white text-xs font-black shadow-md shadow-orange-600/20 transition disabled:opacity-50 cursor-pointer flex items-center gap-2 hover:shadow-lg hover:scale-[1.01]"
+                    className="px-8 py-3 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-600 hover:from-orange-700 hover:via-orange-600 hover:to-amber-700 text-white text-xs font-black shadow-md shadow-orange-600/25 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2 hover:shadow-lg hover:shadow-orange-500/35 hover:-translate-y-0.5 active:translate-y-0"
                   >
-                    {saving ? <Loader size={16} color="#fff" /> : <i className="ri-check-double-line text-base font-black" />}
-                    <span>{editingId ? 'Save Audited Changes' : 'Approve & Publish to Catalog'}</span>
+                    {saving ? (
+                      <>
+                        <i className="ri-loader-4-line text-base font-black animate-spin" />
+                        <span>{editingId ? 'Saving Audited Changes...' : 'Publishing to Catalog...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="ri-check-double-line text-base font-black" />
+                        <span>{editingId ? 'Save Audited Changes' : 'Approve & Publish to Catalog'}</span>
+                      </>
+                    )}
                   </button>
                 </div>
 
@@ -1673,18 +1724,27 @@ export default function EmployeeDashboard() {
                               isClosed ? 'bg-slate-100/70' : 'hover:bg-slate-50/80'
                             }`}
                           >
-                            <td className={`py-2.5 px-3 ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
-                              <div className="flex items-center gap-2">
-                                <div className="h-8 w-8 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-black text-xs shrink-0 overflow-hidden">
+                            <td className={`py-2.5 px-3 max-w-[260px] ${isClosed ? 'opacity-35 pointer-events-none' : ''}`}>
+                              <div className="flex items-center gap-2.5">
+                                <div
+                                  onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                                  className="h-10 w-10 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-black text-xs shrink-0 overflow-hidden border border-slate-200 shadow-2xs cursor-pointer hover:opacity-90 transition"
+                                  title="Click to view photo"
+                                >
                                   {item.coverImage ? (
                                     <img src={item.coverImage} alt="" className="h-full w-full object-cover" />
+                                  ) : (item.images && item.images.length > 0) ? (
+                                    <img src={item.images[0]} alt="" className="h-full w-full object-cover" />
                                   ) : (
-                                    (item.configuration || '2B').slice(0, 2)
+                                    <span className="text-[10px] font-black text-orange-600">{(item.configuration || '2B').slice(0, 2)}</span>
                                   )}
                                 </div>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-bold text-slate-900 block truncate text-xs">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span
+                                      onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                                      className="font-bold text-slate-900 block truncate text-xs hover:text-orange-600 cursor-pointer"
+                                    >
                                       {item.title || `${item.configuration} Builder Floor`}
                                     </span>
                                     {isClosed && (
@@ -1749,7 +1809,7 @@ export default function EmployeeDashboard() {
                                   type="button"
                                   disabled={isClosed}
                                   onClick={() => { setPitchingProperty(item); setPitchClientName(''); setPitchClientPhone(''); }}
-                                  className="h-6 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                                  className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed transition"
                                   title="WhatsApp Pitch"
                                 >
                                   <i className="ri-whatsapp-line text-xs" />
@@ -1758,20 +1818,32 @@ export default function EmployeeDashboard() {
                                 <button
                                   type="button"
                                   disabled={isClosed}
+                                  onClick={() => { setViewingProperty(item); setActivePhotoIdx(0); }}
+                                  className="px-2.5 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed transition"
+                                  title="View Property & Photos"
+                                >
+                                  <i className="ri-eye-line text-xs" />
+                                  <span>View</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isClosed}
                                   onClick={() => startEdit(item)}
-                                  className="h-6 w-6 rounded-lg bg-slate-100 hover:bg-orange-100 text-slate-600 hover:text-orange-700 flex items-center justify-center text-xs cursor-pointer disabled:cursor-not-allowed"
+                                  className="px-2.5 py-1 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed transition"
                                   title="Edit"
                                 >
-                                  <i className="ri-edit-line" />
+                                  <i className="ri-edit-line text-xs" />
+                                  <span>Edit</span>
                                 </button>
                                 <button
                                   type="button"
                                   disabled={isClosed}
                                   onClick={() => deleteListing(item._id)}
-                                  className="h-6 w-6 rounded-lg bg-slate-100 hover:bg-red-100 text-slate-600 hover:text-red-700 flex items-center justify-center text-xs cursor-pointer disabled:cursor-not-allowed"
+                                  className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-700 border border-slate-200 hover:border-red-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed transition"
                                   title="Delete"
                                 >
-                                  <i className="ri-delete-bin-line" />
+                                  <i className="ri-delete-bin-line text-xs" />
+                                  <span>Delete</span>
                                 </button>
                               </div>
                             </td>
@@ -2202,6 +2274,204 @@ export default function EmployeeDashboard() {
           </div>
         </div>
       )}
+
+      {/* ─── MODAL: PROPERTY DETAIL & IMAGE INSPECTOR ─── */}
+      {viewingProperty && (() => {
+        const allPhotos = [
+          viewingProperty.coverImage,
+          ...(Array.isArray(viewingProperty.images) ? viewingProperty.images : [])
+        ].filter(Boolean);
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl border border-slate-200 max-w-xl w-full p-4 sm:p-5 shadow-2xl space-y-3.5 animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[92vh] overflow-y-auto">
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                <div className="min-w-0 flex-1 pr-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 text-[10px] font-black uppercase">
+                      {viewingProperty.configuration || '2 BHK'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold uppercase">
+                      {viewingProperty.propertyCategory || 'Flat'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase">
+                      {viewingProperty.listingType === 'rent' ? 'For Rent' : 'For Sale'}
+                    </span>
+                    {viewingProperty.dealStatus && viewingProperty.dealStatus !== 'available' && (
+                      <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-[10px] font-black uppercase">
+                        {viewingProperty.dealStatus}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 mt-1 truncate">
+                    {viewingProperty.title || `${viewingProperty.configuration} in ${viewingProperty.location}`}
+                  </h3>
+                  <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                    <i className="ri-map-pin-2-fill text-orange-500 text-xs" />
+                    <span className="truncate">{viewingProperty.location}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setViewingProperty(null); setActivePhotoIdx(0); }}
+                  className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer shrink-0"
+                >
+                  <i className="ri-close-line text-lg" />
+                </button>
+              </div>
+
+              {/* Photo Showcase & Image Gallery */}
+              <div className="space-y-2">
+                {allPhotos.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="relative h-56 sm:h-64 w-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 shadow-inner group">
+                      <img
+                        src={allPhotos[activePhotoIdx] || allPhotos[0]}
+                        alt="Property Preview"
+                        className="h-full w-full object-contain sm:object-cover"
+                      />
+                      <span className="absolute top-2 left-2 px-2.5 py-1 rounded-lg bg-black/70 text-white font-mono text-[10px] font-bold backdrop-blur-xs">
+                        Photo {activePhotoIdx + 1} of {allPhotos.length}
+                      </span>
+                      <span className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-orange-600 text-white text-xs font-black shadow-md">
+                        {priceLabel(viewingProperty)}
+                      </span>
+                    </div>
+
+                    {allPhotos.length > 1 && (
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5">
+                        {allPhotos.map((img, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setActivePhotoIdx(idx)}
+                            className={`relative h-14 w-14 rounded-xl overflow-hidden shrink-0 border-2 transition cursor-pointer ${
+                              activePhotoIdx === idx ? 'border-orange-600 ring-2 ring-orange-400' : 'border-slate-200 opacity-70 hover:opacity-100'
+                            }`}
+                          >
+                            <img src={img} alt="" className="h-full w-full object-cover" />
+                            <span className="absolute bottom-0 right-0 px-1 rounded-tl bg-black/60 text-white text-[8px] font-bold">
+                              #{idx + 1}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-32 w-full rounded-2xl bg-gradient-to-br from-slate-50 to-orange-50/40 border border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 gap-1.5">
+                    <div className="h-9 w-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-lg">
+                      <i className="ri-image-2-line" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-500">No photos attached to this property</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Property Details Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Demand Price</span>
+                  <span className="text-xs font-black text-emerald-700">{priceLabel(viewingProperty)}</span>
+                </div>
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Net Deal</span>
+                  <span className="text-xs font-black text-amber-700">
+                    {viewingProperty.netProfit > 0 ? formatINR(viewingProperty.netProfit) : 'Firm Demand'}
+                  </span>
+                </div>
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Size & Floor</span>
+                  <span className="font-bold text-slate-800 text-xs">
+                    {viewingProperty.sizeSqft || '50 Gaj'} • {viewingProperty.floor || 'Standard'}
+                  </span>
+                </div>
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Lift & Parking</span>
+                  <span className="font-bold text-slate-800 text-xs">
+                    {viewingProperty.lift === 'YES' ? '🛗 Lift Yes' : 'No Lift'} • {viewingProperty.parking || 'Standard'}
+                  </span>
+                </div>
+              </div>
+
+              {viewingProperty.completeAddress && (
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Address Landmark</span>
+                  <span className="font-bold text-slate-700 text-xs">{viewingProperty.completeAddress}</span>
+                </div>
+              )}
+
+              {/* Associate Contact */}
+              <div className="bg-orange-50/70 p-2.5 rounded-2xl border border-orange-200/70 flex items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="text-[10px] text-orange-600 font-bold block uppercase">Associate Contact</span>
+                  <span className="font-black text-slate-900 block">{viewingProperty.ownerName || 'Associate / Direct'}</span>
+                  {viewingProperty.ownerContact && (
+                    <span className="text-[10px] text-slate-600 font-mono block">{viewingProperty.ownerContact}</span>
+                  )}
+                </div>
+                {viewingProperty.ownerContact && (
+                  <div className="flex items-center gap-1.5">
+                    <a
+                      href={`https://wa.me/91${String(viewingProperty.ownerContact).replace(/[^\d]/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-xs flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <i className="ri-whatsapp-line" /> WhatsApp
+                    </a>
+                    <a
+                      href={`tel:${String(viewingProperty.ownerContact).replace(/[^\d]/g, '')}`}
+                      className="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-xs flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <i className="ri-phone-line" /> Call
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = viewingProperty;
+                    setViewingProperty(null);
+                    setActivePhotoIdx(0);
+                    startEdit(target);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <i className="ri-edit-line text-sm" />
+                  <span>Edit Listing</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = viewingProperty;
+                    setViewingProperty(null);
+                    setActivePhotoIdx(0);
+                    setPitchingProperty(target);
+                    setPitchClientName('');
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <i className="ri-whatsapp-line text-sm" />
+                  <span>WhatsApp Pitch</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setViewingProperty(null); setActivePhotoIdx(0); }}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

@@ -19,7 +19,7 @@ export const connectDB = async () => {
       })
       .then(() => {
         dbState.ready = true;
-        console.log('MongoDB connected');
+        console.log(`MongoDB connected successfully to database: "${mongoose.connection.name}"`);
       })
       .catch((error) => {
         connectPromise = null;
