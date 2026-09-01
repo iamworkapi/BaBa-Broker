@@ -1563,7 +1563,7 @@ export default function AdminOverview({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <div className="h-8 w-8 rounded-xl bg-orange-50 text-[#ea580c] flex items-center justify-center font-bold text-sm border border-orange-200/60 shadow-2xs shrink-0">
-                  <i className={view === 'featured' ? 'ri-fire-fill' : 'ri-building-2-line'} />
+                  <i className={view === 'featured' ? 'ri-global-line' : 'ri-building-2-line'} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -1571,7 +1571,7 @@ export default function AdminOverview({
                       {isContacts
                         ? 'Customer Leads & Proposals'
                         : view === 'featured'
-                        ? 'Featured Hot Sale Properties'
+                        ? 'Published Website Properties'
                         : 'All Investment Projects'}
                     </h1>
                     <span className="text-[10px] font-black uppercase text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200/60">
@@ -1580,7 +1580,7 @@ export default function AdminOverview({
                   </div>
                   <p className="text-[11px] text-slate-400 font-normal leading-tight mt-0.5">
                     {view === 'featured'
-                      ? 'Direct high-demand inventory featured on homepage showcase.'
+                      ? 'Inventory published live on the public website homepage showcase.'
                       : 'Fractional co-investment pools and flip opportunities.'}
                   </p>
                 </div>
@@ -1602,8 +1602,8 @@ export default function AdminOverview({
                     }}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[#ea580c] hover:bg-[#c2410c] px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-orange-500/20 transition cursor-pointer"
                   >
-                    <i className="ri-fire-line text-xs" />
-                    <span>Create Hot Deal</span>
+                    <i className="ri-add-circle-line text-xs" />
+                    <span>Create Property</span>
                   </button>
                 ) : null}
               </div>
@@ -1619,7 +1619,7 @@ export default function AdminOverview({
                     { id: 'running', label: '🚀 Running' },
                     { id: 'upcoming', label: '⏳ Upcoming' },
                     { id: 'delivered', label: '✅ Delivered' },
-                    { id: 'featured', label: '⭐ Featured Deals' },
+                    { id: 'featured', label: '🌐 Published on Web' },
                   ].map((st) => (
                     <button
                       key={st.id}
@@ -1680,7 +1680,7 @@ export default function AdminOverview({
                       key={p._id}
                       className={`group relative flex flex-col justify-between rounded-3xl border bg-white overflow-hidden shadow-2xs transition-all duration-200 ${
                         p.isFeatured
-                          ? 'border-amber-300 ring-1 ring-amber-400/30 hover:border-amber-500 hover:shadow-md'
+                          ? 'border-emerald-300 ring-1 ring-emerald-400/30 hover:border-emerald-500 hover:shadow-md'
                           : 'border-slate-200/90 hover:border-orange-300 hover:shadow-md'
                       }`}
                     >
@@ -1702,37 +1702,41 @@ export default function AdminOverview({
 
                           {/* Top Badges */}
                           <div className="absolute left-2.5 top-2.5 right-2.5 flex items-center justify-between gap-1.5 z-10">
-                            <span className="rounded-xl px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-black/60 backdrop-blur-md text-white border border-white/20">
+                            <span className="rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-black/60 backdrop-blur-md text-white border border-white/20">
                               {p.status || 'Running'}
                             </span>
 
-                            <button
-                              type="button"
-                              onClick={() => toggleFeaturedStatus(p)}
-                              className={`rounded-xl px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider backdrop-blur-md transition cursor-pointer flex items-center gap-1 ${
-                                p.isFeatured
-                                  ? 'bg-gradient-to-r from-amber-400 to-orange-400 text-slate-950 shadow-md font-black ring-1 ring-amber-300'
-                                  : 'bg-white/90 text-slate-700 hover:text-slate-950 border border-slate-200 shadow-2xs'
-                              }`}
-                              title={p.isFeatured ? "Featured Hot Deal (Click to unfeature)" : "Click to feature this project"}
-                            >
-                              <i className={p.isFeatured ? "ri-star-fill text-slate-950" : "ri-star-line text-amber-500"} />
-                              <span>{p.isFeatured ? '⭐ Hot Deal' : 'Mark Hot'}</span>
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              {/* Publish on Website Toggle */}
+                              <button
+                                type="button"
+                                onClick={() => toggleFeaturedStatus(p)}
+                                className={`rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-wider backdrop-blur-md transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+                                  p.isFeatured
+                                    ? 'bg-emerald-600 text-white ring-1 ring-emerald-400/80 shadow-emerald-500/20'
+                                    : 'bg-white/95 text-slate-700 hover:text-slate-950 border border-slate-200/90 hover:bg-white'
+                                }`}
+                                title={p.isFeatured ? "Published on Website (Click to Unpublish)" : "Click to Publish on Website"}
+                              >
+                                <i className={p.isFeatured ? "ri-checkbox-circle-fill text-white" : "ri-upload-cloud-line text-emerald-600"} />
+                                <span>{p.isFeatured ? 'Published' : 'Publish'}</span>
+                              </button>
 
-                            <button
-                              type="button"
-                              onClick={() => togglePortfolioStatus(p)}
-                              className={`rounded-xl px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider backdrop-blur-md transition cursor-pointer flex items-center gap-1 ${
-                                p.isPortfolio
-                                  ? 'bg-gradient-to-r from-emerald-400 to-teal-500 text-white shadow-md ring-1 ring-emerald-300'
-                                  : 'bg-white/90 text-slate-700 hover:text-slate-950 border border-slate-200 shadow-2xs'
-                              }`}
-                              title={p.isPortfolio ? "In Curated Portfolios (Click to remove)" : "Click to add to Curated Portfolios"}
-                            >
-                              <i className={p.isPortfolio ? "ri-folder-shared-fill text-white" : "ri-folder-shared-line text-emerald-500"} />
-                              <span>{p.isPortfolio ? '📁 Portfolio' : 'Add Portfolio'}</span>
-                            </button>
+                              {/* Portfolio Toggle */}
+                              <button
+                                type="button"
+                                onClick={() => togglePortfolioStatus(p)}
+                                className={`rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-wider backdrop-blur-md transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+                                  p.isPortfolio
+                                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white ring-1 ring-orange-400/80 shadow-orange-500/20'
+                                    : 'bg-white/95 text-slate-700 hover:text-slate-950 border border-slate-200/90 hover:bg-white'
+                                }`}
+                                title={p.isPortfolio ? "In Curated Portfolio (Click to remove)" : "Click to add to Portfolio"}
+                              >
+                                <i className={p.isPortfolio ? "ri-folder-shared-fill text-white" : "ri-folder-shared-line text-orange-500"} />
+                                <span>{p.isPortfolio ? 'Portfolio' : 'Add Portfolio'}</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
 

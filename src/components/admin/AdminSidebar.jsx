@@ -36,9 +36,9 @@ export default function AdminSidebar({ view, isOpen, onClose }) {
         {
           id: 'featured',
           path: '/admin/featured',
-          label: 'Feature Project',
-          icon: 'ri-star-smile-line',
-          activeIcon: 'ri-star-smile-fill',
+          label: 'Published Deals',
+          icon: 'ri-global-line',
+          activeIcon: 'ri-global-fill',
         },
         {
           id: 'investment-requests',
