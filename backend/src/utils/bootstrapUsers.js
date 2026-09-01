@@ -37,7 +37,7 @@ export async function ensureBootstrapUsers() {
       }
 
       if (!user) {
-        const passwordHash = await bcrypt.hash(acc.password, 12);
+        const passwordHash = await bcrypt.hash(acc.password, 10);
         await User.create({
           name: acc.name,
           email: acc.email,
@@ -57,13 +57,13 @@ export async function ensureBootstrapUsers() {
         user.isActive = true;
         user.lockUntil = null;
         user.loginAttempts = 0;
-        user.passwordHash = await bcrypt.hash(acc.password, 12);
+        user.passwordHash = await bcrypt.hash(acc.password, 10);
         await user.save();
         console.log(`Bootstrap ${acc.role} account updated: ${acc.email}`);
       }
     }
     seeded = true;
   } catch (err) {
-    console.error('Error ensuring bootstrap users:', err.message);
+    console.error('Error ensuring bootstrap users:', err);
   }
 }
