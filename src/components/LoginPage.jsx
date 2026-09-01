@@ -14,7 +14,6 @@ const ROLES = {
     themeColor: '#ea580c',
     tagline: 'Executive Portfolio & Fund Command',
     subtitle: 'Oversee fractional co-investments, capital pools, staff permissions, and executive analytics.',
-    defaultEmail: 'admin@bababroker.com',
     loginPath: '/admin/login',
     dashboard: '/admin/dashboard',
     allowedKeywords: ['admin', 'owner', 'director', 'manager'],
@@ -28,7 +27,6 @@ const ROLES = {
     themeColor: '#ea580c',
     tagline: 'Sales & Client Acquisition Desk',
     subtitle: 'Access assigned leads, generate 1-click WhatsApp property pitches, and track commissions.',
-    defaultEmail: 'salesman@bababroker.com',
     loginPath: '/salesman/login',
     dashboard: '/salesman/dashboard',
     allowedKeywords: ['sales', 'salesman', 'agent', 'rep'],
@@ -42,7 +40,6 @@ const ROLES = {
     themeColor: '#ea580c',
     tagline: 'Flat Audit & Inventory Verification',
     subtitle: 'Manage flat inventory onboarding, verify unit photos, check RERA docs, and audit listings.',
-    defaultEmail: 'employee@bababroker.com',
     loginPath: '/employee/login',
     dashboard: '/employee/dashboard',
     allowedKeywords: ['employee', 'staff', 'audit', 'ops', 'operations'],
@@ -94,7 +91,7 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
   }
 
   const [activeRoleKey, setActiveRoleKey] = useState(detectRoleFromPath());
-  const [email, setEmail] = useState(ROLES[detectRoleFromPath()]?.defaultEmail || 'admin@bababroker.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
@@ -116,7 +113,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
   useEffect(() => {
     const r = detectRoleFromPath();
     setActiveRoleKey(r);
-    setEmail(ROLES[r].defaultEmail);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -128,7 +124,6 @@ export default function LoginPage({ initialRole = 'admin', onSubmit }) {
   const handleRoleChange = (roleKey) => {
     if (activeRoleKey === roleKey) return;
     setActiveRoleKey(roleKey);
-    setEmail(ROLES[roleKey].defaultEmail);
     const targetPath = ROLES[roleKey].loginPath;
     if (location.pathname !== targetPath) {
       navigate(targetPath, { replace: true });
