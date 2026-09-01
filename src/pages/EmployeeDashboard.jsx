@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { getAuth, clearAuth } from '../store/auth';
+import { useAppDispatch } from '../store';
+import { logoutAction } from '../store/authSlice';
 import { Loader } from '../components/ui';
 import AssignedLeadsPanel from '../components/AssignedLeadsPanel';
 
@@ -84,9 +86,15 @@ export default function EmployeeDashboard() {
   const [calcTenureYears, setCalcTenureYears] = useState(20);
   const [calcGajInput, setCalcGajInput] = useState('50');
 
+  const dispatch = useAppDispatch();
   const employeeName = auth?.name || 'Operations Executive';
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutAction());
+    } catch {
+      /* ignore */
+    }
     clearAuth();
     navigate('/employee/login');
   };

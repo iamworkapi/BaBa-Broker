@@ -78,6 +78,8 @@ function App() {
               <Route path="admin/login" element={<AdminLogin />} />
               <Route path="salesman/login" element={<SalesLogin />} />
               <Route path="employee/login" element={<EmployeeLogin />} />
+              <Route path="sales/login" element={<Navigate to="/salesman/login" replace />} />
+              <Route path="staff/login" element={<Navigate to="/admin/login" replace />} />
 
               {/* Protected Admin Routes */}
               <Route path="admin" element={<Navigate to="/admin/dashboard" replace />} />
@@ -95,7 +97,11 @@ function App() {
               <Route path="admin/excel" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard view="excel" /></ProtectedRoute>} />
 
               {/* Protected Staff Routes */}
+              <Route path="salesman" element={<Navigate to="/salesman/dashboard" replace />} />
               <Route path="salesman/dashboard" element={<ProtectedRoute allowedRoles={['salesman', 'admin']}><SalesmanDashboard /></ProtectedRoute>} />
+              <Route path="sales/dashboard" element={<Navigate to="/salesman/dashboard" replace />} />
+              <Route path="sales" element={<Navigate to="/salesman/dashboard" replace />} />
+              <Route path="employee" element={<Navigate to="/employee/dashboard" replace />} />
               <Route path="employee/dashboard" element={<ProtectedRoute allowedRoles={['employee', 'admin']}><EmployeeDashboard /></ProtectedRoute>} />
 
               {/* Catch-all: 404 */}

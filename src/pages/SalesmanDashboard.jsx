@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { getAuth, clearAuth } from '../store/auth';
+import { useAppDispatch } from '../store';
+import { logoutAction } from '../store/authSlice';
 import AssignedLeadsPanel from '../components/AssignedLeadsPanel';
 import { Loader } from '../components/ui';
 
@@ -119,11 +121,17 @@ export default function SalesmanDashboard() {
   const [calcTenureYears, setCalcTenureYears] = useState(20);
   const [calcGajInput, setCalcGajInput] = useState('50');
 
+  const dispatch = useAppDispatch();
   const salesmanName = auth?.name || 'Authorized Salesman';
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutAction());
+    } catch {
+      /* ignore */
+    }
     clearAuth();
-    navigate('/sales/login');
+    navigate('/salesman/login');
   };
 
   const load = useCallback(async () => {
