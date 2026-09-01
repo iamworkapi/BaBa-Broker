@@ -49,9 +49,8 @@ export async function ensureBootstrapUsers() {
         });
         console.log(`Bootstrap ${acc.role} account created: ${acc.email}`);
       } else {
-        // Ensure user is active and has phone/passwordHash
         let needsSave = false;
-        if (!existing.phone) {
+        if (existing.phone !== acc.phone) {
           existing.phone = acc.phone;
           needsSave = true;
         }
@@ -59,7 +58,13 @@ export async function ensureBootstrapUsers() {
           existing.isActive = true;
           needsSave = true;
         }
-        if (!existing.passwordHash && acc.password) {
+        if (existing.lockUntil) {
+          existing.lockUntil = null;
+          existing.loginAttempts = 0;
+          needsSave = true;
+        }
+        const matches = existing.passwordHash ? await bcrypt.compare(acc.password, existing.passwordHash) : false;
+        if (!matches && acc.password) {
           existing.passwordHash = await bcrypt.hash(acc.password, 12);
           needsSave = true;
         }
