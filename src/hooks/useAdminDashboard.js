@@ -753,6 +753,7 @@ export function useAdminDashboard(routeView) {
   const filteredProperties = useMemo(() => {
     return properties.filter((p) => {
       if (view === 'featured' && p.isFeatured !== true) return false;
+      if (view === 'projects' && p.isFeatured === true) return false;
       const matchesSearch =
         !searchQuery.trim() ||
         (p.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
