@@ -31,11 +31,12 @@ export async function ensureBootstrapUsers() {
   if (seeded) return;
   try {
     for (const acc of BOOTSTRAP_ACCOUNTS) {
-      const existing = await User.findOne({
-        $or: [{ email: acc.email }, { phone: acc.phone }],
-      });
+      let user = await User.findOne({ email: acc.email });
+      if (!user && acc.phone) {
+        user = await User.findOne({ phone: acc.phone });
+      }
 
-      if (!existing) {
+      if (!user) {
         const passwordHash = await bcrypt.hash(acc.password, 12);
         await User.create({
           name: acc.name,
@@ -49,28 +50,16 @@ export async function ensureBootstrapUsers() {
         });
         console.log(`Bootstrap ${acc.role} account created: ${acc.email}`);
       } else {
-        let needsSave = false;
-        if (existing.phone !== acc.phone) {
-          existing.phone = acc.phone;
-          needsSave = true;
-        }
-        if (!existing.isActive) {
-          existing.isActive = true;
-          needsSave = true;
-        }
-        if (existing.lockUntil) {
-          existing.lockUntil = null;
-          existing.loginAttempts = 0;
-          needsSave = true;
-        }
-        const matches = existing.passwordHash ? await bcrypt.compare(acc.password, existing.passwordHash) : false;
-        if (!matches && acc.password) {
-          existing.passwordHash = await bcrypt.hash(acc.password, 12);
-          needsSave = true;
-        }
-        if (needsSave) {
-          await existing.save();
-        }
+        user.name = acc.name;
+        user.email = acc.email;
+        user.role = acc.role;
+        user.phone = acc.phone;
+        user.isActive = true;
+        user.lockUntil = null;
+        user.loginAttempts = 0;
+        user.passwordHash = await bcrypt.hash(acc.password, 12);
+        await user.save();
+        console.log(`Bootstrap ${acc.role} account updated: ${acc.email}`);
       }
     }
     seeded = true;
