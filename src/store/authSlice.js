@@ -10,7 +10,7 @@ export const login = createAsyncThunk('auth/login', async (credentials, { reject
     const payload = {
       identifier: rawIdentifier,
       email: isPhone ? '' : rawIdentifier,
-      phone: isPhone ? cleanPhone : (credentials.phone || rawIdentifier || ''),
+      phone: isPhone ? cleanPhone : (credentials.phone || ''),
       password: credentials.password,
       role: credentials.role,
     };
